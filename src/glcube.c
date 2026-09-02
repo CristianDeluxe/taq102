@@ -256,12 +256,21 @@ int main(void) {
     // The view is a fixed pull-back along -Z; the cube itself is what moves.
     float view[16];
     mat_identity(view);
-    view[14] = -6.f;
+    view[14] = -6.f;   // rewritten every frame once a pinch moves the camera
 
     int tfd = open("/dev/input/event1", O_RDONLY | O_NONBLOCK);
     float ax = 0.4f, ay = 0.6f, vx = 0.006f, vy = 0.011f;
     float last_tx = 0, last_ty = 0;
     int touching = 0;
+
+    // Protocol B multitouch: ABS_MT_SLOT selects which contact the following
+    // events describe, and a tracking id of -1 lifts it. Two slots is all a
+    // pinch needs, and the GSL3673 reports five.
+    struct slot { int active; float x, y; } slots[2] = {{0, 0, 0}, {0, 0, 0}};
+    int cur_slot = 0;
+    float pinch_ref = 0.f;   // finger distance when the pinch started
+    float dist_ref = 6.f;    // camera distance at that moment
+    float cam = 6.f;         // where the camera is now, along -Z
 
     struct gbm_bo *prev_bo = NULL;
     int first = 1;
@@ -272,16 +281,52 @@ int main(void) {
         struct kev ev;
         while (tfd >= 0 && read(tfd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
             if (ev.type != EV_ABS) continue;
-            if (ev.code == ABS_MT_POSITION_X) {
-                if (touching) vy = (ev.value - last_tx) * 0.0015f;
-                last_tx = ev.value; touching = 1;
-            } else if (ev.code == ABS_MT_POSITION_Y) {
-                if (touching) vx = (ev.value - last_ty) * 0.0015f;
-                last_ty = ev.value; touching = 1;
-            } else if (ev.code == ABS_MT_TRACKING_ID && ev.value == -1) {
-                touching = 0;
+            switch (ev.code) {
+            case ABS_MT_SLOT:
+                cur_slot = ev.value;
+                break;
+            case ABS_MT_TRACKING_ID:
+                if (cur_slot < 2) slots[cur_slot].active = (ev.value != -1);
+                if (ev.value == -1) touching = 0;
+                break;
+            case ABS_MT_POSITION_X:
+                if (cur_slot < 2) { slots[cur_slot].x = ev.value; slots[cur_slot].active = 1; }
+                if (cur_slot == 0) {
+                    if (touching) vy = (ev.value - last_tx) * 0.0015f;
+                    last_tx = ev.value; touching = 1;
+                }
+                break;
+            case ABS_MT_POSITION_Y:
+                if (cur_slot < 2) { slots[cur_slot].y = ev.value; slots[cur_slot].active = 1; }
+                if (cur_slot == 0) {
+                    if (touching) vx = (ev.value - last_ty) * 0.0015f;
+                    last_ty = ev.value; touching = 1;
+                }
+                break;
+            default:
+                break;
             }
         }
+
+        // Two fingers pinch the camera in and out; the ratio of distances is
+        // what the eye expects, not their difference, so the cube tracks the
+        // fingers at any starting separation.
+        if (slots[0].active && slots[1].active) {
+            float dx = slots[0].x - slots[1].x, dy = slots[0].y - slots[1].y;
+            float d = sqrtf(dx * dx + dy * dy);
+            if (d > 1.f) {
+                if (pinch_ref == 0.f) { pinch_ref = d; dist_ref = cam; }
+                cam = dist_ref * (pinch_ref / d);
+                if (cam < 3.2f) cam = 3.2f;
+                if (cam > 14.f) cam = 14.f;
+                // A pinch is not a drag: stop the rotation it would otherwise
+                // pick up from the first finger moving.
+                vx *= 0.85f; vy *= 0.85f;
+            }
+        } else {
+            pinch_ref = 0.f;
+        }
+        view[14] = -cam;
 
         ax += vx; ay += vy;
 

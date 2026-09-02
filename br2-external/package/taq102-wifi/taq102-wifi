@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# Bring up the RTL8723CS. The module is the vendor's own, loaded under the
+# vendor's own kernel, so the vermagic and the CONFIG_MODVERSIONS symbol CRCs
+# match by construction -- which is the entire reason this image runs the stock
+# kernel.
+#
+# Configuration lives on /data, because that is the only thing here that
+# survives a reboot:
+#
+#   /data/wifi.conf   a wpa_supplicant configuration (wpa_passphrase writes one)
+#   /data/wifi.mac    the MAC address to keep using
+#
+# The MAC matters more than it looks. This board has no MAC in vendor storage --
+# rk_vendor_read fails and the driver says so, then assigns a random one -- so
+# without pinning it the tablet arrives as a different device on every boot and
+# collects a new DHCP lease each time.
+#
+# Usage: taq102-wifi [up|down|scan|status]
+
+MODULE=/lib/modules/4.4.103/extra/8723cs.ko
+CONF=/data/wifi.conf
+MACFILE=/data/wifi.mac
+IFACE=wlan0
+
+load() {
+    if [ -d /sys/class/net/$IFACE ]; then
+        return 0
+    fi
+    # The BSP powers the chip through its own rfkill node before the SDIO
+    # function can be probed at all.
+    for RK in /sys/class/rkwifi/power /sys/class/rfkill/rfkill*/state; do
+        [ -w "$RK" ] && echo 1 > "$RK" 2>/dev/null
+    done
+    insmod "$MODULE" || return 1
+    i=0
+    while [ ! -d /sys/class/net/$IFACE ] && [ $i -lt 50 ]; do
+        sleep 0.2
+        i=$((i + 1))
+    done
+    [ -d /sys/class/net/$IFACE ] || return 1
+
+    if [ -s "$MACFILE" ]; then
+        ip link set $IFACE address "$(cat "$MACFILE")" 2>/dev/null &&
+            echo "taq102-wifi: MAC $(cat "$MACFILE") from $MACFILE" > /dev/kmsg
+    elif [ -d /data/. ]; then
+        cat /sys/class/net/$IFACE/address > "$MACFILE" 2>/dev/null &&
+            echo "taq102-wifi: kept this boot's random MAC in $MACFILE" > /dev/kmsg
+    fi
+    return 0
+}
+
+case "${1:-up}" in
+up)
+    load || { echo "8723cs did not give us $IFACE" >&2; exit 1; }
+    ip link set $IFACE up
+    if [ ! -f "$CONF" ]; then
+        echo "$IFACE is up; write $CONF to associate" >&2
+        echo "  wpa_passphrase <ssid> <psk> > $CONF" >&2
+        exit 0
+    fi
+    wpa_supplicant -B -i $IFACE -c "$CONF" -D nl80211 2>/dev/null ||
+        wpa_supplicant -B -i $IFACE -c "$CONF" -D wext ||
+        { echo "wpa_supplicant refused both nl80211 and wext" >&2; exit 1; }
+    udhcpc -i $IFACE -b
+    ;;
+down)
+    killall udhcpc wpa_supplicant 2>/dev/null
+    ip link set $IFACE down 2>/dev/null
+    rmmod 8723cs 2>/dev/null
+    ;;
+scan)
+    load || exit 1
+    ip link set $IFACE up
+    iw dev $IFACE scan 2>/dev/null | grep -E "SSID|signal" ||
+        wpa_cli -i $IFACE scan_results
+    ;;
+status)
+    ip addr show $IFACE 2>/dev/null || echo "$IFACE not present"
+    wpa_cli -i $IFACE status 2>/dev/null
+    ;;
+*)
+    echo "usage: taq102-wifi [up|down|scan|status]" >&2
+    exit 1
+    ;;
+esac

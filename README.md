@@ -232,8 +232,39 @@ for it. The way into loader mode is therefore: button → rescue image →
 Restoring Android means writing `partitions/*.img` back from the host in loader
 mode. There is no path back through the device itself, which is the point.
 
+## Wi-Fi
+
+The RTL8723CS works, on the stock kernel, with the vendor's own module:
+`blobs/8723cs.ko` straight off this device. That is the payoff for not
+rebuilding the kernel — `CONFIG_MODVERSIONS=y` means a rebuilt kernel must
+reproduce the vermagic *and* every symbol CRC, while under the stock kernel both
+match by construction. `cfg80211` and `mac80211` are already built in.
+
+`/usr/sbin/taq102-wifi up` loads it, pins the MAC, associates and runs `udhcpc`;
+inittab does that before starting the application. Measured: association to a
+WPA2 network, `192.168.1.77`, 20 ms to 1.1.1.1, HTTP fetch, and reachable from
+another machine on the LAN.
+
+Two things live on `/data`, since nothing else survives a reboot:
+
+    /data/wifi.conf   what `wpa_passphrase <ssid> <psk>` writes
+    /data/wifi.mac    the MAC to keep
+
+The MAC file is not a nicety. `rk_vendor_read` fails on this board — there is no
+MAC in vendor storage — so the driver assigns a **random one on every boot**, and
+without pinning it the tablet appears as a new device and takes a new DHCP lease
+each time. The script saves the first one it is given and sets it thereafter.
+
+**A local package does not reinstall itself.** Editing
+`package/taq102-wifi/taq102-wifi` and running `make` changed nothing on the
+target: the package's stamp was already there, so the install step never re-ran,
+and the tablet kept the old script while the build looked clean. Use
+`make taq102-wifi-reinstall` after editing a file a package installs from its
+own directory.
+
 ## Status
 
 The tablet boots this image, drives the panel through DRM, reads multitouch, and
 now renders with the GPU. `particles` is the CPU application, `glcube` the GPU
-one.
+one; `glcube` spins with one finger and zooms with two, tracking multitouch
+slots directly from the GSL3673's protocol-B event stream.

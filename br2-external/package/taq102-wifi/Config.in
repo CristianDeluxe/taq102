@@ -1,0 +1,14 @@
+config BR2_PACKAGE_TAQ102_WIFI
+	bool "taq102-wifi (RTL8723CS driver and bring-up)"
+	select BR2_PACKAGE_WPA_SUPPLICANT
+	select BR2_PACKAGE_WPA_SUPPLICANT_NL80211
+	select BR2_PACKAGE_WPA_SUPPLICANT_CLI
+	select BR2_PACKAGE_WPA_SUPPLICANT_PASSPHRASE
+	help
+	  The stock RTL8723CS module taken off this device, plus the script
+	  that loads it and brings wlan0 up from a configuration on /data.
+
+	  The module is the vendor's own binary rather than a rebuild: the
+	  stock kernel is built with CONFIG_MODVERSIONS=y, so any rebuilt
+	  kernel would have to reproduce both the vermagic string and every
+	  symbol CRC before it would load.
