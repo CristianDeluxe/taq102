@@ -1,0 +1,36 @@
+config BR2_PACKAGE_MALI_UTGARD
+	bool "mali-utgard (Mali-400 blob)"
+	depends on BR2_ARM_EABIHF
+	depends on BR2_TOOLCHAIN_USES_GLIBC
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	select BR2_PACKAGE_HAS_LIBEGL
+	select BR2_PACKAGE_HAS_LIBGLES
+	select BR2_PACKAGE_HAS_LIBGBM
+	select BR2_PACKAGE_LIBGBM_HAS_FEATURE_DMA_BUF
+	select BR2_PACKAGE_LIBDRM
+	help
+	  ARM's proprietary user-space driver for the Mali-400 MP2 in the
+	  RK3126C, GBM flavour, as mirrored by Rockchip. The stock 4.4
+	  kernel already carries the matching mali-utgard kernel driver
+	  and exposes it as /dev/mali; this is only the user-space half.
+
+	  Buildroot's own rockchip-mali package installs the Bifrost G31
+	  blob and cannot be pointed at another GPU, which is why this
+	  package exists.
+
+if BR2_PACKAGE_MALI_UTGARD
+
+config BR2_PACKAGE_PROVIDES_LIBEGL
+	default "mali-utgard"
+
+config BR2_PACKAGE_PROVIDES_LIBGLES
+	default "mali-utgard"
+
+config BR2_PACKAGE_PROVIDES_LIBGBM
+	default "mali-utgard"
+
+endif
+
+comment "mali-utgard needs a glibc armhf toolchain w/ threads"
+	depends on !BR2_ARM_EABIHF || !BR2_TOOLCHAIN_USES_GLIBC || \
+		!BR2_TOOLCHAIN_HAS_THREADS

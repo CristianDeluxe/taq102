@@ -8,8 +8,12 @@ BR2_ARM_ENABLE_NEON=y
 BR2_ARM_ENABLE_VFP=y
 BR2_ARM_FPU_NEON_VFPV4=y
 
-# musl for a small 32-bit userspace with 64-bit time_t.
-BR2_TOOLCHAIN_BUILDROOT_MUSL=y
+# glibc, and hard-float ARM EABI: the Mali-400 user-space blob is
+# arm-linux-gnueabihf and needs GLIBC_2.4 symbols, libpthread.so.0,
+# librt.so.1 and libdl.so.2. musl cannot load it, which is the whole reason
+# this is not musl.
+BR2_ARM_EABIHF=y
+BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
 
 # Headers matched to the kernel this actually runs on. Buildroot's menu offers
 # nothing older than 5.10; 4.4.302 is the last 4.4 stable release.
@@ -47,5 +51,16 @@ BR2_PACKAGE_LIBDRM_INSTALL_TESTS=y
 BR2_PACKAGE_LIBEVDEV=y
 BR2_PACKAGE_EVTEST=y
 
-# Our own KMS application.
+# The Mali-400 MP2 user-space driver. The stock kernel already carries the
+# mali-utgard kernel half and exposes /dev/mali; this is the other half.
+BR2_PACKAGE_MALI_UTGARD=y
+# The blob's own undefined RSA/BN symbols come from here.
+BR2_PACKAGE_OPENSSL=y
+
+# Our own KMS applications: one on the CPU, one on the GPU.
 BR2_PACKAGE_PARTICLES=y
+BR2_PACKAGE_GLCUBE=y
+
+# Reflashing has to be reachable without booting Android, because Android
+# restores the stock recovery partition on every normal boot.
+BR2_PACKAGE_REBOOT_LOADER=y

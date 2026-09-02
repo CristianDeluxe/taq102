@@ -1,1 +1,4 @@
+source "$BR2_EXTERNAL_TAQ102_PATH/package/glcube/Config.in"
+source "$BR2_EXTERNAL_TAQ102_PATH/package/mali-utgard/Config.in"
 source "$BR2_EXTERNAL_TAQ102_PATH/package/particles/Config.in"
+source "$BR2_EXTERNAL_TAQ102_PATH/package/reboot-loader/Config.in"

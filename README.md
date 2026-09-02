@@ -9,8 +9,8 @@ with every image and checksum is `/Volumes/Datos4TB2/denver-taq102/`.
 
 This repo holds the Buildroot `br2-external` tree for the userspace. It builds
 **no kernel**: the first milestone runs under the stock vendor kernel 4.4.103,
-which already drives the panel, the touch controller, the PMIC and KMS on this
-board.
+which already drives the panel, the touch controller, the PMIC, KMS and the
+Mali-400 on this board.
 
 ## Building
 
@@ -82,12 +82,72 @@ still intact:
   anything that can fail, and reports either outcome on `/dev/kmsg`.
 - **No overlayfs, no squashfs.** A writable layer has to be tmpfs or ext4.
 
+## The GPU
+
+The stock kernel already carries the `mali-utgard` kernel driver for the
+Mali-400 MP2 built in (`CONFIG_MALI400=y`), loads it at 2.64 s and exposes it as
+`/dev/mali`. Only the user-space half was missing, and it is a blob: **r7p0**,
+the version Android on this tablet reports in `ro.hardware.egl`
+(`r7p0-00rel1-5-25`), taken from Rockchip's `libmali` mirror in its **GBM**
+flavour, since there is no X11 and no Wayland here.
+
+Measured on the device, 2026-09-02:
+
+```
+# glcube
+gbm backend: drm
+EGL 1.4 ARM
+GL_RENDERER: Mali-400 MP
+GL_VERSION: OpenGL ES 2.0
+KMS up: 1024x600@56 on connector 55
+54.3 FPS
+```
+
+54.3 FPS against a 56.14 Hz panel is the page flip waiting for vblank, with the
+GPU still at its lowest 200 MHz devfreq step.
+
+Three things the blob forces, each of which cost a build:
+
+- **glibc, not musl.** The blob is `arm-linux-gnueabihf`, needs `GLIBC_2.4`
+  symbols and links `libpthread.so.0`, `librt.so.1` and `libdl.so.2`. That is
+  why the toolchain in `taq102_defconfig` changed, and why `BR2_ARM_EABIHF` is
+  now explicit.
+- **It leaves six OpenSSL symbols undefined** — `BN_bin2bn`, `BN_new`,
+  `BN_set_word`, `RSA_new`, `RSA_public_decrypt`, `RSA_size` — because on
+  Android they came from the process's own libcrypto. Nothing resolves them
+  here, so `openssl` is a dependency and `patchelf --add-needed libcrypto.so.3`
+  is part of the install.
+- **It carries no SONAME at all**, so `patchelf --set-soname libmali.so.1`
+  comes first, before the symlinks everything else links against.
+
+Buildroot's own `rockchip-mali` package installs the Bifrost G31 blob and cannot
+be pointed at another GPU, which is why `package/mali-utgard` exists. Its
+`kmscube` package is no use either: it requires `gbm_bo_get_modifier`, which a
+2016 Utgard GBM does not have. `glcube` in `src/` is the replacement — EGL/GLES2
+on a GBM surface, `drmModeSetCrtc` once and `drmModePageFlip` after that, with
+the touchscreen spinning the cube.
+
+## Flashing
+
+`tools/make-recovery.sh` packs `rootfs.cpio.gz` into a recovery image with the
+stock kernel and `second` blob and the offsets read from the stock image;
+`tools/flash-recovery.sh` writes it and sets the bootloader control block.
+
+Both take LBAs in **parameter coordinates**, which is what `rkdeveloptool`
+speaks: recovery at 196608, the BCB at 24608. Addressed from inside a running
+system on the raw device those are **8192 sectors higher** — recovery at 204800,
+the BCB at 32800 — because the parameter block's offsets are relative to the end
+of the 4 MB reserved region. Confirmed on the device on 2026-09-02 by reading
+`boot-recovery` out of sector 32800 and ARM code out of 24608, which is `trust`.
+
+Loader mode no longer requires Android. `/usr/sbin/reboot-loader` calls
+`reboot(LINUX_REBOOT_CMD_RESTART2, "loader")`, which BusyBox's `reboot` applet
+cannot do, and the device comes back as `2207:310d` for `rkdeveloptool`. This
+matters because booting Android restores the stock recovery partition from
+`recovery-from-boot.p` and silently undoes a flash.
+
 ## Status
 
-Gate 2 is done: the image builds, our `/init` survives packaging, the binaries
-are ARM EABI5, and every image carries a build id in both `/init` and
-`/etc/taq102-build-id` so a booted system can be identified with certainty.
-
-Gate 3 — writing it to the `recovery` partition — has not been attempted. It
-depends on something still unknown: whether the stock U-Boot accepts a modified,
-unsigned recovery image.
+The tablet boots this image, drives the panel through DRM, reads multitouch, and
+now renders with the GPU. `particles` is the CPU application, `glcube` the GPU
+one.

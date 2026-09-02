@@ -1,0 +1,14 @@
+config BR2_PACKAGE_GLCUBE
+	bool "glcube"
+	depends on BR2_PACKAGE_HAS_LIBEGL
+	depends on BR2_PACKAGE_HAS_LIBGLES
+	depends on BR2_PACKAGE_HAS_LIBGBM
+	select BR2_PACKAGE_LIBDRM
+	help
+	  A lit, spinning cube rendered by the Mali-400 through EGL/GLES2
+	  on a GBM surface and scanned out by KMS page flips, with the
+	  touchscreen spinning it. The proof that the GPU works.
+
+comment "glcube needs EGL, GLES and GBM"
+	depends on !BR2_PACKAGE_HAS_LIBEGL || !BR2_PACKAGE_HAS_LIBGLES || \
+		!BR2_PACKAGE_HAS_LIBGBM

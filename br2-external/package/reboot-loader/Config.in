@@ -1,0 +1,6 @@
+config BR2_PACKAGE_REBOOT_LOADER
+	bool "reboot-loader"
+	help
+	  Reboot into Rockchip loader mode from our own system, so a
+	  reflash does not have to go through Android — which is the one
+	  thing that restores the stock recovery partition behind our back.
