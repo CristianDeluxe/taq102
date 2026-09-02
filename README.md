@@ -187,6 +187,34 @@ while it boots (`adc-keys` reports `KEY_VOLUMEDOWN` and `KEY_BACK` on `event2`;
 this board has no `KEY_VOLUMEUP`), or `killall glcube` from the serial console,
 which is always there either way.
 
+## Persistent storage, and why not by partition number
+
+Everything in this image lives in RAM and dies at reboot. The last partition —
+Android's `userdata`, 55 GB at LBA 4867072 — is where anything durable goes, and
+`/init` mounts it at `/data` **only if it already carries ext4**; creating the
+filesystem is a deliberate `mkfs.ext4`, never something a boot does. The kernel
+has `CONFIG_EXT4_FS=y` already, so only `e2fsprogs` had to be added.
+
+It finds that partition by **start sector**, not by number, and the reason is
+sharper than the Android-versus-us mismatch already on record: the same kernel
+and the same image listed **17 partitions starting at LBA 8192 on one boot and
+16 starting at 16384 on the next**, so `userdata` was `p17` once and `p16`
+immediately after. A partition number is not a stable name on this device.
+
+## The two buttons
+
+There are exactly two: power, and one other. The device tree declares two ADC
+keys — "Volume Up" at 0 V reporting `KEY_BACK` (158) and "Volume Down" at 1.65 V
+reporting `KEY_VOLUMEDOWN` (114) — and one of them does not exist in the
+plastic, so `taq102-app` accepts either code for its skip-autostart hatch.
+
+Holding that button at power-on makes stock U-Boot boot `recovery`, which is our
+rescue image. U-Boot also has a `fastboot key pressed.` path next to
+`recovery key pressed.` that would reach its `rkusb` gadget — loader mode
+without a host — but with only one non-power button there is nothing to press
+for it. The way into loader mode is therefore: button → rescue image →
+`reboot-loader`.
+
 ## Status
 
 The tablet boots this image, drives the panel through DRM, reads multitouch, and

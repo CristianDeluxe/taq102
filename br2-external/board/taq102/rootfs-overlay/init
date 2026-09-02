@@ -75,6 +75,32 @@ for BL in /sys/class/backlight/*/brightness; do
     echo "$MAX" > "$BL" 2>/dev/null && echo "$BUILD_ID: backlight $MAX" > /dev/kmsg
 done
 
+# Persistent storage. Everything above this line lives in RAM and dies at
+# reboot; the last partition -- Android's `userdata`, 55 GB -- is where anything
+# that has to survive goes. Mount it only if it already carries a filesystem:
+# creating one is a deliberate act with mkfs.ext4, never something a boot does.
+# Never by partition number. They are not stable: the same kernel and the same
+# system listed 17 partitions starting at LBA 8192 on one boot and 16 starting
+# at 16384 on the next, so userdata was p17 once and p16 the next time. The
+# start sector is what does not move.
+DATA=
+for P in /sys/class/block/mmcblk1p*; do
+    [ "$(cat "$P/start" 2>/dev/null)" = 4867072 ] || continue
+    DATA=/dev/$(basename "$P")
+    break
+done
+
+if [ -n "$DATA" ] && [ -b "$DATA" ]; then
+    mkdir -p /data
+    if mount -t ext4 -o noatime "$DATA" /data 2>/dev/null; then
+        echo "$BUILD_ID: /data mounted from $DATA" > /dev/kmsg
+    else
+        echo "$BUILD_ID: $DATA carries no ext4; /data left empty" > /dev/kmsg
+    fi
+else
+    echo "$BUILD_ID: no partition at LBA 4867072; /data left empty" > /dev/kmsg
+fi
+
 cat > /etc/inittab <<EOF
 ::sysinit:/bin/mount -a
 ::once:/usr/bin/taq102-app

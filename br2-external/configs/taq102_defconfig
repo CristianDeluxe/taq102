@@ -64,3 +64,10 @@ BR2_PACKAGE_GLCUBE=y
 # Reflashing has to be reachable without booting Android, because Android
 # restores the stock recovery partition on every normal boot.
 BR2_PACKAGE_REBOOT_LOADER=y
+
+# mkfs.ext4 and fsck for the data partition. The kernel already has
+# CONFIG_EXT4_FS=y -- Android's system and cache were ext4 -- so only the
+# user-space tools were missing.
+BR2_PACKAGE_E2FSPROGS=y
+BR2_PACKAGE_E2FSPROGS_FSCK=y
+BR2_PACKAGE_E2FSPROGS_MKE2FS=y
