@@ -1,0 +1,77 @@
+#!/bin/sh
+#
+# TAQ-102 initramfs init.
+#
+# The tablet has no reachable serial port and this kernel is built without
+# CONFIG_VT, so it cannot print to its own panel either. The USB ACM gadget is
+# therefore the only console that exists, and raising it is the first thing that
+# happens here -- before anything that can fail.
+
+BUILD_ID="taq102-initramfs @@BUILD_ID@@"
+
+/bin/busybox mkdir -p /proc /sys /dev /run /tmp
+/bin/busybox mount -t proc     proc     /proc
+/bin/busybox mount -t sysfs    sysfs    /sys
+/bin/busybox mount -t tmpfs    tmpfs    /run
+/bin/busybox mount -t tmpfs    tmpfs    /tmp
+
+# The stock kernel sets CONFIG_DEVTMPFS=y but NOT CONFIG_DEVTMPFS_MOUNT, so
+# nothing mounts /dev for us.
+/bin/busybox mount -t devtmpfs devtmpfs /dev || /bin/busybox mdev -s
+
+/bin/busybox --install -s /bin >/dev/null 2>&1
+
+echo "$BUILD_ID: init running" > /dev/kmsg
+
+# --- USB ACM gadget: the console -------------------------------------------
+mount -t configfs none /sys/kernel/config 2>/dev/null
+
+G=/sys/kernel/config/usb_gadget/taq102
+if [ -d /sys/kernel/config/usb_gadget ]; then
+    mkdir -p "$G" 2>/dev/null
+    cd "$G" || exit 1
+
+    # Linux Foundation / Multifunction Composite Gadget. Generic on purpose:
+    # macOS binds its own CDC-ACM driver on class, not on these ids.
+    echo 0x1d6b > idVendor
+    echo 0x0104 > idProduct
+    echo 0x0100 > bcdDevice
+    echo 0x0200 > bcdUSB
+
+    mkdir -p strings/0x409
+    echo "TAQ102"                > strings/0x409/manufacturer
+    echo "TAQ102 rescue console" > strings/0x409/product
+    echo "0000000000000001"      > strings/0x409/serialnumber
+
+    mkdir -p configs/c.1/strings/0x409
+    echo "acm" > configs/c.1/strings/0x409/configuration
+    echo 250   > configs/c.1/MaxPower
+
+    mkdir -p functions/acm.gs0
+    ln -sf functions/acm.gs0 configs/c.1/ 2>/dev/null
+
+    UDC=$(ls /sys/class/udc 2>/dev/null | head -1)
+    if [ -n "$UDC" ]; then
+        echo "$UDC" > UDC 2>/dev/null && GADGET_UP=yes
+    fi
+    cd /
+fi
+
+if [ "$GADGET_UP" = yes ]; then
+    echo "$BUILD_ID: acm gadget bound to $UDC" > /dev/kmsg
+else
+    echo "$BUILD_ID: NO gadget -- no console will appear" > /dev/kmsg
+fi
+
+# --- from here on there is somewhere to shout ------------------------------
+mkdir -p /sys/kernel/debug && mount -t debugfs none /sys/kernel/debug 2>/dev/null
+
+cat > /etc/inittab <<EOF
+::sysinit:/bin/mount -a
+ttyGS0::respawn:/sbin/getty -L ttyGS0 115200 vt100
+::ctrlaltdel:/sbin/reboot
+::shutdown:/bin/umount -a -r
+EOF
+
+echo "$BUILD_ID: handing over to init" > /dev/kmsg
+exec /sbin/init

@@ -1,0 +1,5 @@
+# Build output lives inside the Linux VM, never here.
+output/
+dl/
+*.img
+*.cpio.gz
