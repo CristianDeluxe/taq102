@@ -127,6 +127,32 @@ be pointed at another GPU, which is why `package/mali-utgard` exists. Its
 on a GBM surface, `drmModeSetCrtc` once and `drmModePageFlip` after that, with
 the touchscreen spinning the cube.
 
+## Building the kernel
+
+`tools/build-kernel.sh` builds the vendor 4.4.167 tree
+(`54shady/qop_kernel`) and this board's DTB, inside the same VM, from a
+`.config` given as `CONFIG=`. Run it there, never on macOS.
+
+The script exists because seven separate things in that tree or its host break
+a modern build, and each one fails as something else: `sudo -E` is ignored so
+the architecture silently becomes the VM's own arm64; `scripts/` wants a
+`python` on PATH; `scripts/dtc` needs `-fcommon`; **`scripts/gcc-wrapper.py` is
+Rockchip's own wrapper that deletes the object and aborts on any warning
+outside a GCC 6 whitelist**, so `error, forbidden warning:` is not a compiler
+error and is bypassed by overriding `CC` on the make line; newer GCC warnings
+are demoted with `KCFLAGS`; binutils >= 2.36 rejects `.section "...", #alloc`
+in favour of quoted flags, at 33 sites in `arch/arm`; and
+`drivers/media/i2c/sc031gs.c` calls a symbol this tree does not define, so the
+driver is dropped from its Makefile rather than from `.config`, which
+`default y` would undo on the next `olddefconfig`.
+
+## Host tools
+
+Neither is in Homebrew and both are fetched into `tools/vendor/`, which is not
+tracked. `tools/get-rkdeveloptool.sh` builds rkdeveloptool 1.32 with the one
+warning Clang makes fatal demoted; `tools/get-mkbootimg.sh` pulls AOSP's
+`mkbootimg.py` plus the `gki` module it imports unconditionally.
+
 ## Flashing
 
 `tools/make-recovery.sh` packs `rootfs.cpio.gz` into a recovery image with the

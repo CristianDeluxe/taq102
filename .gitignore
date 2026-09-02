@@ -3,3 +3,5 @@ output/
 dl/
 *.img
 *.cpio.gz
+tools/vendor/
+kernel/*.dtb
