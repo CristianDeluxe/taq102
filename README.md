@@ -146,6 +146,27 @@ cannot do, and the device comes back as `2207:310d` for `rkdeveloptool`. This
 matters because booting Android restores the stock recovery partition from
 `recovery-from-boot.p` and silently undoes a flash.
 
+## Where the image lives now
+
+Since 2026-09-02 the same image is written to **both** `boot` and `recovery`,
+and the bootloader control block is zeroed, so the ordinary power-on path runs
+our system with no BCB involved and `recovery` is the fallback. Android no
+longer boots — its ramdisk is gone — which also retires the
+`install-recovery.sh` trap for good. The stock `boot.img` is backed up in the
+archive beside every other partition.
+
+| Partition | Parameter LBA (`rkdeveloptool`) | Raw device LBA (`/dev/mmcblk1`) |
+| --- | --- | --- |
+| boot | 131072 | 139264 |
+| recovery | 196608 | 204800 |
+| BCB (`misc` + 16 KB) | 24608 | 32800 |
+
+The BCB can be written from inside the running system, which is the cheap way to
+reach the other image: `dd` `boot-recovery` to raw sector 32800 and reboot, then
+zero those 8 sectors to come back. Both images carry the same build id today, so
+nothing distinguishes them once booted; give the rescue one its own id when that
+matters.
+
 ## Status
 
 The tablet boots this image, drives the panel through DRM, reads multitouch, and
