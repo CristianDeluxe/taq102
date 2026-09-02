@@ -40,5 +40,9 @@ BR2_TARGET_ROOTFS_CPIO_GZIP=y
 
 # For the KMS and touch bring-up in Gate 4.
 BR2_PACKAGE_LIBDRM=y
+# modetest, to prove the panel with a real modeset. The stock kernel keeps
+# scanning out U-Boot's logo buffer (rockchip,drm-logo reserved region) until
+# something does drmModeSetCrtc, so writing to /dev/fb0 changes nothing.
+BR2_PACKAGE_LIBDRM_INSTALL_TESTS=y
 BR2_PACKAGE_LIBEVDEV=y
 BR2_PACKAGE_EVTEST=y
