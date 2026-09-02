@@ -1,0 +1,44 @@
+--- a/drivers/phy/rockchip/phy-rockchip-inno-video-combo-phy.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-video-combo-phy.c
+@@ -197,6 +197,13 @@
+ 	struct clk *ref_clk;
+ 	struct clk *pclk_phy;
+ 	struct clk *pclk_host;
++	/*
++	 * The DSI host block this PHY writes to needs HCLK_VIO_H2P as well as
++	 * PCLK_MIPI -- the dsi node lists both. On a MIPI board the DSI driver
++	 * enables it; in LVDS mode nothing does, so writing DSI_PHY_RSTZ with
++	 * the clock gated aborts and hangs the boot with no output at all.
++	 */
++	struct clk *h2p_clk;
+ 	void __iomem *phy_base;
+ 	void __iomem *host_base;
+ 	struct reset_control *rst;
+@@ -522,6 +529,7 @@
+ 
+ 	clk_prepare_enable(inno->pclk_host);
+ 	clk_prepare_enable(inno->pclk_phy);
++	clk_prepare_enable(inno->h2p_clk);
+ 	pm_runtime_get_sync(inno->dev);
+ 
+ 	/* Bandgap power on */
+@@ -570,6 +578,7 @@
+ 			LVDS_PLL_POWER_OFF | LVDS_BANDGAP_POWER_DOWN);
+ 
+ 	pm_runtime_put(inno->dev);
++	clk_disable_unprepare(inno->h2p_clk);
+ 	clk_disable_unprepare(inno->pclk_phy);
+ 	clk_disable_unprepare(inno->pclk_host);
+ 
+@@ -809,6 +818,11 @@
+ 		return ret;
+ 	}
+ 
++	/* Optional: only LVDS mode has to enable it here. */
++	inno->h2p_clk = devm_clk_get(dev, "h2p");
++	if (IS_ERR(inno->h2p_clk))
++		inno->h2p_clk = NULL;
++
+ 	inno->rst = devm_reset_control_get(dev, "rst");
+ 	if (IS_ERR(inno->rst)) {
+ 		ret = PTR_ERR(inno->rst);

@@ -386,3 +386,36 @@ The tablet boots this image, drives the panel through DRM, reads multitouch, and
 now renders with the GPU. `particles` is the CPU application, `glcube` the GPU
 one; `glcube` spins with one finger and zooms with two, tracking multitouch
 slots directly from the GSL3673's protocol-B event stream.
+
+## The display, and what the boot images were really doing wrong
+
+Three failures hid behind one symptom -- a tablet that sat at the Denver logo
+and enumerated nothing -- and each one was mistaken for the previous one.
+
+**The kernel was never the problem.** The own-built 4.4.167 boots, reaches
+userspace and serves the USB console; `uname -r` says so. With no display, no
+UART and no network, a system that boots and one that is dead look identical
+from the host, which is how a working kernel spent a day being called broken.
+
+**The resource image was malformed.** RSCE is 512-byte blocks: a header, one
+index block per entry, then the payloads. A hand-built image carrying only
+`rk-kernel.dtb` starts its payload at block 2, but the index copied from the
+three-entry stock image still said block 4, and the header still claimed three
+entries. U-Boot read the FDT 1 KB into the blob, found no magic and booted
+nothing, silently. `tools/make-resource.py` rebuilds the image properly and is
+verified by reproducing the stock one byte for byte.
+
+**The LVDS binding changed between the two kernels.** The stock tree gives LVDS
+its own registers at 0x20038000 beside a separate mipi-dphy; the 4.4.167 tree
+has one shared video PHY there with LVDS as a GRF child pointing at it. So the
+factory blob boots this kernel but leaves `failed to get phy: -19`. Grafting
+only that change onto the stock tree moves the error to `-517`
+(EPROBE_DEFER) -- and the reason nothing ever probed is that
+`CONFIG_PHY_ROCKCHIP_INNO_VIDEO_COMBO_PHY` was not set.
+
+With the PHY driver built in, the boot hangs the moment LVDS powers the PHY,
+before fbdev registers, which is why even a framebuffer console shows nothing.
+`kernel/patches/0001-video-combo-phy-enable-h2p-clock.patch` enables
+HCLK_VIO_H2P around the DSI-host accesses that path makes -- the dsi node lists
+that clock beside PCLK_MIPI, and in LVDS mode no DSI driver is there to enable
+it -- but the hang survives it, so the cause is still open.
