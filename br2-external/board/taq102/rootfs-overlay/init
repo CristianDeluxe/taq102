@@ -66,8 +66,18 @@ fi
 # --- from here on there is somewhere to shout ------------------------------
 mkdir -p /sys/kernel/debug && mount -t debugfs none /sys/kernel/debug 2>/dev/null
 
+# The panel's backlight comes up at the device tree's default of 128 of 255,
+# which reads as a washed-out screen and is not a colour problem. Nothing else
+# raises it, so do it here, before anything draws.
+for BL in /sys/class/backlight/*/brightness; do
+    [ -w "$BL" ] || continue
+    MAX=$(cat "$(dirname "$BL")/max_brightness" 2>/dev/null) || continue
+    echo "$MAX" > "$BL" 2>/dev/null && echo "$BUILD_ID: backlight $MAX" > /dev/kmsg
+done
+
 cat > /etc/inittab <<EOF
 ::sysinit:/bin/mount -a
+::once:/usr/bin/taq102-app
 ttyGS0::respawn:/sbin/getty -L ttyGS0 115200 vt100
 ::ctrlaltdel:/sbin/reboot
 ::shutdown:/bin/umount -a -r

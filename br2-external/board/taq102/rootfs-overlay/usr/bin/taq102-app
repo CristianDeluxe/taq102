@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# Start the KMS application and keep it running.
+#
+# Two ways out, because an appliance that always grabs the screen and restarts
+# forever is a device you cannot debug:
+#   * /etc/taq102-no-autostart -- what the rescue image carries.
+#   * holding Vol- while it boots. adc-keys reports KEY_VOLUMEDOWN (114) and
+#     KEY_BACK (158) on event2; there is no KEY_VOLUMEUP on this board.
+#
+# The restart limit matters: a crash loop against a KMS surface would otherwise
+# spend the whole uptime taking and dropping DRM master.
+
+APP=${TAQ102_APP:-/usr/bin/glcube}
+LIMIT=5
+
+log() { echo "taq102-app: $1" > /dev/kmsg; }
+
+if [ -f /etc/taq102-no-autostart ]; then
+    log "autostart disabled by /etc/taq102-no-autostart"
+    exit 0
+fi
+
+evtest --query /dev/input/event2 EV_KEY KEY_VOLUMEDOWN
+if [ $? -eq 10 ]; then
+    log "Vol- held at boot: not starting $APP"
+    exit 0
+fi
+
+n=0
+while [ $n -lt $LIMIT ]; do
+    log "starting $APP (attempt $((n + 1)))"
+    "$APP" >> /tmp/taq102-app.log 2>&1
+    n=$((n + 1))
+    sleep 1
+done
+
+log "$APP exited $LIMIT times; giving up"

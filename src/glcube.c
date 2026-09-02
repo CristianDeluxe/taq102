@@ -30,22 +30,36 @@ static const char *VERT =
     "attribute vec3 col;\n"
     "uniform mat4 mvp;\n"
     "uniform mat4 model;\n"
+    "uniform mat4 modelview;\n"
     "varying vec3 v_col;\n"
     "varying vec3 v_nrm;\n"
+    "varying vec3 v_eye;\n"
     "void main() {\n"
     "  v_col = col;\n"
     "  v_nrm = (model * vec4(nrm, 0.0)).xyz;\n"
+    "  v_eye = (modelview * vec4(pos, 1.0)).xyz;\n"
     "  gl_Position = mvp * vec4(pos, 1.0);\n"
     "}\n";
 
+// The panel is a cheap TN with a modest contrast ratio, so a physically
+// plausible Lambert term reads as washed out on it. Wrap lighting keeps the
+// unlit faces off the floor, a Blinn highlight gives the edges something to
+// catch, and the final power lifts the midtones the way a display gamma of
+// ~2.4 would otherwise crush them.
 static const char *FRAG =
     "precision mediump float;\n"
     "varying vec3 v_col;\n"
     "varying vec3 v_nrm;\n"
+    "varying vec3 v_eye;\n"
     "void main() {\n"
+    "  vec3 n = normalize(v_nrm);\n"
     "  vec3 l = normalize(vec3(0.4, 0.7, 1.0));\n"
-    "  float d = max(dot(normalize(v_nrm), l), 0.0);\n"
-    "  gl_FragColor = vec4(v_col * (0.25 + 0.75 * d), 1.0);\n"
+    "  vec3 v = normalize(-v_eye);\n"
+    "  vec3 h = normalize(l + v);\n"
+    "  float d = dot(n, l) * 0.5 + 0.5;\n"
+    "  float s = pow(max(dot(n, h), 0.0), 24.0);\n"
+    "  vec3 c = v_col * (0.30 + 0.85 * d * d) + vec3(0.55 * s);\n"
+    "  gl_FragColor = vec4(pow(min(c, 1.0), vec3(0.80)), 1.0);\n"
     "}\n";
 
 // Six faces, two triangles each: position, normal, colour per vertex.
@@ -55,12 +69,12 @@ static const char *FRAG =
     cx, cy, cz, nx, ny, nz, r, g, b,  dx, dy, dz, nx, ny, nz, r, g, b
 
 static const GLfloat CUBE[] = {
-    F( 0, 0, 1,  0.95f, 0.30f, 0.35f,  -1,-1, 1,   1,-1, 1,   1, 1, 1,  -1, 1, 1),
-    F( 0, 0,-1,  0.30f, 0.70f, 0.95f,   1,-1,-1,  -1,-1,-1,  -1, 1,-1,   1, 1,-1),
-    F( 1, 0, 0,  0.98f, 0.75f, 0.25f,   1,-1, 1,   1,-1,-1,   1, 1,-1,   1, 1, 1),
-    F(-1, 0, 0,  0.45f, 0.90f, 0.55f,  -1,-1,-1,  -1,-1, 1,  -1, 1, 1,  -1, 1,-1),
-    F( 0, 1, 0,  0.85f, 0.85f, 0.90f,  -1, 1, 1,   1, 1, 1,   1, 1,-1,  -1, 1,-1),
-    F( 0,-1, 0,  0.60f, 0.45f, 0.95f,  -1,-1,-1,   1,-1,-1,   1,-1, 1,  -1,-1, 1),
+    F( 0, 0, 1,  1.00f, 0.15f, 0.25f,  -1,-1, 1,   1,-1, 1,   1, 1, 1,  -1, 1, 1),
+    F( 0, 0,-1,  0.10f, 0.55f, 1.00f,   1,-1,-1,  -1,-1,-1,  -1, 1,-1,   1, 1,-1),
+    F( 1, 0, 0,  1.00f, 0.70f, 0.05f,   1,-1, 1,   1,-1,-1,   1, 1,-1,   1, 1, 1),
+    F(-1, 0, 0,  0.15f, 0.95f, 0.35f,  -1,-1,-1,  -1,-1, 1,  -1, 1, 1,  -1, 1,-1),
+    F( 0, 1, 0,  1.00f, 1.00f, 1.00f,  -1, 1, 1,   1, 1, 1,   1, 1,-1,  -1, 1,-1),
+    F( 0,-1, 0,  0.55f, 0.25f, 1.00f,  -1,-1,-1,   1,-1,-1,   1,-1, 1,  -1,-1, 1),
 };
 
 static void mat_identity(float *m) {
@@ -221,6 +235,7 @@ int main(void) {
     glUseProgram(prog);
     GLint u_mvp = glGetUniformLocation(prog, "mvp");
     GLint u_model = glGetUniformLocation(prog, "model");
+    GLint u_modelview = glGetUniformLocation(prog, "modelview");
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -275,10 +290,11 @@ int main(void) {
         mat_mul(mv, view, model);
         mat_mul(mvp, proj, mv);
 
-        glClearColor(0.04f, 0.05f, 0.08f, 1.f);
+        glClearColor(0.07f, 0.08f, 0.13f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUniformMatrix4fv(u_mvp, 1, GL_FALSE, mvp);
         glUniformMatrix4fv(u_model, 1, GL_FALSE, model);
+        glUniformMatrix4fv(u_modelview, 1, GL_FALSE, mv);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         eglSwapBuffers(dpy, egl_surf);

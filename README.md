@@ -167,6 +167,26 @@ zero those 8 sectors to come back. Both images carry the same build id today, so
 nothing distinguishes them once booted; give the rescue one its own id when that
 matters.
 
+## Two images, and how to get a console
+
+`boot` carries the appliance and `recovery` the rescue variant. They come from
+one build: `tools/make-rescue-ramdisk.sh` appends a two-file archive
+(`/etc/taq102-no-autostart`, `/etc/taq102-variant`) to the **uncompressed**
+`rootfs.cpio` and compresses the pair once. Appending a second gzip *stream* to
+a finished `rootfs.cpio.gz` does not work on this 4.4 kernel — it unpacks the
+first member and ignores the rest, which looks exactly like the files never
+having been added.
+
+`/init` raises the backlight to `max_brightness` before anything draws: the
+device tree default is 128 of 255, and a half-lit panel reads as bad colour
+rather than as half brightness. Then inittab's `::once:` runs
+`/usr/bin/taq102-app`, which starts `glcube` and restarts it at most five times.
+
+Three ways to keep the screen for yourself: the rescue image, holding **Vol−**
+while it boots (`adc-keys` reports `KEY_VOLUMEDOWN` and `KEY_BACK` on `event2`;
+this board has no `KEY_VOLUMEUP`), or `killall glcube` from the serial console,
+which is always there either way.
+
 ## Status
 
 The tablet boots this image, drives the panel through DRM, reads multitouch, and
