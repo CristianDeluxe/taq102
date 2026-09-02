@@ -5,3 +5,4 @@ dl/
 *.cpio.gz
 tools/vendor/
 kernel/*.dtb
+log/
