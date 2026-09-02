@@ -18,7 +18,7 @@
 #
 # Usage: taq102-wifi [up|down|scan|status]
 
-MODULE=/lib/modules/4.4.103/extra/8723cs.ko
+MODULE=/lib/modules/$(uname -r)/extra/8723cs.ko
 CONF=/data/wifi.conf
 MACFILE=/data/wifi.mac
 IFACE=wlan0

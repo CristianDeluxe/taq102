@@ -1,0 +1,122 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+//
+// Denver TAQ-102: Rockchip RK3126C, 1 GB, LVDS 1024x600, GSL3673 touch.
+//
+// Built on the sibling board in this tree, rk3126-bnd-d708, which is the same
+// SoC, PMIC, eMMC and Wi-Fi part but the **MIPI-DSI** variant of the panel.
+// Everything below the display is therefore inherited; the display and the
+// touch controller are this board's own, and every value in them was read out
+// of the stock device tree recovered from the tablet's own `resource`
+// partition, not copied from a sibling.
+//
+// Why a board file at all, rather than the factory DTB: this kernel describes
+// LVDS as a child of the GRF with a shared video PHY, while the 4.4.103 kernel
+// the tablet shipped with gave LVDS its own register block at 0x20038000 --
+// the very address this tree assigns to the PHY. The factory blob and this
+// driver cannot both be right, so the factory blob boots but leaves
+// `rockchip-lvds ... failed to get phy: -19` and no DRM device at all.
+
+/dts-v1/;
+#include "rk3126-bnd-d708.dtsi"
+
+/ {
+	model = "Denver TAQ-102 (RK3126C, LVDS)";
+	compatible = "rockchip,rk3126";
+
+	panel: lvds-panel {
+		compatible = "simple-panel";
+		backlight = <&backlight>;
+		enable-gpios = <&gpio2 12 GPIO_ACTIVE_HIGH>;
+
+		// 24-bit JEIDA, which is bus format 0x1009.
+		bus-format = <0x1009>;
+		rockchip,data-mapping = "jeida";
+		rockchip,data-width = <24>;
+		rockchip,output = "lvds";
+
+		prepare-delay-ms = <50>;
+		reset-delay-ms = <50>;
+		init-delay-ms = <50>;
+		enable-delay-ms = <120>;
+		disable-delay-ms = <20>;
+		unprepare-delay-ms = <20>;
+
+		display-timings {
+			native-mode = <&taq102_timing>;
+
+			// Measured against the hardware on 2026-09-02: modetest
+			// reports 1024x600 at 56.14 Hz with exactly these
+			// numbers.
+			taq102_timing: timing0 {
+				clock-frequency = <51200000>;
+				hactive = <1024>;
+				vactive = <600>;
+				hback-porch = <160>;
+				hfront-porch = <160>;
+				hsync-len = <70>;
+				vback-porch = <23>;
+				vfront-porch = <12>;
+				vsync-len = <10>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+				width-mm = <125>;
+				height-mm = <223>;
+			};
+		};
+
+		port {
+			panel_in_lvds: endpoint {
+				remote-endpoint = <&lvds_out_panel>;
+			};
+		};
+	};
+};
+
+// The DSI panel belongs to the sibling board, not to this one.
+&dsi {
+	status = "disabled";
+};
+
+&route_dsi {
+	status = "disabled";
+};
+
+&video_phy {
+	status = "okay";
+};
+
+&lvds {
+	status = "okay";
+
+	ports {
+		port@1 {
+			reg = <1>;
+
+			lvds_out_panel: endpoint {
+				remote-endpoint = <&panel_in_lvds>;
+			};
+		};
+	};
+};
+
+&route_lvds {
+	status = "okay";
+};
+
+// The GSL3673 answers at 0x40 like the sibling's controller, but it is a
+// different part with a different driver, its own interrupt and reset lines,
+// and a 1024x600 surface rather than 800x480. The node has no label in the
+// sibling's file, so it is overridden by name on the bus it sits on.
+&i2c0 {
+	ts@40 {
+		compatible = "GSL,GSL3673";
+		reg = <0x40>;
+		irq_gpio_number = <&gpio2 15 IRQ_TYPE_LEVEL_LOW>;
+		rst_gpio_number = <&gpio2 14 GPIO_ACTIVE_HIGH>;
+		screen_max_x = <1024>;
+		screen_max_y = <600>;
+		status = "okay";
+	};
+};
