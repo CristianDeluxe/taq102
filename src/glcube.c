@@ -11,7 +11,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <linux/input.h>
 #include <linux/input-event-codes.h>
+#include <sys/ioctl.h>
 
 // The kernel's input_event on this 32-bit kernel is 16 bytes; a libc with
 // 64-bit time_t describes it as 24 and a sizeof() check then never matches.
@@ -23,6 +25,9 @@ struct kev { uint32_t sec, usec; uint16_t type, code; int32_t value; };
 #include <gbm.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
+
+#include "arcball.h"
+#include "oneeuro.h"
 
 static const char *VERT =
     "attribute vec3 pos;\n"
@@ -89,14 +94,6 @@ static void mat_mul(float *out, const float *a, const float *b) {
             t[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] +
                            a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
     memcpy(out, t, sizeof t);
-}
-
-static void mat_rotate(float *m, float ax, float ay) {
-    float cx = cosf(ax), sx = sinf(ax), cy = cosf(ay), sy = sinf(ay);
-    float rx[16], ry[16];
-    mat_identity(rx); rx[5] = cx; rx[6] = sx; rx[9] = -sx; rx[10] = cx;
-    mat_identity(ry); ry[0] = cy; ry[2] = -sy; ry[8] = sy; ry[10] = cy;
-    mat_mul(m, ry, rx);
 }
 
 static void mat_perspective(float *m, float fovy, float aspect, float n, float f) {
@@ -259,17 +256,75 @@ int main(void) {
     view[14] = -6.f;   // rewritten every frame once a pinch moves the camera
 
     int tfd = open("/dev/input/event1", O_RDONLY | O_NONBLOCK);
-    float ax = 0.4f, ay = 0.6f, vx = 0.006f, vy = 0.011f;
-    float last_tx = 0, last_ty = 0;
     int touching = 0;
 
-    // Protocol B multitouch: ABS_MT_SLOT selects which contact the following
-    // events describe, and a tracking id of -1 lifts it. Two slots is all a
-    // pinch needs, and the GSL3673 reports five.
-    struct slot { int active; float x, y; } slots[2] = {{0, 0, 0}, {0, 0, 0}};
-    int cur_slot = 0;
+    // Protocol B multitouch, and two things about it that are easy to get
+    // wrong and were both got wrong here first:
+    //
+    // ABS_MT_SLOT is *state*, not a field of each event: the kernel emits it
+    // only when the slot changes, so a reader that opens the device mid-stream
+    // does not know which slot the positions it receives belong to. Assuming 0
+    // parked a phantom contact in slot 0 that never lifted -- the driver never
+    // selects slot 0, so it never sends that slot a tracking id of -1 -- and
+    // every pinch then measured against a frozen point.
+    //
+    // A slot becomes active on a tracking id and only on a tracking id.
+    // Positions carry no such meaning, and treating them as if they did is
+    // what made the phantom stick.
+    //
+    // EVIOCGMTSLOTS asks the kernel for the current state at open, which is
+    // the supported way to start from the truth rather than from a guess.
+    //
+    // This driver happens to number its slots from 1 -- one finger is slot 1,
+    // two are slots 1 and 2 -- but nothing promises that, so the array is
+    // indexed by slot number and no number is assumed.
+    #define MAX_SLOTS 8
+    struct slot {
+        int active;
+        float x, y;                  // filtered, which is what the gesture uses
+        struct oneeuro fx, fy;
+    } slots[MAX_SLOTS];
+    memset(slots, 0, sizeof slots);
+    // 1 Hz minimum cutoff kills the standing jitter; the speed term hands the
+    // signal straight back as soon as a finger actually moves.
+    for (int i = 0; i < MAX_SLOTS; i++) {
+        oneeuro_init(&slots[i].fx, 1.0f, 0.02f);
+        oneeuro_init(&slots[i].fy, 1.0f, 0.02f);
+    }
+
+    struct arcball ball;
+    arcball_init(&ball);
+    int cur_slot = -1;
+
+    if (tfd >= 0) {
+        int32_t q[1 + MAX_SLOTS];
+        q[0] = ABS_MT_TRACKING_ID;
+        if (ioctl(tfd, EVIOCGMTSLOTS(sizeof q), q) >= 0)
+            for (int i = 0; i < MAX_SLOTS; i++)
+                slots[i].active = (q[1 + i] >= 0);
+    }
     float pinch_ref = 0.f;   // finger distance when the pinch started
     float dist_ref = 6.f;    // camera distance at that moment
+    float prev_twist = 0.f;  // angle of the line between the fingers
+    // This controller drops a contact for a frame or two in the middle of a
+    // gesture -- measured, not assumed: the trace goes 2 slots, 1 slot, 2 slots
+    // while both fingers stay on the glass. Ending the pinch on the first frame
+    // that shows one finger means re-anchoring on the next, and the cube jumps.
+    // So a pinch survives a short dropout.
+    int lone_frames = 0;
+    #define PINCH_GRACE 4
+    // Two contacts a few pixels apart are the controller splitting one finger,
+    // not a pinch, and anchoring on them scales wildly.
+    #define PINCH_MIN_SPAN 40.f
+    #define CAM_NEAR 3.2f
+    #define CAM_FAR 14.f
+    // Give it a gentle spin to start, so an untouched tablet is not a still
+    // picture: a small rotation about a tilted axis, replayed by the coast.
+    arcball_twist(&ball, 0.3f);
+    ball.spin[0] = cosf(0.004f);
+    ball.spin[1] = 0.35f * sinf(0.004f);
+    ball.spin[2] = 0.90f * sinf(0.004f);
+    ball.spin[3] = 0.25f * sinf(0.004f);
     float cam = 6.f;         // where the camera is now, along -Z
 
     struct gbm_bo *prev_bo = NULL;
@@ -281,57 +336,119 @@ int main(void) {
         struct kev ev;
         while (tfd >= 0 && read(tfd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
             if (ev.type != EV_ABS) continue;
-            switch (ev.code) {
-            case ABS_MT_SLOT:
+            // The filter needs the event's own timestamp: the interval between
+            // touch samples is what sets how hard it smooths, and it is not the
+            // frame interval.
+            float evtime = (float)ev.sec + (float)ev.usec * 1e-6f;
+            if (ev.code == ABS_MT_SLOT) {
                 cur_slot = ev.value;
-                break;
+                continue;
+            }
+            // Until the first slot arrives there is nothing to attribute
+            // positions to, and guessing is exactly the bug above.
+            if (cur_slot < 0 || cur_slot >= MAX_SLOTS) continue;
+
+            switch (ev.code) {
             case ABS_MT_TRACKING_ID:
-                if (cur_slot < 2) slots[cur_slot].active = (ev.value != -1);
-                if (ev.value == -1) touching = 0;
+                slots[cur_slot].active = (ev.value != -1);
+                if (ev.value == -1) {
+                    touching = 0;
+                } else {
+                    // A new contact is a new signal. The filter keeps its state
+                    // per slot, and a slot gets reused: without this reset the
+                    // finger appears to start where the *previous* finger in
+                    // that slot ended and slides to where it really is, over
+                    // the tenth of a second the adaptive cutoff needs to notice
+                    // the jump. Two fingers closing then read as separating,
+                    // and the cube grows while you pinch it smaller.
+                    oneeuro_init(&slots[cur_slot].fx, 1.0f, 0.02f);
+                    oneeuro_init(&slots[cur_slot].fy, 1.0f, 0.02f);
+                }
                 break;
             case ABS_MT_POSITION_X:
-                if (cur_slot < 2) { slots[cur_slot].x = ev.value; slots[cur_slot].active = 1; }
-                if (cur_slot == 0) {
-                    if (touching) vy = (ev.value - last_tx) * 0.0015f;
-                    last_tx = ev.value; touching = 1;
-                }
+                slots[cur_slot].x =
+                    oneeuro_apply(&slots[cur_slot].fx, ev.value, evtime);
                 break;
             case ABS_MT_POSITION_Y:
-                if (cur_slot < 2) { slots[cur_slot].y = ev.value; slots[cur_slot].active = 1; }
-                if (cur_slot == 0) {
-                    if (touching) vx = (ev.value - last_ty) * 0.0015f;
-                    last_ty = ev.value; touching = 1;
-                }
+                slots[cur_slot].y =
+                    oneeuro_apply(&slots[cur_slot].fy, ev.value, evtime);
                 break;
             default:
                 break;
             }
         }
 
-        // Two fingers pinch the camera in and out; the ratio of distances is
-        // what the eye expects, not their difference, so the cube tracks the
-        // fingers at any starting separation.
-        if (slots[0].active && slots[1].active) {
-            float dx = slots[0].x - slots[1].x, dy = slots[0].y - slots[1].y;
+        // Whichever slots the driver happens to be using: the first two
+        // active ones, in slot order.
+        struct slot *a = NULL, *b = NULL;
+        for (int i = 0; i < MAX_SLOTS; i++) {
+            if (!slots[i].active) continue;
+            if (!a) a = &slots[i];
+            else if (!b) { b = &slots[i]; break; }
+        }
+
+        if (a && b) {
+            // Two fingers carry three independent measurements, and each one
+            // drives exactly one thing: the distance between them is the zoom,
+            // the point between them is the drag, and the angle of the line
+            // joining them is the twist. Taking them apart this way is what
+            // lets one movement do all three at once.
+            float dx = a->x - b->x, dy = a->y - b->y;
             float d = sqrtf(dx * dx + dy * dy);
-            if (d > 1.f) {
-                if (pinch_ref == 0.f) { pinch_ref = d; dist_ref = cam; }
+            float cx = (a->x + b->x) * 0.5f, cy = (a->y + b->y) * 0.5f;
+            float twist = atan2f(dy, dx);
+
+            lone_frames = 0;
+            if (d > PINCH_MIN_SPAN) {
+                if (pinch_ref == 0.f) {
+                    pinch_ref = d;
+                    dist_ref = cam;
+                    prev_twist = twist;
+                    arcball_begin(&ball, cx, cy, W, H);
+                } else {
+                    // atan2 wraps at pi; without unwrapping, one crossing would
+                    // spin the cube half a turn in a single frame.
+                    float dt = twist - prev_twist;
+                    while (dt > (float)M_PI) dt -= 2.f * (float)M_PI;
+                    while (dt < -(float)M_PI) dt += 2.f * (float)M_PI;
+                    prev_twist = twist;
+
+                    arcball_drag(&ball, cx, cy, W, H);
+                    arcball_twist(&ball, dt);
+                }
                 cam = dist_ref * (pinch_ref / d);
-                if (cam < 3.2f) cam = 3.2f;
-                if (cam > 14.f) cam = 14.f;
-                // A pinch is not a drag: stop the rotation it would otherwise
-                // pick up from the first finger moving.
-                vx *= 0.85f; vy *= 0.85f;
+                // Anti-windup. Held against a limit, the anchor would keep
+                // integrating a zoom that cannot happen, and the fingers would
+                // have to give all of it back before the cube moved again --
+                // which is what "it gets stuck" was. Re-anchor at the limit so
+                // the very next pixel in the other direction responds.
+                if (cam < CAM_NEAR || cam > CAM_FAR) {
+                    cam = cam < CAM_NEAR ? CAM_NEAR : CAM_FAR;
+                    pinch_ref = d;
+                    dist_ref = cam;
+                }
+            }
+            touching = 0;   // a fresh single-finger drag starts on release
+        } else if (a) {
+            if (pinch_ref != 0.f && lone_frames++ < PINCH_GRACE) {
+                // Probably a dropout, not a finger leaving: hold the pinch and
+                // change nothing this frame.
+            } else {
+                pinch_ref = 0.f;
+                if (!touching) { arcball_begin(&ball, a->x, a->y, W, H); touching = 1; }
+                else arcball_drag(&ball, a->x, a->y, W, H);
             }
         } else {
             pinch_ref = 0.f;
+            lone_frames = 0;
+            touching = 0;
+            arcball_end(&ball);
         }
+        arcball_coast(&ball, 0.985f);
         view[14] = -cam;
 
-        ax += vx; ay += vy;
-
         float model[16], mv[16], mvp[16];
-        mat_rotate(model, ax, ay);
+        arcball_matrix(&ball, model);
         mat_mul(mv, view, model);
         mat_mul(mvp, proj, mv);
 
@@ -375,7 +492,20 @@ int main(void) {
         frames++;
         double el = (now.tv_sec - t0.tv_sec) + (now.tv_nsec - t0.tv_nsec) / 1e9;
         if (el >= 1.0) {
-            printf("%.1f FPS\n", frames / el);
+            if (getenv("GLCUBE_TRACE")) {
+                int n = 0;
+                char which[64] = "";
+                for (int i = 0; i < MAX_SLOTS; i++)
+                    if (slots[i].active) {
+                        n++;
+                        snprintf(which + strlen(which), sizeof which - strlen(which),
+                                 "%d(%.0f,%.0f) ", i, slots[i].x, slots[i].y);
+                    }
+                printf("%.1f FPS | slots %d: %s| cam %.2f pinch_ref %.0f dragging %d\n",
+                       frames / el, n, which, cam, pinch_ref, ball.dragging);
+            } else {
+                printf("%.1f FPS\n", frames / el);
+            }
             fflush(stdout);
             frames = 0; t0 = now;
         }

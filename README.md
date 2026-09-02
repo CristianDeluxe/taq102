@@ -262,6 +262,61 @@ and the tablet kept the old script while the build looked clean. Use
 `make taq102-wifi-reinstall` after editing a file a package installs from its
 own directory.
 
+## The gestures, and the four ways they were wrong
+
+`glcube` rotates with one finger, and with two it zooms, drags and twists at
+once. Getting there took four bugs, and every one of them was the same mistake:
+trusting a piece of state that was not mine to assume.
+
+- **The current slot at open.** `ABS_MT_SLOT` is stream state, emitted only when
+  it changes, so a reader that opens the device mid-stream does not know which
+  contact the next position belongs to. Assuming zero parked a phantom finger in
+  slot 0 that never lifted — this driver never selects slot 0, so it never sends
+  that slot a tracking id of −1 — and every pinch measured against a frozen
+  point. `EVIOCGMTSLOTS` asks the kernel for the truth at open; before the first
+  slot event arrives, positions are dropped rather than guessed.
+- **What makes a slot active.** A tracking id does, and nothing else. Treating a
+  position as evidence of a finger is what made the phantom stick.
+- **The pinch anchor across a dropout.** This controller drops a contact for a
+  frame or two mid-gesture — measured: the trace goes 2 slots, 1, 2, with both
+  fingers still down. Ending the pinch on the first lone frame meant re-anchoring
+  on the next at a new separation, and the cube jumped. A pinch now survives four
+  such frames, and will not anchor on contacts less than 40 px apart, which are
+  one finger being split in two.
+- **Filter state on a reused slot.** The 1€ filter keeps position and velocity
+  per slot; slots get reused. Without a reset per contact, a new finger starts
+  where the *previous* one in that slot ended and slides to where it really is
+  over the tenth of a second the adaptive cutoff needs to notice the jump — so
+  closing two fingers read as separating, and the cube grew while being pinched
+  smaller.
+
+Clamping the zoom also has to re-anchor, or holding against the limit integrates
+a zoom that cannot happen and the fingers must give all of it back before
+anything moves.
+
+The rotation itself is a **trackball** (Shoemake's ARCBALL, Graphics Gems IV
+1992, with Holroyd's hyperbolic sheet outside the sphere) in `src/arcball.c`: a
+drag rolls a sphere behind the screen, and the rotation is the great-circle arc
+between where the finger was and where it is. There is no gain constant to tune,
+the grabbed point stays under the finger at any speed, and dragging near the rim
+twists rather than tumbles. Orientation is a quaternion, so there is no gimbal
+lock and momentum keeps the axis of the spin while bleeding off its angle.
+
+`src/oneeuro.c` is the 1€ filter (Casiez, Roussel and Vogel, CHI 2012) on each
+contact's coordinates: heavy smoothing when a finger is nearly still, where
+jitter shows and lag does not, and none when it moves, where lag shows and
+jitter does not. A plain low-pass would trade the jitter for lag, which is worse.
+
+Two fingers give three independent measurements and each drives exactly one
+thing — separation is zoom, midpoint is the drag, the angle of the line between
+them is the twist — which is what lets one movement do all three. The twist is
+unwrapped across ±π, or one `atan2` crossing would spin the cube half a turn in
+a frame.
+
+`GLCUBE_TRACE=1` makes it print the slots it sees, their filtered positions, the
+camera distance and the pinch anchor once a second. Every bug above was found
+with that and a capture from `evtest`, not by guessing.
+
 ## Status
 
 The tablet boots this image, drives the panel through DRM, reads multitouch, and

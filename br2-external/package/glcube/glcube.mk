@@ -11,7 +11,8 @@ GLCUBE_LICENSE = MIT
 GLCUBE_DEPENDENCIES = libdrm libegl libgles libgbm
 
 define GLCUBE_BUILD_CMDS
-	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -o $(@D)/glcube $(@D)/glcube.c \
+	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -o $(@D)/glcube \
+		$(@D)/glcube.c $(@D)/arcball.c $(@D)/oneeuro.c \
 		`$(PKG_CONFIG_HOST_BINARY) --cflags --libs libdrm egl glesv2 gbm` -lm
 endef
 
