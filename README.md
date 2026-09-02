@@ -215,6 +215,23 @@ without a host — but with only one non-power button there is nothing to press
 for it. The way into loader mode is therefore: button → rescue image →
 `reboot-loader`.
 
+## Android is gone
+
+2026-09-02, after verifying all eleven partition backups byte-for-byte against
+`SHA256SUMS.txt`:
+
+- `userdata` (55 GB, LBA 4867072) carries `mkfs.ext4 -F -m 0 -L taq102-data` and
+  mounts at `/data`. 54.1 GB free, and a file written before a reboot reads back
+  after two.
+- The first 1 MB of `cache`, `system`, `metadata`, `vendor` and `oem` is zeroed,
+  so nothing can mount or resurrect them.
+- Untouched, because the boot chain and the recovery path live there:
+  `idbloader`, `uboot`, `trust`, `misc`, `resource`, `kernel`, `boot`,
+  `recovery`, `backup`, `security`, `frp`.
+
+Restoring Android means writing `partitions/*.img` back from the host in loader
+mode. There is no path back through the device itself, which is the point.
+
 ## Status
 
 The tablet boots this image, drives the panel through DRM, reads multitouch, and
