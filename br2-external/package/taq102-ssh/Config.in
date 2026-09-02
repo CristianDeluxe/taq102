@@ -1,0 +1,10 @@
+config BR2_PACKAGE_TAQ102_SSH
+	bool "taq102-ssh (dropbear, keyed to /data)"
+	select BR2_PACKAGE_DROPBEAR
+	help
+	  Start dropbear with its host keys and its authorized_keys on
+	  /data, so the identity of the machine survives a reflash and a
+	  serial cable stops being the only way in.
+
+	  Password authentication is off: root has no password here, and
+	  giving one to a device on the LAN is worse than requiring a key.

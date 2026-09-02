@@ -104,6 +104,7 @@ fi
 cat > /etc/inittab <<EOF
 ::sysinit:/bin/mount -a
 ::once:/usr/sbin/taq102-wifi up
+::once:/usr/sbin/taq102-ssh
 ::once:/usr/bin/taq102-app
 ttyGS0::respawn:/sbin/getty -L ttyGS0 115200 vt100
 ::ctrlaltdel:/sbin/reboot

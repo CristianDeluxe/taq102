@@ -32,13 +32,42 @@ load() {
     for RK in /sys/class/rkwifi/power /sys/class/rfkill/rfkill*/state; do
         [ -w "$RK" ] && echo 1 > "$RK" 2>/dev/null
     done
-    insmod "$MODULE" || return 1
-    i=0
-    while [ ! -d /sys/class/net/$IFACE ] && [ $i -lt 50 ]; do
-        sleep 0.2
-        i=$((i + 1))
+    # The vendor driver loses a race with its own power-up sequence now and
+    # then -- measured on 2026-09-02: `sdio_deinit: sdio_disable_func(-5)` at
+    # 4.4 s and the driver unbinding itself, on a boot no different from the
+    # ones that work. One retry through the BSP's power and card-detect nodes
+    # is worth trying; it is not known to recover a chip that has already
+    # failed, and nothing short of removing power is.
+    attempt=0
+    while [ $attempt -lt 2 ]; do
+        if [ $attempt -gt 0 ]; then
+            rmmod 8723cs 2>/dev/null
+            echo 0 > /sys/class/rkwifi/driver 2>/dev/null
+            echo 0 > /sys/class/rkwifi/power 2>/dev/null
+            sleep 2
+            echo 1 > /sys/class/rkwifi/power 2>/dev/null
+            echo 1 > /sys/class/rkwifi/driver 2>/dev/null
+            sleep 1
+        fi
+        insmod "$MODULE" 2>/dev/null
+
+        i=0
+        while [ ! -d /sys/class/net/$IFACE ] && [ $i -lt 40 ]; do
+            sleep 0.2
+            i=$((i + 1))
+        done
+        [ -d /sys/class/net/$IFACE ] && break
+        attempt=$((attempt + 1))
     done
-    [ -d /sys/class/net/$IFACE ] || return 1
+
+    if [ ! -d /sys/class/net/$IFACE ]; then
+        # Say the useful thing rather than just failing: reloading the module
+        # again will not fix this, and a warm reboot does not either, because
+        # neither takes power off the RTL8723CS.
+        echo "taq102-wifi: no $IFACE. The chip needs power removed -- a full" \
+             "power-off, not a reboot." > /dev/kmsg
+        return 1
+    fi
 
     if [ -s "$MACFILE" ]; then
         ip link set $IFACE address "$(cat "$MACFILE")" 2>/dev/null &&

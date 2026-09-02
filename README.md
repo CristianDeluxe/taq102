@@ -317,6 +317,43 @@ a frame.
 camera distance and the pinch anchor once a second. Every bug above was found
 with that and a capture from `evtest`, not by guessing.
 
+## SSH
+
+`taq102-ssh` starts dropbear with everything that must outlive a reflash on
+`/data`:
+
+    /data/ssh/host_rsa, /data/ssh/host_ed25519   this machine's identity
+    /data/ssh/authorized_keys                    who may log in
+
+Host keys in `/etc` would be regenerated every boot, since the root filesystem
+is an initramfs, and every login would then be a changed-host-key warning that
+was right. Password authentication is off (`-s -g`): root has no password on
+this image, and giving one to a device on the LAN is worse than requiring a key.
+
+    ssh -i ~/.ssh/taq102 root@<address>
+
+Loader mode is now reachable over the network too — `reboot-loader` over SSH,
+then `rkdeveloptool` — so a reflash needs neither the serial cable nor Android.
+
+## The Wi-Fi does not always come up
+
+Measured on 2026-09-02, on a boot no different from the ones that work:
+
+    RTW: ERROR sdio_deinit: sdio_disable_func(-5)
+    rtl8723cs: probe of mmc2:0001:1 failed with error -110
+
+The vendor driver loses a race with its own power-up sequence, unbinds itself,
+and there is no `wlan0`. `taq102-wifi` retries once through the BSP's
+`/sys/class/rkwifi` power and card-detect nodes, which costs nothing to attempt.
+
+**What does not work is worth more than what does.** Once the chip has failed
+this way, reloading the module does not recover it, the full BSP power sequence
+does not recover it, and a warm reboot does not either — none of them takes
+power off the RTL8723CS. Only a real power-off does. Trying harder in software
+made it worse: after several reload attempts the SDIO card stopped being
+detected at all. The script now says so on `/dev/kmsg` rather than failing
+silently.
+
 ## Status
 
 The tablet boots this image, drives the panel through DRM, reads multitouch, and
