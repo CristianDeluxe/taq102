@@ -1,0 +1,7 @@
+config BR2_PACKAGE_PARTICLES
+	bool "particles"
+	select BR2_PACKAGE_LIBDRM
+	help
+	  A particle field drawn straight to a DRM dumb buffer on the
+	  TAQ-102 panel, with the touchscreen as an attractor. One process
+	  owning KMS: no X, no Wayland, no compositor.

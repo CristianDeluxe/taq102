@@ -1,1 +1,1 @@
-# No project packages yet. The application package will be declared here.
+source "$BR2_EXTERNAL_TAQ102_PATH/package/particles/Config.in"

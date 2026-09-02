@@ -108,3 +108,15 @@
 04:55:50 	Error: failed to stat config.ini, err=2
 04:55:50 	Error: failed to stat config.ini, err=2
 04:55:58 	Error: failed to stat config.ini, err=2
+05:10:53 	Error: failed to stat config.ini, err=2
+05:13:59 	Error: failed to stat config.ini, err=2
+05:14:03 	Error: failed to stat config.ini, err=2
+05:14:03 	Error: failed to stat config.ini, err=2
+05:14:03 	Error: failed to stat config.ini, err=2
+05:14:03 	Error: failed to stat config.ini, err=2
+05:14:16 	Error: failed to stat config.ini, err=2
+05:14:17 	Error: failed to stat config.ini, err=2
+05:14:17 	Error: failed to stat config.ini, err=2
+05:14:17 	Error: failed to stat config.ini, err=2
+05:14:18 	Error: failed to stat config.ini, err=2
+05:46:17 	Error: failed to stat config.ini, err=2
