@@ -1,11 +1,11 @@
 // The rescue image's face: an amber screen that says RESCUE MODE, with the
-// kernel, the build id and the Wi-Fi address, drawn straight to a DRM dumb
-// buffer. It exists because a rescue that does not draw looks exactly like an
+// kernel, the build id, the Wi-Fi address and signal and the battery, drawn
+// straight to a DRM dumb buffer. It exists because a rescue that does not draw looks exactly like an
 // appliance that failed -- under the stock kernel nothing sets a mode until an
 // application does, and the panel just shows backlight.
 //
-// One buffer, no page flips: the picture changes only when the address does,
-// and a full redraw once every two seconds is nothing. Runs until killed;
+// One buffer, no page flips: the picture changes only when a status line
+// does, and a full redraw once every two seconds is nothing. Runs until killed;
 // `killall rescue-screen` frees the display for whatever is being debugged.
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,8 +34,8 @@
 #define PALE  0xFFFFF3D0u
 
 // 3x5 glyphs, three bits per row, bit 2 the left column: A..Z, 0..9, then
-// '.', ':', '-', '/'. Anything else advances without drawing.
-static const unsigned char GLYPH[40][5] = {
+// '.', ':', '-', '/', '%'. Anything else advances without drawing.
+static const unsigned char GLYPH[41][5] = {
     {2,5,7,5,5},{6,5,6,5,6},{7,4,4,4,7},{6,5,5,5,6},{7,4,7,4,7},{7,4,7,4,4},
     {7,4,5,5,7},{5,5,7,5,5},{7,2,2,2,7},{1,1,1,5,7},{5,5,6,5,5},{4,4,4,4,7},
     {5,7,7,5,5},{6,5,5,5,5},{7,5,5,5,7},{7,5,7,4,4},{7,5,5,7,1},{7,5,6,5,5},
@@ -43,14 +43,14 @@ static const unsigned char GLYPH[40][5] = {
     {5,5,2,2,2},{7,1,2,4,7},
     {7,5,5,5,7},{2,6,2,2,7},{7,1,7,4,7},{7,1,7,1,7},{5,5,7,1,1},
     {7,4,7,1,7},{7,4,7,5,7},{7,1,1,1,1},{7,5,7,5,7},{7,5,7,1,7},
-    {0,0,0,0,2},{0,2,0,2,0},{0,0,7,0,0},{1,1,2,4,4}
+    {0,0,0,0,2},{0,2,0,2,0},{0,0,7,0,0},{1,1,2,4,4},{5,1,2,4,5}
 };
 
 static int glyph_index(char ch) {
     if (ch >= 'A' && ch <= 'Z') return ch - 'A';
     if (ch >= 'a' && ch <= 'z') return ch - 'a';
     if (ch >= '0' && ch <= '9') return 26 + ch - '0';
-    switch (ch) { case '.': return 36; case ':': return 37; case '-': return 38; case '/': return 39; }
+    switch (ch) { case '.': return 36; case ':': return 37; case '-': return 38; case '/': return 39; case '%': return 40; }
     return -1;
 }
 
@@ -88,10 +88,49 @@ static void wlan_address(char *out, size_t n) {
     if (s >= 0) close(s);
 }
 
+// "BATTERY 6% 3.52V CHARGING -320MA": the rk816 driver's view, which is
+// what decides whether the tablet is about to switch off. current_now is
+// negative while discharging, and it stayed negative on a Mac USB port with
+// the status still saying Charging -- the number, not the word, is the truth.
+static void battery_line(char *out, size_t n) {
+    char cap[16], vol[16], cur[16], st[16];
+    read_line("/sys/class/power_supply/battery/capacity", cap, sizeof cap);
+    read_line("/sys/class/power_supply/battery/voltage_now", vol, sizeof vol);
+    read_line("/sys/class/power_supply/battery/current_now", cur, sizeof cur);
+    read_line("/sys/class/power_supply/battery/status", st, sizeof st);
+    if (!cap[0]) { snprintf(out, n, "BATTERY UNKNOWN"); return; }
+    snprintf(out, n, "BATTERY %s%% %d.%02dV %s %dMA", cap,
+             atoi(vol) / 1000000, (atoi(vol) / 10000) % 100, st, atoi(cur) / 1000);
+}
+
+// "WIFI 192.168.1.57 -37DBM Q100": address from the interface, level and
+// link quality from /proc/net/wireless, which is what the driver reports for
+// the association it holds. Both go NO WIFI YET until the driver is up.
+static void wifi_line(char *out, size_t n) {
+    char addr[64];
+    wlan_address(addr, sizeof addr);
+    int quality = -1, level = 0;
+    FILE *f = fopen("/proc/net/wireless", "r");
+    if (f) {
+        char line[256];
+        while (fgets(line, sizeof line, f)) {
+            char *w = strstr(line, "wlan0:");
+            if (!w) continue;
+            // "0000  100.  -37.  -256." -- %d then a literal dot; %f would
+            // swallow "100." whole and the match would fail on the dot.
+            int q = 0, l = 0;
+            if (sscanf(w + 6, " %*x %d. %d.", &q, &l) == 2) { quality = q; level = l; }
+        }
+        fclose(f);
+    }
+    if (quality < 0) snprintf(out, n, "WIFI %s", addr);
+    else snprintf(out, n, "WIFI %s %dDBM Q%d", addr, level, quality);
+}
+
 static volatile sig_atomic_t stop;
 static void on_signal(int sig) { (void)sig; stop = 1; }
 
-static void paint(uint32_t *shadow, int W, int H, const char *kernel, const char *build, const char *addr) {
+static void paint(uint32_t *shadow, int W, int H, const char *kernel, const char *build, const char *status) {
     for (int i = 0; i < W * H; i++) shadow[i] = AMBER;
     int big = W / 60;                       // "RESCUE MODE" is 11 glyphs, 4 units each
     text(shadow, W, H, (W - 11 * 4 * big + big) / 2, H / 5, "RESCUE MODE", big, INK);
@@ -100,8 +139,12 @@ static void paint(uint32_t *shadow, int W, int H, const char *kernel, const char
     char line[96];
     snprintf(line, sizeof line, "KERNEL %s", kernel); text(shadow, W, H, W / 12, y, line, s, INK); y += dy;
     snprintf(line, sizeof line, "BUILD %s", build);   text(shadow, W, H, W / 12, y, line, s, INK); y += dy;
-    snprintf(line, sizeof line, "SSH ROOT AT %s", addr); text(shadow, W, H, W / 12, y, line, s, PALE); y += dy;
-    text(shadow, W, H, W / 12, y, "USB CONSOLE TTYGS0 - KILLALL RESCUE-SCREEN TO DRAW", s, INK);
+    // status holds the Wi-Fi and battery lines separated by a newline
+    const char *nl = strchr(status, '\n');
+    snprintf(line, sizeof line, "%.*s", (int)(nl ? nl - status : (long)strlen(status)), status);
+    text(shadow, W, H, W / 12, y, line, s, PALE); y += dy;
+    if (nl) { text(shadow, W, H, W / 12, y, nl + 1, s, PALE); y += dy; }
+    text(shadow, W, H, W / 12, y, "SSH ROOT - USB CONSOLE TTYGS0 - KILLALL RESCUE-SCREEN TO DRAW", s, INK);
 }
 
 int main(void) {
@@ -136,7 +179,7 @@ int main(void) {
     if (!shadow) { perror("shadow"); return 1; }
 
     struct utsname u; uname(&u);
-    char build[64], addr[64], shown[64] = "";
+    char build[64], wifi[96], batt[96], status[200], shown[200] = "";
     read_line("/etc/taq102-build-id", build, sizeof build);
 
     signal(SIGTERM, on_signal);
@@ -144,9 +187,11 @@ int main(void) {
 
     int first = 1;
     while (!stop) {
-        wlan_address(addr, sizeof addr);
-        if (first || strcmp(addr, shown)) {
-            paint(shadow, W, H, u.release, build, addr);
+        wifi_line(wifi, sizeof wifi);
+        battery_line(batt, sizeof batt);
+        snprintf(status, sizeof status, "%s\n%s", wifi, batt);
+        if (first || strcmp(status, shown)) {
+            paint(shadow, W, H, u.release, build, status);
             for (int y = 0; y < H; y++) memcpy(base + (size_t)y * c.pitch, shadow + (size_t)y * W, (size_t)W * 4);
             if (first) {
                 // Under the stock 4.4.103 kernel the first modeset after boot
@@ -165,9 +210,9 @@ int main(void) {
                     perror("setcrtc again"); return 1;
                 }
             }
-            strcpy(shown, addr);
+            strcpy(shown, status);
             first = 0;
-            printf("rescue-screen: %dx%d, %s\n", W, H, addr); fflush(stdout);
+            printf("rescue-screen: %dx%d, %s / %s\n", W, H, wifi, batt); fflush(stdout);
         }
         sleep(2);
     }
