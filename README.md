@@ -419,3 +419,35 @@ before fbdev registers, which is why even a framebuffer console shows nothing.
 HCLK_VIO_H2P around the DSI-host accesses that path makes -- the dsi node lists
 that clock beside PCLK_MIPI, and in LVDS mode no DSI driver is there to enable
 it -- but the hang survives it, so the cause is still open.
+
+## Why the panel never came up: a pinctrl state name
+
+The display failure is a chain, and every link was invisible from outside.
+`pwm-rockchip` in the 4.4.167 tree requires a pinctrl state literally named
+**`active`**, and refuses to probe without one:
+
+```c
+pc->active_state = pinctrl_lookup_state(pc->pinctrl, "active");
+if (IS_ERR(pc->active_state)) {
+	dev_err(&pdev->dev, "No active pinctrl state\n");
+	return PTR_ERR(pc->active_state);
+}
+```
+
+The stock device tree, written for 4.4.103, says `pinctrl-names = "default"`.
+So no PWM chip registers; with no PWM there is no backlight; `panel-simple`
+defers waiting for the backlight -- 390 retries in one boot, which floods the
+ring buffer and scrolls the PWM error out of it; the LVDS encoder defers on the
+panel with `-517`; and `rockchip-drm` reports `master bind failed: -517` and
+registers no device. Renaming the state on `pwm@20050000` is the whole fix, and
+the vendor's own 4.4.167 `rk312x.dtsi` confirms it: same pin, same clock,
+`pinctrl-names = "active"`.
+
+**Building the PHY driver as a module is what made this readable.** Built in, it
+hangs the boot before fbdev exists, so the machine says nothing at all. As a
+module the system boots to a console, `insmod` returns 0, nothing hangs, and
+`dmesg` names the failure. That difference is itself a finding: the hang is a
+boot-time ordering problem, not the driver.
+
+The lesson worth keeping: when a failure is silent, spend the next move on
+making it speak rather than on another guess at the cause.
