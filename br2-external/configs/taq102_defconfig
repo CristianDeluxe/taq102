@@ -75,6 +75,7 @@ BR2_PACKAGE_E2FSPROGS_MKE2FS=y
 # Wi-Fi: the vendor's RTL8723CS module, wpa_supplicant, and iw for scanning.
 BR2_PACKAGE_TAQ102_WIFI=y
 BR2_PACKAGE_TAQ102_DISPLAY=y
+BR2_PACKAGE_RESCUE_SCREEN=y
 BR2_PACKAGE_IW=y
 
 # SSH, so the serial cable stops being the only way in.
