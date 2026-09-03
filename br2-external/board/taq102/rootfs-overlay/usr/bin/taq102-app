@@ -20,16 +20,27 @@ LIMIT=5
 
 log() { echo "taq102-app: $1" > /dev/kmsg; }
 
-if [ -f /etc/taq102-no-autostart ]; then
-    log "autostart disabled by /etc/taq102-no-autostart"
+# A rescue boot must look like one. Under the stock kernel nothing sets a
+# mode until an application does, so a rescue that draws nothing is a white
+# panel -- indistinguishable from an appliance that failed. rescue-screen
+# paints RESCUE MODE, the kernel, the build id and the address instead.
+rescue() {
+    log "$1"
+    if [ -x /usr/bin/rescue-screen ]; then
+        [ -e /dev/dri/card0 ] || sleep 3
+        exec /usr/bin/rescue-screen >> /tmp/taq102-app.log 2>&1
+    fi
     exit 0
+}
+
+if [ -f /etc/taq102-no-autostart ]; then
+    rescue "autostart disabled by /etc/taq102-no-autostart"
 fi
 
 for KEY in KEY_VOLUMEDOWN KEY_BACK; do
     evtest --query /dev/input/event2 EV_KEY "$KEY"
     if [ $? -eq 10 ]; then
-        log "$KEY held at boot: not starting $APP"
-        exit 0
+        rescue "$KEY held at boot: not starting $APP"
     fi
 done
 
