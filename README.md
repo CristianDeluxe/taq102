@@ -903,3 +903,39 @@ tries. So the paths into `recovery` and into the loader are software:
 `boot-recovery` in the BCB, and `reboot-loader` -- and both need a system
 that is up, which is the argument for a rescue kernel that is not the one
 under development.
+
+## The rescue image has a face
+
+2026-09-03, 22:45. A rescue boot used to be a white panel, indistinguishable
+from an appliance that failed to draw: under the stock kernel nothing sets a
+mode until an application does. `rescue-screen` (`src/rescue-screen.c`,
+`package/rescue-screen`) paints an amber screen with RESCUE MODE, the
+kernel, the build id and the Wi-Fi address, refreshed as the address arrives,
+through one DRM dumb buffer and a 3x5 bitmap font. `taq102-app` execs it
+whenever autostart is off -- the rescue marker or the button hatch -- so the
+same binary serves `recovery` (stock kernel) and a held-button boot of `boot`
+(own kernel). `killall rescue-screen` frees the display.
+
+Verified from clean boots on both kernels
+(`docs/evidence/2026-09-03/camera/2026-09-03-v34-rescue-*.jpg`). Two things
+the stock kernel taught on the way, each measured against the camera:
+
+- **The stock VOP blends XRGB8888 as ARGB.** With 0x00 in the top byte the
+  window is transparent and the panel shows a washed-out white with a ghost
+  of the picture; with 0xFF the screen appears. `glcube` never hit it because
+  GBM buffers carry 0xFF. `particles` has the same defect and is left as it
+  is. The own kernel does not care either way.
+- **The stock kernel's first modeset after boot is blank; the second shows
+  the picture.** A fresh rescue boot was white with `rescue-screen` running
+  and its `drmModeSetCrtc` returned 0; restarting the program painted the
+  screen. `glcube` never sees it because it page flips immediately. The
+  program now sets the mode, drops the CRTC and sets it again, once.
+
+And one that is ours: two processes with a DRM device open and both setting
+modes produce a torn, colour-shifted picture that looks like a stride or
+bit-order fault. It was the supervisor relaunching `glcube` under a
+`rescue-screen` started by hand. Stop `taq102-app` before taking the screen.
+
+Images at this point: `boot` = `recovery-taq102-v34-appliance.img`,
+`recovery` = `recovery-taq102-v34-stockkernel-rescue.img`, both from build
+`20260903-204222-8fa9f47`, BCB zero.
