@@ -451,3 +451,111 @@ boot-time ordering problem, not the driver.
 
 The lesson worth keeping: when a failure is silent, spend the next move on
 making it speak rather than on another guess at the cause.
+
+## The panel carries signal and no content: what the registers rule out
+
+2026-09-03. The display path comes up on our own kernel and the panel still
+shows nothing. This section records what was measured rather than what was
+tried, because almost every cheap suspect is now eliminated by a register read
+and re-guessing them costs another night.
+
+**The working stock kernel is a readable reference, up to a point.** It has
+`CONFIG_DEVMEM` unset, so its registers cannot be read at all -- but it mounts
+debugfs, and `/sys/kernel/debug/dri/0/summary` plus `clk_summary` answer two
+questions that were previously guesses:
+
+|                  | stock 4.4.103, picture | ours 4.4.167, blank |
+| ---------------- | ---------------------- | ------------------- |
+| `dclk_vop`       | **49.5 MHz**, parent gpll 594 | **50.0 MHz**, parent cpll 400 |
+| summary `real_clk` | 51200                | 50000               |
+| `bus_format`     | 0x1009                 | 0x1012              |
+| `output_mode`    | 0 (P888)               | 0 (P888)            |
+
+So the panel that works is driven at 49.5 MHz, not at the 51.2 MHz its own
+timing asks for, and neither kernel achieves 51.2. **The 7:1 rule is not
+violated on our side**: the PHY is programmed 24/12*175 = 350 MHz against a VOP
+at exactly 50 MHz. That eliminates serialiser slip, which had been the leading
+theory.
+
+**The VOP is configured correctly and is fetching real pixels.** Read with the
+mode set and `glcube` running:
+
+```
+DSP_HTOTAL_HS_END 0x05860046   htotal 1414, hsync 70
+DSP_HACT_ST_END   0x00E604E6   hact 230..1254
+DSP_VTOTAL_VS_END 0x0285000A   vtotal 645, vsync 10
+DSP_VACT_ST_END   0x00210279   vact 33..633
+DSP_CTRL0         0x00000080   out_mode P888, dither_down off, dclk_pol 1
+DSP_CTRL1         0x00000000   dsp_blank 0
+SYS_CTRL          0x00000001   standby 0, win0 enabled
+AXI_BUS_CTRL      0x1F100000   rgb_en 1, lvds_en 1
+WIN0_YRGB_MST     0x00258000   with glcube running (0 when only fbcon is up)
+```
+
+`WIN0_YRGB_MST` is an IOVA, not a physical address: the VOP sits behind
+`iommu@1010e300`, which reads `DTE_ADDR 0x64E1E000` and `STATUS 0x19` --
+paging enabled, idle, replay buffer empty, **no page fault**. Framebuffer fetch
+is therefore not the problem, which retires the whole "is it scanning out
+anything" line of enquiry.
+
+**Two real defects were found in the PHY's LVDS path, fixed, and did not fix
+the panel.** MIPI mode powers the shared analog block up; LVDS mode never did.
+Measured before the fix, with the display up:
+
+```
+analog reg00 = 0x01   common analog lanes [6:2] all DISABLED
+analog reg01 = 0xE3   REG_LDOPD and REG_PLLPD both POWERED DOWN
+```
+
+while every LVDS-specific register was already correct -- mode enable, digital
+enable, all five LVDS lanes on, dividers 12/175, and `GRF_LVDS_CON0 = 0x034A`
+(P2S_EN, MODE_EN, MSBSEL, format 1 = JEIDA-24). `kernel/patches/0002-*` adds
+the two writes MIPI mode makes, and afterwards the registers read `reg00 =
+0x7D` and `reg01 = 0xE0` -- exactly the intended values. **The panel stayed
+white.** The defect was real and is worth keeping; it was not the cause.
+
+**Eliminated by sweeping the hardware live**, with `glcube` running and the
+panel watched throughout: all four `GRF_LVDS_CON0` format codes (VESA/JEIDA,
+24/18), both sample-clock directions, and all eight sample-clock phases. White
+at every one of the fourteen settings.
+
+**Eliminated by reading the CRU**: every `SOFTRST_CON0..8` reads zero, so the
+PHY's `resets = <0x3 0x24>` is not being held asserted. The driver never calls
+`reset_control_deassert()`, but nothing else is asserting it either.
+
+**`PLL is not lock` is confirmed a false negative.** `DSI_PHY_STATUS` at
+host+0xb0 was stepped through every value of `DSI_PHY_RSTZ` (host+0xa0) from
+0x1 to 0xF and never changed from `0x00001FBC`. In LVDS mode that bit reports
+on a block that is not in this path.
+
+### What is left, and it is the strongest lead
+
+The shared MIPI/LVDS **controller** at `0x10110000` -- the region `/proc/iomem`
+calls `mipi_lvds_ctl` -- is essentially unconfigured. Scanning its first 256
+bytes with the display up finds only a version register and reset defaults:
+
+```
+000=0x3132312A  034=0x00000001  074=0x00000015  0a4=0x00000003
+0b0=0x00001FBC  0b4=0x00000001  0c4=0x001FFFFF  0c8=0x0003FFFF
+```
+
+The 4.4.167 combo-PHY driver touches exactly two registers in this block, both
+in the DSI host page (`RSTZ` and `STATUS`), and programs nothing that would
+format parallel pixels into LVDS channels. The stock 4.4.103 tree, by contrast,
+gives LVDS its own node with its own registers and a driver for them.
+
+That is consistent with every measurement above: VOP output correct, GRF mux
+correct, PHY analog and PLL correct, panel receiving clock and reacting to
+modesets -- and no payload, because the controller that builds the payload was
+never told to. The next move is to read the stock rk312x LVDS transmitter
+driver (`54shady/qop_kernel` carries one) for this block's layout, not to try
+another setting.
+
+### A tool that did not do what it said
+
+`tools/make-hybrid-dts.py` claimed to reproduce the tested blob byte for byte
+and had stopped doing so. Its PWM graft matched `#pwm-cells = <0x3>;` while the
+stock tree writes `<0x03>`, so `str.replace` substituted nothing and returned
+happily -- the exact failure the resource-blob bug had already taught. The
+grafts now locate the node and raise if the text they expect is absent, and the
+regenerated tree once again decompiles identical to the blob under test.
