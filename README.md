@@ -551,6 +551,20 @@ never told to. The next move is to read the stock rk312x LVDS transmitter
 driver (`54shady/qop_kernel` carries one) for this block's layout, not to try
 another setting.
 
+That reading was wrong, and the vendor tree says so plainly. `rk312x.dtsi`
+declares `0x10110000` as `compatible = "rockchip,rk3128-mipi-dsi"` with
+`status = "disabled"`, and `lvds` as a separate node with no registers of its
+own. There is no LVDS transmitter hiding in that block: in LVDS mode nothing
+takes the DSI controller out of reset, which is also why its `PLL is not lock`
+bit is a false negative. Stepping `DSI_PHY_RSTZ` through 0x4, 0x1, 0x3, 0x5,
+0x7 and 0xF never moved `DSI_PHY_STATUS` off `0x00001FBC`.
+
+Worth recording alongside it: grepping `&lvds` across every `rk3126*` and
+`rk312x*` board file in the vendor tree returns exactly one hit, the disabled
+node definition itself. No shipping board ever enabled this path, which is why
+its analog-power bug sat latent -- and why "copy what the vendor does" cannot
+resolve this, our copies of both drivers being byte-identical to theirs.
+
 ### A tool that did not do what it said
 
 `tools/make-hybrid-dts.py` claimed to reproduce the tested blob byte for byte
@@ -559,3 +573,91 @@ stock tree writes `<0x03>`, so `str.replace` substituted nothing and returned
 happily -- the exact failure the resource-blob bug had already taught. The
 grafts now locate the node and raise if the text they expect is absent, and the
 regenerated tree once again decompiles identical to the blob under test.
+
+## A camera closes the loop, and the panel is proved deaf
+
+Every result above shares a weakness: the only instrument that could read the
+panel was a human looking at it and typing back. That made each experiment cost
+a round trip, so the experiments stayed few and the guesses stayed cheap --
+exactly the wrong ratio. Pointing a webcam at the tablet fixed the ratio. One
+`ffmpeg -f avfoundation` grab plus `signalstats` gives brightness and
+frame-to-frame motion, and with `glcube` spinning, content on the panel moves
+while a dead panel does not.
+
+Calibrate the instrument before trusting it. Backlight off reads `YAVG=33.7`,
+backlight on `YAVG=104..118`, and two frames of a static white panel differ by
+`motion 0.74..1.06`. That noise floor is the whole measurement: anything at the
+floor is a dead end, anything well above it is worth a photograph.
+
+Photograph it, though, before believing it. Sweeping the VOP polarities turned
+up `dclk_pol=1, pin_pol=1` at `motion=4.15`, four times the floor and
+accompanied by a jump in `YHIGH`. It was the camera's auto-exposure. A re-measure
+gave 0.76 and the photograph was white. A single number from an automated loop
+is a lead, not a result.
+
+### The decisive test: make the VOP emit black
+
+`dsp_blank` (DSP_CTRL1 bit 24, latched with `REG_CFG_DONE`) makes the VOP emit
+black in hardware, touching neither buffers nor PHY. A panel that decoded the
+link would go black.
+
+The panel did not change. It stayed white.
+
+That single measurement reframes the problem. White is not a wrong picture, and
+not a picture at all: it is the backlight shining through a panel that has no
+valid signal to display. Every "the content is wrong" hypothesis -- bit order,
+common-mode level, colour format -- is answering a question the panel never got
+far enough to ask.
+
+### Both sides measure correct
+
+The VOP is scanning real frames. With `glcube` running, `WIN0_YRGB_MST`
+alternates between `0x004B0000` and `0x00258000` -- a real page flip, not a
+stuck pointer -- and the VOP interrupt advances 498 to 664 in three seconds,
+about 55 fps against a 56 Hz mode.
+
+The PHY holds the stock register state exactly. Disassembling the stock
+`vmlinux.elf` yields the working driver's write sequence, and it revealed
+something the register dumps could not: the stock driver **clears E1 bit 7 to
+stop the LVDS digital block, writes its configuration, and sets the bit again**.
+Ours never does that cycle, so it was writing fields that are sampled only when
+the digital block leaves reset. Replaying the full stock sequence in the stock
+order through that reset leaves E0=0x45, E1=0x92, E3=0x02, E4=0x80, E8=0xFC,
+EB=0xF8, analog01=0xE0, GRF=0x034A -- byte for byte the state of the kernel that
+drives this panel.
+
+The panel stayed white.
+
+### What the loop killed
+
+Each of these was swept through the digital reset and measured against the noise
+floor, and each came back at it:
+
+| Candidate | How it died |
+| --- | --- |
+| E4 common-mode voltage | 0x80, 0x90, 0xA0, 0xB0 -- the whole VOCM range at stock swing |
+| PHY-internal MSB select (E0 bit 0) | both values |
+| PLL divisors | stock 2/28 (336 MHz) and ours 12/175 (350 MHz) |
+| VOP polarities | all 16 combinations of `dclk_pol` x `pin_pol` |
+
+The E4 write is worth its own note. It was found by disassembling the stock
+kernel, it is documented in Rockchip's own display FAQ, our driver genuinely
+never performs it, and it is a real defect that should be fixed. It is not this
+bug. A correct-looking cause with a good provenance is still only a hypothesis
+until the instrument answers.
+
+### Two things that block the fast loop
+
+A module rebuilt from the same tree will not load: `insmod` returns `invalid
+module format` and the kernel logs nothing at all. Compared against the working
+`/data/phy-fixed.ko` with readelf and objdump, the vermagic string, the
+`__versions` table, the ELF flags and the ARM attributes are all identical. Any
+driver-level experiment is blocked until that is understood, and it deserves
+instrumenting rather than guessing.
+
+`unbind` on `rockchip-drm` is not reversible: afterwards `bind` answers `No such
+device`, and only a reboot brings the display back. The PHY module does not
+autoload, so every reboot needs `insmod` of
+`/lib/modules/4.4.167/extra/phy-rockchip-inno-video-combo-phy.ko` -- which is
+the original, without the analog-power patch -- before there is anything to
+measure.
