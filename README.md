@@ -670,3 +670,46 @@ and motion, with the calibration recorded in its header), `phy-write.sh`
 (writes wrapped in the LVDS digital reset) and `vop-write.sh` (writes plus
 `REG_CFG_DONE`). Verified with `./measure.sh repo-check`, which prints the noise
 floor against the white panel.
+
+### The control that should have been run first
+
+the reviewer's round-2 conclusion was that the fault is physical -- a damaged LVDS flex
+or a dead panel -- because a 45-second recording across a reboot never showed
+U-Boot's DENVER logo. The reasoning was sound and the conclusion was wrong, and
+the refutation was already in this session's own transcript: at 04:20 and 04:44
+the same day, the stock 4.4.103 appliance had been running with the cube visible
+on this panel.
+
+Flashing `boot-taq102-v14.img` back to `boot` settled it in one boot. The image
+was written and read back byte for byte
+(`8eba528f9f4f8169f8ea244696868b4c2ac4f2003f99760dd4ee022e5ec4c96b` both ways),
+and the camera then measured `YAVG=82.9 YHIGH=255 motion=6.96` against a white
+panel's `116 / 0.78`. The photograph shows the cube turning on a blue field.
+
+**The panel, the flex, the connector and the TCON are all good.** The fault is
+in our LVDS path, and every measurement above still applies to it.
+
+The lesson is about controls, not about review. Once the panel had refused every
+software candidate, the cheapest remaining question was no longer "which
+register is wrong" but "does the known-good image still work" -- and that
+question had a stored answer costing one flash. A negative result invites a
+hardware conclusion, and a hardware conclusion needs the control before it is
+believed, not after.
+
+### The golden reference, read from the working kernel
+
+With v14 running and the panel showing content:
+
+```
+VOP [1010e000.vop]: ACTIVE          Connector: LVDS
+overlay_mode[0] bus_format[1009] output_mode[0] color_space[0]
+Display mode: 1024x600p56
+clk[51200] real_clk[51200] type[8] flag[a]
+H: 1024 1184 1254 1414      V: 600 612 622 645
+dclk_vop 49500000 (gpll 594 MHz / 12)
+```
+
+Ours reports the identical mode and timings but `real_clk[50000]`, off cpll
+(400 MHz / 8). The stock kernel has `CONFIG_DEVMEM` unset, so its PHY registers
+cannot be read directly; debugfs is the only window, which is why the stock
+write sequence had to come from disassembly.
