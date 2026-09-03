@@ -152,6 +152,16 @@ static uint32_t fb_for(int fd, struct gbm_bo *bo) {
     return fb;
 }
 
+#define IDLE_HALF 0.004f    // half-angle per frame of the resting spin
+#define IDLE_FLOOR 0.002f   // below this the coast has died; top it back up
+
+static void idle_spin(struct arcball *b) {
+    b->spin[0] = cosf(IDLE_HALF);
+    b->spin[1] = 0.35f * sinf(IDLE_HALF);
+    b->spin[2] = 0.90f * sinf(IDLE_HALF);
+    b->spin[3] = 0.25f * sinf(IDLE_HALF);
+}
+
 int main(void) {
     int fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     if (fd < 0) { perror("open card0"); return 1; }
@@ -320,11 +330,12 @@ int main(void) {
     #define CAM_FAR 14.f
     // Give it a gentle spin to start, so an untouched tablet is not a still
     // picture: a small rotation about a tilted axis, replayed by the coast.
+    // The coast bleeds 1.5% of the angle off per frame, so this alone stops
+    // in five seconds -- measured 2026-09-04, a tablet up for 45 minutes with
+    // the cube dead still and glcube at 54.8 FPS. Below IDLE_HALF the spin is
+    // topped back up to this value whenever no finger is down.
     arcball_twist(&ball, 0.3f);
-    ball.spin[0] = cosf(0.004f);
-    ball.spin[1] = 0.35f * sinf(0.004f);
-    ball.spin[2] = 0.90f * sinf(0.004f);
-    ball.spin[3] = 0.25f * sinf(0.004f);
+    idle_spin(&ball);
     float cam = 6.f;         // where the camera is now, along -Z
 
     struct gbm_bo *prev_bo = NULL;
@@ -445,6 +456,11 @@ int main(void) {
             arcball_end(&ball);
         }
         arcball_coast(&ball, 0.985f);
+        if (!touching && !ball.dragging) {
+            float w = ball.spin[0];
+            if (w > 1.f) w = 1.f;
+            if (acosf(w) < IDLE_FLOOR) idle_spin(&ball);
+        }
         view[14] = -cam;
 
         float model[16], mv[16], mvp[16];
