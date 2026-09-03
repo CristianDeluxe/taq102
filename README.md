@@ -840,11 +840,10 @@ The images are packed from the VM's `rootfs.cpio` copied through the shared
 for the rescue variant and `make-recovery.sh` with `KERNEL=` and `SECOND=`
 pointing at our own kernel and resource image.
 
-`recovery` still holds v18, the stock-kernel rescue image. It is a different
-kind of fallback from an own-kernel rescue -- it survives anything that breaks
-the 4.4.167 build -- and it stays until the button path into it has been
-exercised again: from the dark U-Boot of the truncated v29 the volume button
-did not reach it, while both buttons reached loader mode.
+`recovery` held v18 at this point, and the note that called it "the
+stock-kernel rescue" was wrong: splitting the image shows its kernel is
+`zImage-v16-fbcon`, our own 4.4.167 without the PHY driver -- a rescue with a
+USB console and no picture. What replaced it is below.
 
 ### The button does not reach `recovery`
 
@@ -870,3 +869,37 @@ Worth keeping from the same photograph: **our kernel has a visible console.**
 `console=tty0` and the framebuffer console are in its command line and
 config, so whenever nothing owns the screen the kernel log is on the panel.
 The stock kernel, with `CONFIG_VT` unset, never had that.
+
+### `recovery` now holds a stock-kernel rescue, and the round trip is measured
+
+2026-09-03, 22:25. `recovery-taq102-v31-stockkernel-rescue.img` is the stock
+4.4.103 kernel and resource image with the v31 rootfs in its rescue variant --
+the same userspace as `boot`, no autostart -- so it is a fallback that
+survives anything that breaks the 4.4.167 build. `taq102-wifi` picks the
+4.4.103 module by `uname -r` and `taq102-display` finds no module and does
+nothing, which is exactly what one image booting on either kernel means.
+
+Written with `tools/flash-recovery.sh`, which now reads the span back and
+compares SHA-256 before it touches the BCB, and then exercised end to end
+without a button:
+
+1. `flash-recovery.sh` sets the BCB to `boot-recovery` and resets; the tablet
+   comes up on 4.4.103, build `821c731`, `variant=rescue`, ssh answering, the
+   stock kernel logging its `ldo6: couldn't disable: -1` as ever. The panel is
+   white: under the stock kernel nothing sets a mode until an application
+   does, so a rescue with no app shows backlight and no signal. Starting
+   `glcube` from ssh would paint it.
+2. Zeroing the eight BCB sectors at raw 32800 from inside and rebooting
+   brings `boot` back: v31, `glcube` at 4.98 s, camera `motion 17.3`.
+
+**What the buttons do, measured today, so nobody spends another evening on
+them.** With the tablet running, pressing anything does nothing U-Boot will
+see. Holding power does not switch the tablet off while USB is plugged in:
+the PMIC comes straight back up in charger mode (`androidboot.mode=charger`
+on every boot). A `reboot` with both buttons held booted `boot` and did not
+even trip the appliance's KEY_BACK hatch. The one time both buttons reached
+loader mode was from the dark U-Boot of the truncated v29, after several
+tries. So the paths into `recovery` and into the loader are software:
+`boot-recovery` in the BCB, and `reboot-loader` -- and both need a system
+that is up, which is the argument for a rescue kernel that is not the one
+under development.
