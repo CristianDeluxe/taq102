@@ -33,6 +33,17 @@ for KEY in KEY_VOLUMEDOWN KEY_BACK; do
     fi
 done
 
+# The DRM device appears asynchronously: the deferred-probe workqueue finishes
+# binding rockchip-drm after `insmod` of the PHY module has already returned,
+# and on the first appliance boot glcube ran 0.27 s before /dev/dri/card0
+# existed, spending one of its attempts on "Open card0: No such file".
+i=0
+while [ ! -e /dev/dri/card0 ] && [ $i -lt 100 ]; do
+    usleep 100000
+    i=$((i + 1))
+done
+[ -e /dev/dri/card0 ] || log "no /dev/dri/card0 after 10 s; starting $APP anyway"
+
 n=0
 while [ $n -lt $LIMIT ]; do
     log "starting $APP (attempt $((n + 1)))"

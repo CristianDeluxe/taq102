@@ -1,0 +1,8 @@
+config BR2_PACKAGE_TAQ102_DISPLAY
+	bool "taq102-display (LVDS video PHY module and its loader)"
+	help
+	  The rockchip-inno video combo PHY driver built as a module from our
+	  4.4.167 tree, plus the script /init runs to load it before anything
+	  draws. Built into the kernel the driver hangs the boot at the PHY's
+	  first power-on, before any console exists; loaded after /init has a
+	  console it brings the display up in a second.

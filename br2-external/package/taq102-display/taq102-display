@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# Load the LVDS video PHY driver, which this image carries as a module.
+#
+# Built into the kernel, the driver hangs the boot at the PHY's first power-on,
+# before any console exists to say so. Loaded from here, after /init has raised
+# the USB console, the same code brings the display up within a second: the
+# hang is a boot-time ordering problem, not the driver. The DRM device exists
+# only once this module is in, so it runs before anything draws.
+#
+# Under the stock 4.4.103 kernel there is no such module -- that kernel has its
+# own LVDS driver built in -- and this script has nothing to do.
+
+MODULE=/lib/modules/$(uname -r)/extra/phy-rockchip-inno-video-combo-phy.ko
+
+log() { echo "taq102-display: $1" > /dev/kmsg; }
+
+if [ ! -f "$MODULE" ]; then
+    log "no PHY module for $(uname -r); the kernel must carry the driver itself"
+    exit 0
+fi
+
+if insmod "$MODULE"; then
+    log "loaded $MODULE"
+else
+    log "insmod $MODULE failed: $?"
+    exit 1
+fi

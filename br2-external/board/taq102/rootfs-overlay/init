@@ -66,6 +66,11 @@ fi
 # --- from here on there is somewhere to shout ------------------------------
 mkdir -p /sys/kernel/debug && mount -t debugfs none /sys/kernel/debug 2>/dev/null
 
+# Our own kernel carries the LVDS PHY driver as a module (built in, it hangs
+# the boot before there is a console). Nothing draws until it is loaded, so it
+# goes in here, now that there is somewhere to report a failure.
+[ -x /usr/sbin/taq102-display ] && /usr/sbin/taq102-display
+
 # The panel's backlight comes up at the device tree's default of 128 of 255,
 # which reads as a washed-out screen and is not a colour problem. Nothing else
 # raises it, so do it here, before anything draws.

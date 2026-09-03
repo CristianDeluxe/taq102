@@ -18,3 +18,12 @@ kernel (`54shady/qop_kernel`, 4.4.167), so the vermagic question does not arise:
 
 The image carries both and `taq102-wifi` picks by `uname -r`, so one image boots
 on either kernel. `CONFIG_MODULE_SIG` is unset, so signing is not a constraint.
+
+`phy-rockchip-inno-video-combo-phy-4.4.167.ko` — the LVDS video PHY driver
+built from our 4.4.167 tree with `kernel/patches/0002` applied, kept as a
+module because built into the kernel it hangs the boot at the PHY's first
+power-on. Loaded by `taq102-display` from `/init`. md5
+`8082e7153743e4294a4e9c6c9acece76`, 120104 bytes; verify the size after any
+copy, a zero-byte transfer once read as `invalid module format`.
+
+    vermagic    4.4.167 SMP preempt mod_unload modversions ARMv7 p2v8
