@@ -713,3 +713,82 @@ Ours reports the identical mode and timings but `real_clk[50000]`, off cpll
 (400 MHz / 8). The stock kernel has `CONFIG_DEVMEM` unset, so its PHY registers
 cannot be read directly; debugfs is the only window, which is why the stock
 write sequence had to come from disassembly.
+
+## The panel had no power, and the kernel that worked was the one that failed to switch it off
+
+2026-09-03, evening. Every register in the VOP, the PHY and the GRF had been
+read, swept and matched to the stock kernel byte for byte, and the panel was
+still white with the VOP forced to black. What no register dump covers is the
+PMIC. `tools/panel-camera/snapshot.sh` captures what a kernel exposes without
+`/dev/mem` -- regulators, the RK816 regmap, pinmux, gpio, clocks, power
+domains, the DRM summary -- and diffing the two kernels' snapshots file by
+file (`docs/evidence/2026-09-03/`) gave the answer in one line each:
+
+|                            | stock 4.4.103, picture | ours 4.4.167, white |
+| -------------------------- | ---------------------- | ------------------- |
+| `regulator.12` (ldo6)      | `state=enabled`        | `state=disabled`    |
+| RK816 reg 0x28, LDO_EN_REG2 | `0x73`                | `0xf1`              |
+
+**LDO6 is the panel's 3.3 V.** Nothing in the device tree claims it and its
+node says only `regulator-boot-on`, so the regulator core switches the unused
+rail off at late init: ours logs `ldo6: disabling` and succeeds. The stock
+kernel logs the same line and then `ldo6: couldn't disable: -1` -- a vendor
+hack in its regulator core (the `+++++enter _regulator_do_disable` prints
+around it) refuses, and that refusal is what kept this panel alive for the
+tablet's whole life. "Copy the vendor" could never find it: both display
+drivers were already identical, the difference sat in a third subsystem.
+
+Measured, not argued: with our kernel up and `glcube` running,
+`i2cset -f -y 2 0x1a 0x28 0x22` set the enable bit (readback `0x23`), and a
+restart of `glcube` put the cube on the panel: `YAVG=82..87 motion=5.5..13.3`
+against the v14 control's `82.9 / 6.96`, photograph in
+`docs/evidence/2026-09-03/camera/`. `tools/make-hybrid-dts.py` now grafts
+`regulator-always-on` onto `LDO_REG6`, which reproduces exactly the state the
+stock kernel measures; v28 boots with `reg 0x28 = 0x73` and no `disabling`
+line.
+
+**Every earlier negative result was taken with the rail off**, so every one
+of them is void, not wrong: the polarity sweeps, the PLL divisors, the
+common-mode voltage, the panel-enable GPIO, the loader logo. The register
+work was still worth doing -- it is what proved the fault was not on the link
+-- but the lesson is sharper than "read more registers": when two kernels
+behave differently on identical hardware, diff everything both of them
+expose before reading anything either of them hides.
+
+### The first modeset still leaves the panel enable low
+
+v28 boots with the rail on and the panel is white again, and the enable GPIO
+(`GPIO2_B4`, `gpio-76 enable`) reads `out lo` where the stock kernel reads
+`in hi`. Raising it with `devmem` (bank `0x20084000`; `0x2007c000` is GPIO0,
+which cost one wrong write) gives the picture at once. A 50 ms poll of the
+GPIO2 direction and data registers (`docs/evidence/2026-09-03/*gpio2-trace*`)
+shows the pin already output-low before the PHY module loads, before DRM
+binds, and never moving through the modeset or the `glcube` start: 138
+samples, no transitions.
+
+So two things conspire. U-Boot parks the pin low because our hybrid tree no
+longer carries the `lvds@20038000` node its own display code reads, so it
+never brings the panel up. Then `rockchip_drm`'s `setup_initial_state()`
+calls `loader_protect(on)` on the panel *before* knowing whether the loader
+left a display running -- `panel_simple_loader_protect(on)` marks the panel
+prepared and enabled without touching hardware -- and when the route fails
+(`can't not find any loader display`) the off path is literally
+`/* do nothing */`. The flags stay set, the first real `prepare()` returns
+early, and the enable is never driven. Only a later unprepare/prepare cycle
+(`glcube` exiting and restarting) ever raised it, which is why the second
+modeset showed the picture and the first did not.
+`kernel/patches/0003-*` makes the off path reset the state.
+
+### v29 and a copy that was short
+
+The v29 image with that patch left the tablet dark at U-Boot, with no USB
+gadget and no Wi-Fi. Not the patch: the zImage inside the image is 6,946,816
+bytes and the one the VM built is 7,868,368. `orb -m taq102 cat zImage >
+file` cut the stream at a round 0x6A0000 without an error -- the second
+silent short copy of the day, after the zero-byte module. `tools/pull-kernel.sh`
+now copies through the shared `/Users` mount and hashes both sides, and the
+rebuilt `recovery-taq102-v29-loaderprotect.img` carries the full kernel
+(`047c0cba...`). It is built and verified and **not yet tested**: U-Boot
+raises no USB at the logo, so the tablet needs the volume button held from
+before power-on to boot the v18 rescue image in `recovery`, then
+`reboot-loader` and `tools/flash-boot.sh` with the v29 image.
