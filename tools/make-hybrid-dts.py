@@ -94,19 +94,16 @@ grf = grf[: grf.rindex("\t};")] + new_lvds.lstrip("\n") + "\t};"
 text = text[:a] + grf + text[b:]
 
 # 4. The PWM driver in this tree wants its pinctrl state called "active".
-text = text.replace(
-    '\tpwm@20050000 {\n'
-    '\t\tcompatible = "rockchip,rk3288-pwm";\n'
-    '\t\treg = <0x20050000 0x10>;\n'
-    '\t\t#pwm-cells = <0x3>;\n'
-    '\t\tpinctrl-names = "default";',
-    '\tpwm@20050000 {\n'
-    '\t\tcompatible = "rockchip,rk3288-pwm";\n'
-    '\t\treg = <0x20050000 0x10>;\n'
-    '\t\t#pwm-cells = <0x3>;\n'
-    '\t\tpinctrl-names = "active";', 1)
+a, b = node(text, r"^\tpwm@20050000 \{")
+pwm = text[a:b]
+if 'pinctrl-names = "default";' not in pwm:
+    raise SystemExit("pwm pinctrl-names not found: the 'active' graft would be lost")
+text = text[:a] + pwm.replace('pinctrl-names = "default";',
+                              'pinctrl-names = "active";', 1) + text[b:]
 
 # 5. The panel is JEIDA-24 (0x1012), not RGB666_1X18 (0x1009).
+if "\t\tbus-format = <0x1009>;" not in text:
+    raise SystemExit("bus-format 0x1009 not found: the JEIDA-24 graft would be lost")
 text = text.replace("\t\tbus-format = <0x1009>;", "\t\tbus-format = <0x1012>;", 1)
 
 open(dst, "w").write(text)
