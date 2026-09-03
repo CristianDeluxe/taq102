@@ -1,0 +1,49 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+           CPU0       CPU1       CPU2       CPU3       
+ 16:          0          0          0          0       GIC  29 Edge      arch_timer
+ 17:      20354       8558       6812       7519       GIC  30 Edge      arch_timer
+ 18:          0          0          0          0       GIC  60 Level     rk_timer
+ 19:       4020          0          0          0       GIC  32 Level     20078000.pdma
+ 20:          0          0          0          0       GIC  33 Level     20078000.pdma
+ 25:      25180          0          0          0       GIC  35 Level     Mali_GP
+ 26:          0          0          0          0       GIC  36 Level     Mali_GP_MMU, Mali_PP0_MMU, Mali_PP1_MMU
+ 27:      26104          0          0          0       GIC  37 Level     Mali_PP0, Mali_PP1
+ 28:          0          0          0          0       GIC  38 Level     10104000.vpu_service
+ 29:          0          0          0          0       GIC  39 Level     10104000.vpu_service
+ 31:          0          0          0          0       GIC  80 Level     10108000.iep
+ 32:          0          0          0          0       GIC  40 Level     rk312x-camera
+ 33:          0          0          0          0       GIC  76 Level     rga
+ 34:      25223          0          0          0       GIC  41 Level     1010e000.vop, 1010e000.vop
+ 36:         53          0          0          0       GIC  42 Level     10180000.usb, 10180000.usb, dwc2_hsotg:usb1
+ 38:          0          0          0          0       GIC  46 Level     dw-mci
+ 39:      83995          0          0          0       GIC  47 Level     dw-mci
+ 40:        164          0          0          0       GIC  48 Level     dw-mci
+ 43:      10046          0          0          0       GIC  58 Level     2005a000.i2c
+ 45:       4645          0          0          0       GIC  49 Level     2006c000.saradc
+ 46:         48          0          0          0       GIC  56 Level     20072000.i2c
+ 53:          0          0          0          0     gpio0   2 Level     rk816, rk816_battery
+ 78:          0          0          0          0     gpio0  27 Edge      rtw_wifi_gpio_wakeup
+118:          0          0          0          0     gpio2   3 Edge      10214000.dwmmc cd
+130:          6          0          0          0     gpio2  15 Edge      GSL3673
+131:          0          0          0          0     gpio2  16 Edge      bt_default_wake_host_irq
+179:          0          0          0          0       GIC 159 Edge      debug-signal
+181:          0          0          0          0       GIC  84 Level     rockchip_usb2phy
+182:          0          0          0          0       GIC  67 Level     rockchip_usb2phy_bvalid
+183:          0          0          0          0       GIC  83 Level     rockchip_usb2phy_id
+184:          0          0          0          0       GIC  85 Level     rockchip_usb2phy
+185:          0          0          0          0     rk816   0 Edge      rk8xx_pwrkey_fall
+186:          0          0          0          0     rk816   1 Edge      rk8xx_pwrkey_rise
+187:          0          0          0          0     rk816   2 Edge      rk816_vb_low
+191:          0          0          0          0     rk816   6 Edge      RTC alarm
+203:          0          0          0          0  rk816_battery   9 Edge      rk816_plug_in
+204:          0          0          0          0  rk816_battery  10 Edge      rk816_plug_out
+208:          0          0          0          0  rk816_battery  14 Edge      rk816_cvtlmt
+IPI0:          0          0          0          0  CPU wakeup interrupts
+IPI1:          0          0          0          0  Timer broadcast interrupts
+IPI2:      20425      83389      69420      59639  Rescheduling interrupts
+IPI3:          1          5          6          4  Function call interrupts
+IPI4:          2          2          1          1  Single function call interrupts
+IPI5:          0          0          0          0  CPU stop interrupts
+IPI6:          0          0          0          0  IRQ work interrupts
+IPI7:          0          0          0          0  completion interrupts
+Err:          0

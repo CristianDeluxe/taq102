@@ -1,0 +1,244 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+RockChip-CamSys
+adc_keys
+alarmtimer
+armv7-pmu
+armv7sec
+asoc-simple-card
+bcm4329_wlan
+bcmdhd_wlan
+bt-sco
+cdn-dp
+cpufreq-dt
+dw-apb-uart
+dw-hdmi-hdcp
+dw-hdmi-i2s-audio
+dw-mipi-dsi
+dw_mmc
+dwc2
+dwhdmi-rockchip
+dwmmc_rockchip
+ehci-platform
+fiq_debugger
+gpio-event
+gpio-keys
+gva_codec
+hdmi-audio-codec
+i2c-gpio
+iep
+inno-hdmi-phy
+inno-mipi-dphy
+inno-video-combo-phy
+innohdmi-rockchip
+inv_mpu_iio_hid
+ion-rk
+keycombo
+keyreset
+leds-gpio
+mali
+mali-utgard
+mh248
+ohci-platform
+panel-simple
+pwm-backlight
+pwm-regulator
+ramoops
+reg-dummy
+reg-fixed-voltage
+rfkill_bt
+rga
+rga2
+rk-fiq-debugger
+rk-hdmi-analog-sound
+rk-hdmi-dp-sound
+rk-keypad
+rk-vcodec
+rk-vibrator
+rk3036-dwc-control-usb
+rk3036-usb-control
+rk3126-dwc-control-usb
+rk3126-usb-control
+rk312x-camera
+rk312x-codec
+rk3188-dwc-control-usb
+rk3288-dwc-control-usb
+rk3368-thermal
+rk3x-i2c
+rk808-clkout
+rk808-regulator
+rk808-rtc
+rk816-battery
+rk818-battery
+rk818-regulator
+rk8xx-pwrkey
+rk_gmac-dwmac
+rk_iommu
+rk_iommu_domain
+rk_sensor
+rknand
+rockchip-cdndp-sound
+rockchip-clcok-pvtm
+rockchip-cpuinfo
+rockchip-dfi
+rockchip-dmc
+rockchip-dp
+rockchip-dp-phy
+rockchip-drm
+rockchip-efuse
+rockchip-emmc-phy
+rockchip-i2s
+rockchip-iodomain
+rockchip-lvds
+rockchip-nocp
+rockchip-pinctrl
+rockchip-pm-domain
+rockchip-pvtm
+rockchip-pwm
+rockchip-saradc
+rockchip-scr
+rockchip-spdif
+rockchip-spi
+rockchip-thermal
+rockchip-usb-phy
+rockchip-usb2phy
+rockchip-vop
+rockchip_headset
+rt-flash-led
+rt8547
+serial8250
+snd-soc-dummy
+soc-audio
+soc-camera-pdrv
+spdif-dir
+spdif-dit
+sram
+syscon
+syscon-reboot-mode
+timed-gpio
+usb20_host
+usb20_otg
+usb_cam_gpio
+virtual-thermal
+wlan-platdata
+
+RockChip-CamSys: 
+adc_keys: adc-keys 
+alarmtimer: alarmtimer 
+armv7-pmu: arm-pmu 
+armv7sec: armv7sec.0 
+asoc-simple-card: sound 
+bcm4329_wlan: 
+bcmdhd_wlan: 
+bt-sco: 
+cdn-dp: 
+cpufreq-dt: cpufreq-dt 
+dw-apb-uart: 20064000.serial 
+dw-hdmi-hdcp: 
+dw-hdmi-i2s-audio: 
+dw-mipi-dsi: 
+dw_mmc: 
+dwc2: 10180000.usb 
+dwhdmi-rockchip: 
+dwmmc_rockchip: 10214000.dwmmc 10218000.dwmmc 1021c000.dwmmc 
+ehci-platform: 
+fiq_debugger: fiq_debugger.0 
+gpio-event: 
+gpio-keys: 
+gva_codec: 
+hdmi-audio-codec: 
+i2c-gpio: 
+iep: 10108000.iep 
+inno-hdmi-phy: 
+inno-mipi-dphy: 
+inno-video-combo-phy: 20038000.video-phy 
+innohdmi-rockchip: 
+inv_mpu_iio_hid: 
+ion-rk: 
+keycombo: 
+keyreset: 
+leds-gpio: 
+mali: 
+mali-utgard: 10091000.gpu 
+mh248: 
+ohci-platform: 
+panel-simple: lvds-panel 
+pwm-backlight: backlight 
+pwm-regulator: 
+ramoops: ramoops 
+reg-dummy: reg-dummy 
+reg-fixed-voltage: vcc-sys vccadc-ref 
+rfkill_bt: wireless-bluetooth 
+rga: 1010c000.rga 
+rga2: 
+rk-fiq-debugger: fiq-debugger 
+rk-hdmi-analog-sound: 
+rk-hdmi-dp-sound: 
+rk-keypad: 
+rk-vcodec: 10104000.vpu_service 
+rk-vibrator: 
+rk3036-dwc-control-usb: 
+rk3036-usb-control: 
+rk3126-dwc-control-usb: 
+rk3126-usb-control: 
+rk312x-camera: 1010a000.cif 
+rk312x-codec: 20030000.codec 
+rk3188-dwc-control-usb: 
+rk3288-dwc-control-usb: 
+rk3368-thermal: 
+rk3x-i2c: 2005a000.i2c 20072000.i2c 
+rk808-clkout: rk808-clkout 
+rk808-regulator: rk808-regulator 
+rk808-rtc: rk808-rtc 
+rk816-battery: rk816-battery 
+rk818-battery: 
+rk818-regulator: 
+rk8xx-pwrkey: rk8xx-pwrkey 
+rk_gmac-dwmac: 
+rk_iommu: 10104800.iommu 10108800.iommu 1010e300.iommu 
+rk_iommu_domain: rk_iommu_domain.0.auto rk_iommu_domain.1.auto rk_iommu_domain.2.auto 
+rk_sensor: cif_sensor 
+rknand: 
+rockchip-cdndp-sound: 
+rockchip-clcok-pvtm: 
+rockchip-cpuinfo: cpuinfo 
+rockchip-dfi: dfi 
+rockchip-dmc: dmc 
+rockchip-dp: 
+rockchip-dp-phy: 
+rockchip-drm: display-subsystem 
+rockchip-efuse: 20090000.efuse 
+rockchip-emmc-phy: 
+rockchip-i2s: 10220000.i2s-2ch 
+rockchip-iodomain: 
+rockchip-lvds: 20008000.syscon:lvds 
+rockchip-nocp: 
+rockchip-pinctrl: pinctrl 
+rockchip-pm-domain: 100a0000.syscon:power-controller 
+rockchip-pvtm: 
+rockchip-pwm: 20050000.pwm 
+rockchip-saradc: 2006c000.saradc 
+rockchip-scr: 
+rockchip-spdif: 
+rockchip-spi: 
+rockchip-thermal: 
+rockchip-usb-phy: 
+rockchip-usb2phy: 20008000.syscon:usb2-phy@17c 
+rockchip-vop: 1010e000.vop 
+rockchip_headset: 
+rt-flash-led: 
+rt8547: 
+serial8250: serial8250 
+snd-soc-dummy: snd-soc-dummy 
+soc-audio: 
+soc-camera-pdrv: bf20a2_front_9 bf3925_back_6 gc0312_front_8 gc0328_back_5 gc2145_back_4 hi256_back_3 sp0718_front_11 sp0a19_front_10 sp2519_back_7 
+spdif-dir: 
+spdif-dit: 
+sram: 
+syscon: 
+syscon-reboot-mode: 100a0000.syscon:reboot-mode 
+timed-gpio: 
+usb20_host: debuglevel version 
+usb20_otg: debuglevel dwc_otg_conn_en force_usb_mode op_state vbus_status version 
+usb_cam_gpio: 
+virtual-thermal: tsadc 
+wlan-platdata: wireless-wlan 

@@ -1,0 +1,19 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+VOP [1010e000.vop]: ACTIVE
+    Connector: LVDS
+	overlay_mode[0] bus_format[1009] output_mode[0] color_space[0]
+    Display mode: 1024x600p56
+	clk[51200] real_clk[51200] type[8] flag[a]
+	H: 1024 1184 1254 1414
+	V: 600 612 622 645
+    win0-0: ACTIVE
+	format: XR24 little-endian (0x34325258) SDR[0] color_space[0]
+	csc: y2r[0] r2r[0] r2y[0] csc mode[0]
+	zpos: 0
+	src: pos[0x0] rect[1024x600]
+	dst: pos[0x0] rect[1024x600]
+	buf[0]: addr: 0x004b0000 pitch: 4096 offset: 0
+    win1-0: DISABLED
+    post: sdr2hdr[0] hdr2sdr[0]
+    pre : sdr2hdr[0]
+    post CSC: r2y[0] y2r[0] CSC mode[1]

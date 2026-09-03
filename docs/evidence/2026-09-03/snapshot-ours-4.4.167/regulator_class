@@ -1,0 +1,105 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+== /sys/class/regulator/regulator.0 regulator-dummy
+state=
+status=
+microvolts=
+min_microvolts=
+max_microvolts=
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.1 SARADC_AVDD33
+state=
+status=
+microvolts=3300000
+min_microvolts=
+max_microvolts=
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.10 ldo4
+state=enabled
+status=
+microvolts=3300000
+min_microvolts=3300000
+max_microvolts=3300000
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.11 ldo5
+state=enabled
+status=
+microvolts=3300000
+min_microvolts=3300000
+max_microvolts=3300000
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.12 ldo6
+state=disabled
+status=
+microvolts=3300000
+min_microvolts=3300000
+max_microvolts=3300000
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.2 vcc_sys
+state=
+status=
+microvolts=4000000
+min_microvolts=
+max_microvolts=
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.3 vdd_arm
+state=enabled
+status=
+microvolts=1375000
+min_microvolts=750000
+max_microvolts=1450000
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.4 vdd_logic
+state=enabled
+status=
+microvolts=1250000
+min_microvolts=750000
+max_microvolts=1450000
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.5 vcc_ddr
+state=enabled
+status=
+microvolts=
+min_microvolts=
+max_microvolts=
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.6 vcc_io
+state=enabled
+status=
+microvolts=3300000
+min_microvolts=3300000
+max_microvolts=3300000
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.7 vcc28_cif
+state=enabled
+status=
+microvolts=2800000
+min_microvolts=2800000
+max_microvolts=2800000
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.8 vcc18_cif
+state=enabled
+status=
+microvolts=1800000
+min_microvolts=1800000
+max_microvolts=1800000
+num_users=0
+type=voltage
+== /sys/class/regulator/regulator.9 vdd_11
+state=enabled
+status=
+microvolts=1100000
+min_microvolts=1100000
+max_microvolts=1100000
+num_users=0
+type=voltage

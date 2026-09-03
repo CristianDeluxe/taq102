@@ -1,0 +1,275 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+Pinctrl maps:
+device 20050000.pwm
+state active
+type MUX_GROUP (2)
+controlling device pinctrl
+group pwm0-pin
+function pwm0
+
+device 20050000.pwm
+state active
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio0-26
+config 00000001
+
+device 20064000.serial
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group uart1-xfer
+function uart1
+
+device 20064000.serial
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-9
+config 00010004
+
+device 20064000.serial
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-10
+config 00010004
+
+device 20064000.serial
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group uart1-cts
+function uart1
+
+device 20064000.serial
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-8
+config 00000001
+
+device 2005a000.i2c
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group i2c2-xfer
+function i2c2
+
+device 2005a000.i2c
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio2-20
+config 00000001
+
+device 2005a000.i2c
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio2-21
+config 00000001
+
+device 2-001a
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group pmic-int-l
+function pmic
+
+device 2-001a
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio0-2
+config 00010004
+
+device 20072000.i2c
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group i2c0-xfer
+function i2c0
+
+device 20072000.i2c
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio0-0
+config 00000001
+
+device 20072000.i2c
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio0-1
+config 00000001
+
+device 10214000.dwmmc
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group sdmmc-clk
+function sdmmc
+
+device 10214000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-16
+config 00000001
+
+device 10214000.dwmmc
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group sdmmc-cmd
+function sdmmc
+
+device 10214000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-15
+config 00010004
+
+device 10214000.dwmmc
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group sdmmc-bus4
+function sdmmc
+
+device 10214000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-18
+config 00010004
+
+device 10214000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-19
+config 00010004
+
+device 10214000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-20
+config 00010004
+
+device 10214000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-21
+config 00010004
+
+device wireless-bluetooth
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group uart1-rts
+function uart1
+
+device wireless-bluetooth
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-11
+config 00000001
+
+device wireless-bluetooth
+state rts_gpio
+type MUX_GROUP (2)
+controlling device pinctrl
+group uart1-rts-gpio
+function wireless-bluetooth
+
+device wireless-bluetooth
+state rts_gpio
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-11
+config 00000001
+
+device 10218000.dwmmc
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group sdio-pwren
+function sdio
+
+device 10218000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio0-30
+config 00010004
+
+device 10218000.dwmmc
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group sdio-cmd
+function sdio
+
+device 10218000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio0-3
+config 00010004
+
+device 10218000.dwmmc
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group sdio-clk
+function sdio
+
+device 10218000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-0
+config 00000001
+
+device 10218000.dwmmc
+state default
+type MUX_GROUP (2)
+controlling device pinctrl
+group sdio-bus4
+function sdio
+
+device 10218000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-1
+config 00010004
+
+device 10218000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-2
+config 00010004
+
+device 10218000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-4
+config 00010004
+
+device 10218000.dwmmc
+state default
+type CONFIGS_PIN (3)
+controlling device pinctrl
+pin gpio1-5
+config 00010004
+

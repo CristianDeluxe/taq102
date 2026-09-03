@@ -1,0 +1,60 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+Requested pin control handlers their pinmux maps:
+device: pinctrl current state: none
+device: 20050000.pwm current state: active
+  state: active
+    type: MUX_GROUP controller rockchip-pinctrl group: pwm0-pin (32) function: pwm0 (14)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio0-26 (26)config 00000001
+device: 20064000.serial current state: default
+  state: default
+    type: MUX_GROUP controller rockchip-pinctrl group: uart1-xfer (14) function: uart1 (8)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-9 (41)config 00010004
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-10 (42)config 00010004
+    type: MUX_GROUP controller rockchip-pinctrl group: uart1-cts (15) function: uart1 (8)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-8 (40)config 00000001
+device: 2005a000.i2c current state: default
+  state: default
+    type: MUX_GROUP controller rockchip-pinctrl group: i2c2-xfer (9) function: i2c2 (5)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio2-20 (84)config 00000001
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio2-21 (85)config 00000001
+device: 2-001a current state: default
+  state: default
+    type: MUX_GROUP controller rockchip-pinctrl group: pmic-int-l (54) function: pmic (22)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio0-2 (2)config 00010004
+device: 20072000.i2c current state: default
+  state: default
+    type: MUX_GROUP controller rockchip-pinctrl group: i2c0-xfer (7) function: i2c0 (3)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio0-0 (0)config 00000001
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio0-1 (1)config 00000001
+device: 10214000.dwmmc current state: default
+  state: default
+    type: MUX_GROUP controller rockchip-pinctrl group: sdmmc-clk (20) function: sdmmc (10)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-16 (48)config 00000001
+    type: MUX_GROUP controller rockchip-pinctrl group: sdmmc-cmd (21) function: sdmmc (10)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-15 (47)config 00010004
+    type: MUX_GROUP controller rockchip-pinctrl group: sdmmc-bus4 (24) function: sdmmc (10)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-18 (50)config 00010004
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-19 (51)config 00010004
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-20 (52)config 00010004
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-21 (53)config 00010004
+device: wireless-bluetooth current state: default
+  state: default
+    type: MUX_GROUP controller rockchip-pinctrl group: uart1-rts (16) function: uart1 (8)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-11 (43)config 00000001
+  state: rts_gpio
+    type: MUX_GROUP controller rockchip-pinctrl group: uart1-rts-gpio (55) function: wireless-bluetooth (23)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-11 (43)config 00000001
+device: 1010a000.cif current state: none
+device: 10218000.dwmmc current state: default
+  state: default
+    type: MUX_GROUP controller rockchip-pinctrl group: sdio-pwren (27) function: sdio (11)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio0-30 (30)config 00010004
+    type: MUX_GROUP controller rockchip-pinctrl group: sdio-cmd (26) function: sdio (11)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio0-3 (3)config 00010004
+    type: MUX_GROUP controller rockchip-pinctrl group: sdio-clk (25) function: sdio (11)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-0 (32)config 00000001
+    type: MUX_GROUP controller rockchip-pinctrl group: sdio-bus4 (28) function: sdio (11)
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-1 (33)config 00010004
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-2 (34)config 00010004
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-4 (36)config 00010004
+    type: CONFIGS_PIN controller rockchip-pinctrl pin gpio1-5 (37)config 00010004

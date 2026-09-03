@@ -1,0 +1,17 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+domain                          status          slaves
+    /device                                             runtime status
+----------------------------------------------------------------------
+pd_gpu                          on              
+    /devices/platform/10091000.gpu                      active
+pd_video                        on              
+    /devices/platform/10104800.iommu                    suspended
+    /devices/platform/10104000.vpu_service              active
+pd_vio                          on              
+    /devices/platform/10108800.iommu                    suspended
+    /devices/platform/1010e300.iommu                    active
+    /devices/platform/1010c000.rga                      suspended
+    /devices/platform/10108000.iep                      suspended
+    /devices/platform/20038000.lvds                     active
+    /devices/platform/1010e000.vop                      active
+    /devices/platform/1010a000.cif                      suspended

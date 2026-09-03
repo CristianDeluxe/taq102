@@ -1,0 +1,24 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+ regulator                      use open bypass voltage current     min     max
+-------------------------------------------------------------------------------
+ regulator-dummy                  0    4      0     0mV     0mA     0mV     0mV 
+    10180000.usb                                                    0mV     0mV
+    10180000.usb                                                    0mV     0mV
+    lvds-panel                                                      0mV     0mV
+    backlight                                                       0mV     0mV
+ SARADC_AVDD33                    0    1      0  3300mV     0mA  3300mV  3300mV 
+    2006c000.saradc                                                 0mV     0mV
+ vcc_sys                          0    7      0  4000mV     0mA  4000mV  4000mV 
+    vdd_arm                       0    1      0  1375mV     0mA   750mV  1450mV 
+       cpu0                                                      1375mV  1375mV
+    vdd_logic                     0    2      0  1250mV     0mA   750mV  1450mV 
+       10091000.gpu                                               975mV  1450mV
+       dmc                                                       1250mV  1450mV
+    vcc_ddr                       0    0      0  4000mV     0mA     0mV     0mV 
+    vcc_io                        0    3      0  3300mV     0mA  3300mV  3300mV 
+       vcc28_cif                  0    0      0  2800mV     0mA  2800mV  2800mV 
+       vcc18_cif                  0    0      0  1800mV     0mA  1800mV  1800mV 
+       vdd_11                     0    0      0  1100mV     0mA  1100mV  1100mV 
+    ldo4                          0    0      0  3300mV     0mA  3300mV  3300mV 
+    ldo5                          0    0      0  3300mV     0mA  3300mV  3300mV 
+    ldo6                          0    0      0  3300mV     0mA  3300mV  3300mV 

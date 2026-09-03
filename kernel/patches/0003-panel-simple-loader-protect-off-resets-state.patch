@@ -1,0 +1,33 @@
+panel-simple: undo loader protection when the loader route fails
+
+rockchip_drm's setup_initial_state() calls loader_protect(on) on the panel
+before it knows whether the bootloader actually left a display running, and
+panel_simple_loader_protect(on) marks the panel prepared and enabled without
+touching hardware. When the route then fails -- on the TAQ-102 U-Boot never
+brings the LVDS panel up, so the kernel logs "can't not find any loader
+display" -- the error path calls loader_protect(off), whose body was
+"/* do nothing */". The flags stay set, the first real prepare() returns
+early, and the enable GPIO stays wherever U-Boot parked it: measured
+output-low on this board, with a 50 ms register poll showing no transition
+through the modeset. Only a later unprepare/prepare cycle (glcube exiting
+and restarting) ever raised it, which is why a second modeset showed the
+picture and the first did not.
+
+--- a/drivers/gpu/drm/panel/panel-simple.c
++++ b/drivers/gpu/drm/panel/panel-simple.c
+@@ -561,7 +561,14 @@ static int panel_simple_loader_protect(struct drm_panel *panel, bool on)
+ 		p->prepared = true;
+ 		p->enabled = true;
+ 	} else {
+-		/* do nothing */
++		/*
++		 * The loader did not leave this panel running after all, so
++		 * undo what the on path assumed; otherwise prepare() sees
++		 * prepared == true and never drives the enable GPIO.
++		 */
++		panel_simple_regulator_disable(panel);
++		p->prepared = false;
++		p->enabled = false;
+ 	}
+
+ 	return 0;

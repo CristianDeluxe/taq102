@@ -1,0 +1,9 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+== /sys/bus/platform/devices/1010e000.vop -> ../../../bus/platform/drivers/rockchip-vop
+== /sys/bus/platform/devices/20038000.lvds -> ../../../bus/platform/drivers/rockchip-lvds
+== /sys/bus/platform/devices/lvds-panel -> ../../../bus/platform/drivers/panel-simple
+== /sys/bus/platform/devices/20008000.syscon:usb2-phy@17c -> ../../../../bus/platform/drivers/rockchip-usb2phy
+== /sys/bus/platform/devices/lvds-panel -> ../../../bus/platform/drivers/panel-simple
+== /sys/bus/platform/devices/backlight -> ../../../bus/platform/drivers/pwm-backlight
+== /sys/bus/platform/devices/20050000.pwm -> ../../../bus/platform/drivers/rockchip-pwm
+== /sys/bus/platform/devices/display-subsystem -> ../../../bus/platform/drivers/rockchip-drm
