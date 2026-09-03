@@ -7,10 +7,12 @@ Hardware notes, the recovered stock firmware and the gate-by-gate plan live
 outside this repo: `~/p/brain/personal/denver-taq102-tablet.md`, and the archive
 with every image and checksum is `/Volumes/Datos4TB2/denver-taq102/`.
 
-This repo holds the Buildroot `br2-external` tree for the userspace. It builds
-**no kernel**: the first milestone runs under the stock vendor kernel 4.4.103,
-which already drives the panel, the touch controller, the PMIC, KMS and the
-Mali-400 on this board.
+This repo holds the Buildroot `br2-external` tree for the userspace, and since
+2026-09-03 the scripts, patches and device tree that build our own 4.4.167
+kernel for it (see "Building the kernel" and everything after "The display").
+The first milestone ran under the stock vendor kernel 4.4.103, which already
+drove the panel, the touch controller, the PMIC, KMS and the Mali-400 on this
+board; the stock-kernel rescue image is still what `recovery` holds.
 
 ## Building
 
@@ -797,3 +799,49 @@ the first modeset, and the camera at `YAVG 84..92, motion 5.7 / 8.5 / 20.5`
 (`docs/evidence/2026-09-03/camera/2026-09-03-v29-boot.jpg`). The display path
 on the own-built kernel is closed. Still by hand for now: `insmod` of the PHY
 module after boot, which belongs in the image next.
+
+## The appliance on our own kernel
+
+2026-09-03, 21:10. `boot` now holds `recovery-taq102-v31-appliance.img`: the
+4.4.167 kernel with patch 0003, the LDO6 resource image, and a ramdisk that
+brings the display up by itself. Measured on the tablet from power-on, with
+nothing sent over ssh:
+
+```
+[    4.370] taq102-display: loaded /lib/modules/4.4.167/extra/phy-rockchip-inno-video-combo-phy.ko
+[    4.388] rockchip-vop 1010e000.vop: [drm:vop_crtc_enable] Update mode to 1024x600p56, type: 7
+[    5.104] taq102-app: starting /usr/bin/glcube (attempt 1)
+```
+
+and the camera at `motion 21.2 / 11.5` fifty seconds later. Wi-Fi and ssh come
+up as before.
+
+What changed in the tree for that:
+
+- **`package/taq102-display`** installs the combo PHY driver as a module
+  (`blobs/phy-rockchip-inno-video-combo-phy-4.4.167.ko`, built from our tree
+  with patch 0002 applied) and the script `/init` runs to load it before the
+  backlight is raised. It stays a module on purpose: built in, the driver
+  hangs the boot at the PHY's first power-on before any console exists, and
+  loaded 4 s later the same code brings the display up in 20 ms. Under the
+  stock kernel the script finds no module and does nothing.
+- **`taq102-app` waits for `/dev/dri/card0`.** The deferred-probe workqueue
+  finishes binding rockchip-drm after `insmod` has returned, and the first
+  appliance boot started glcube 0.27 s too early, spending one of its five
+  attempts on `Open card0: No such file or directory`.
+- **Patch 0002 is confirmed harmless with the panel alive** (camera 8.5 / 7.8
+  with it, 5.7 / 20.5 without). Worth knowing: the picture also comes up with
+  the analog block reading `reg01 = 0xE3` and `E4 = 0xAA` -- the reset
+  defaults -- so neither the analog power-up nor the common-mode write is
+  needed by this panel. Both stay because they match the stock state.
+
+The images are packed from the VM's `rootfs.cpio` copied through the shared
+`/Users` mount and hash-checked on both sides, then `make-rescue-ramdisk.sh`
+for the rescue variant and `make-recovery.sh` with `KERNEL=` and `SECOND=`
+pointing at our own kernel and resource image.
+
+`recovery` still holds v18, the stock-kernel rescue image. It is a different
+kind of fallback from an own-kernel rescue -- it survives anything that breaks
+the 4.4.167 build -- and it stays until the button path into it has been
+exercised again: from the dark U-Boot of the truncated v29 the volume button
+did not reach it, while both buttons reached loader mode.
