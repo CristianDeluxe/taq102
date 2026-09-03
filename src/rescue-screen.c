@@ -148,8 +148,22 @@ int main(void) {
         if (first || strcmp(addr, shown)) {
             paint(shadow, W, H, u.release, build, addr);
             for (int y = 0; y < H; y++) memcpy(base + (size_t)y * c.pitch, shadow + (size_t)y * W, (size_t)W * 4);
-            if (first && drmModeSetCrtc(fd, crtc_id, fb, 0, 0, &conn->connector_id, 1, &mode)) {
-                perror("setcrtc"); return 1;
+            if (first) {
+                // Under the stock 4.4.103 kernel the first modeset after boot
+                // leaves the panel blank and the second shows the picture --
+                // measured 2026-09-03: a fresh rescue boot was white, a restart
+                // of this program was not. glcube never sees it because it page
+                // flips right after. So set the mode, drop the CRTC, set it
+                // again; on the 4.4.167 kernel the extra cycle is harmless.
+                if (drmModeSetCrtc(fd, crtc_id, fb, 0, 0, &conn->connector_id, 1, &mode)) {
+                    perror("setcrtc"); return 1;
+                }
+                usleep(200000);
+                drmModeSetCrtc(fd, crtc_id, 0, 0, 0, NULL, 0, NULL);
+                usleep(100000);
+                if (drmModeSetCrtc(fd, crtc_id, fb, 0, 0, &conn->connector_id, 1, &mode)) {
+                    perror("setcrtc again"); return 1;
+                }
             }
             strcpy(shown, addr);
             first = 0;
