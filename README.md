@@ -970,3 +970,35 @@ eyes.
 
 Images: `boot` = `recovery-taq102-v35-appliance.img`, `recovery` =
 `recovery-taq102-v35-stockkernel-rescue.img`, build `9dc924d`, BCB zero.
+
+## The cube stops in five seconds, and the Mac's USB port cannot feed the tablet
+
+2026-09-04, 01:55. Two findings from one evening of leaving the appliance
+alone.
+
+**The cube was still.** `glcube` at 54.8 FPS, the VOP flipping 55 times a
+second, no touch events, and the cube dead: the start-up spin is fed through
+the same coast as touch momentum, which bleeds 1.5% of the angle off per
+frame, so it dies in about five seconds. The camera's motion numbers taken in
+the first minute after a boot were the camera's own exposure settling on a
+fresh modeset, not the cube. `glcube` now tops the spin back up to its
+resting value whenever no finger is down and the coast has fallen below a
+floor. Measured: motion 8.0 / 10.1 / 9.9 at 30 s, 2 min and 4 min.
+
+**The power source decides whether the tablet lives.** The RK816 classifies
+the source and sets the input current limit from it, and the battery line on
+the rescue screen made the difference visible:
+
+| source | detected as | input limit | brightness 40 | brightness 255 |
+| --- | --- | --- | --- | --- |
+| Mac USB port | `NONE USB` | 450 mA | +170 mA | -300 to -450 mA |
+| powered 12 V hub | `CDP1.5A` | 1500 mA | +989 mA | +551 mA |
+
+On the Mac port with the backlight at the maximum `/init` sets, the tablet
+reported `Charging` and ran the battery to 0% at 3.36 V. On the hub it
+charges at full brightness. `current_now` is the number to read; the status
+word is not.
+
+Images: `boot` = `recovery-taq102-v36-appliance.img` (build `c50d311`);
+`recovery` still v35 (`9dc924d`), which differs only by the glcube it does
+not run.
