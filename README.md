@@ -845,3 +845,28 @@ kind of fallback from an own-kernel rescue -- it survives anything that breaks
 the 4.4.167 build -- and it stays until the button path into it has been
 exercised again: from the dark U-Boot of the truncated v29 the volume button
 did not reach it, while both buttons reached loader mode.
+
+### The button does not reach `recovery`
+
+Measured 2026-09-03 21:20, from a clean power-off with the volume button held
+from before power-on: U-Boot booted `boot` (v31, build `821c731`), not
+`recovery`. What the button did was trip the appliance's own skip-autostart
+hatch -- `taq102-app: KEY_BACK held at boot: not starting /usr/bin/glcube` --
+and with nothing drawing, the framebuffer console showed the kernel log on the
+panel (`docs/evidence/2026-09-03/camera/2026-09-03-recovery-button.jpg`).
+Earlier today, from the dark U-Boot of the truncated v29, the same button did
+nothing at all. So the sentence above about the button making U-Boot boot
+`recovery` was never confirmed on this board: the ADC key that exists reports
+`KEY_BACK`, and whatever U-Boot's recovery key is, it is not this one.
+
+The ways into `recovery` are therefore two: `boot-recovery` written to the
+BCB at raw sector 32800 from a running system, and loader mode -- both buttons
+at power-on, or `reboot-loader` -- followed by a flash. Neither needs the
+button alone, and both need a system that is already up or a host at the USB
+cable. That is the real value of keeping a known-good kernel in `recovery`:
+it is reached by software, not by a key U-Boot does not read.
+
+Worth keeping from the same photograph: **our kernel has a visible console.**
+`console=tty0` and the framebuffer console are in its command line and
+config, so whenever nothing owns the screen the kernel log is on the panel.
+The stock kernel, with `CONFIG_VT` unset, never had that.
