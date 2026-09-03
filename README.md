@@ -661,3 +661,12 @@ autoload, so every reboot needs `insmod` of
 `/lib/modules/4.4.167/extra/phy-rockchip-inno-video-combo-phy.ko` -- which is
 the original, without the analog-power patch -- before there is anything to
 measure.
+
+### The harness
+
+`tools/panel-camera/` holds the loop, one script per job: `tablet.sh` (a command
+on the tablet over ssh), `snap.sh` (one webcam frame), `measure.sh` (brightness
+and motion, with the calibration recorded in its header), `phy-write.sh`
+(writes wrapped in the LVDS digital reset) and `vop-write.sh` (writes plus
+`REG_CFG_DONE`). Verified with `./measure.sh repo-check`, which prints the noise
+floor against the white panel.
