@@ -939,3 +939,34 @@ bit-order fault. It was the supervisor relaunching `glcube` under a
 Images at this point: `boot` = `recovery-taq102-v34-appliance.img`,
 `recovery` = `recovery-taq102-v34-stockkernel-rescue.img`, both from build
 `20260903-204222-8fa9f47`, BCB zero.
+
+## The rescue screen shows the battery and the Wi-Fi signal
+
+2026-09-04, 01:10. Two more lines on the amber screen, refreshed every two
+seconds: `BATTERY 0% 3.38V Charging -453MA` and `WIFI 192.168.1.57 -39DBM
+Q82`, from `/sys/class/power_supply/battery` and `/proc/net/wireless`. Both
+kernels expose them. `/proc/net/wireless` prints `100.  -37.` and `%f`
+swallows the dot, so the fields are read as integers with a literal dot after
+each -- the first build showed the address and no signal.
+
+The battery line paid for itself the moment it existed. On the Mac's USB port
+with the backlight at 255 the tablet said `Charging` while draining 300 to
+450 mA, and ran the battery from 12% to 0% at 3.36 V over the evening. At
+brightness 40 it charges at 170 mA. `/init` raises the backlight to the
+maximum because a half-lit panel read as bad colour; on USB power that
+choice empties the battery, and the number, not the status word, is what
+says so.
+
+**The flicker I sees is not yet measured.** Both kernels, both
+images; the webcam sees none of it at its 10 to 24 fps and long exposure
+(four recordings of 20 s, static and moving, every band flat to 0.3 of
+brightness), DDR frequency scaling made exactly one transition since boot,
+GPU frequency none, and the backlight PWM runs at 100% duty. With the
+static rescue screen I sees no flicker; with `glcube` he does. The
+open candidates are the battery at 3.4 V sagging under GPU load, and the
+page-flip path itself. The next measurement is `glcube` on a charged
+battery, then `particles` (CPU load, page flips, no GPU) against the same
+eyes.
+
+Images: `boot` = `recovery-taq102-v35-appliance.img`, `recovery` =
+`recovery-taq102-v35-stockkernel-rescue.img`, build `9dc924d`, BCB zero.
