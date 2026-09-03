@@ -34,6 +34,19 @@ fi
 
 "$RKDEVELOPTOOL" wl "$RECOVERY_LBA" "$IMG"
 
+# Read the span back and compare before touching the BCB: a short or wrong
+# write here is a device that boots into nothing on the next button.
+READBACK=$(mktemp)
+"$RKDEVELOPTOOL" rl "$RECOVERY_LBA" $(( (SIZE + 511) / 512 )) "$READBACK"
+A=$(shasum -a 256 "$IMG" | cut -d' ' -f1)
+B=$(head -c "$SIZE" "$READBACK" | shasum -a 256 | cut -d' ' -f1)
+rm -f "$READBACK"
+if [ "$A" != "$B" ]; then
+    echo "readback mismatch: img=$A dev=$B; BCB left alone" >&2
+    exit 1
+fi
+echo "recovery verified $A"
+
 BCB=$(mktemp)
 printf 'boot-recovery' > "$BCB"
 dd if=/dev/zero bs=1 count=$((4096 - 13)) >> "$BCB" 2>/dev/null
