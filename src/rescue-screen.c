@@ -24,9 +24,14 @@
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
-#define AMBER 0x00E08A00u
-#define INK   0x00201000u
-#define PALE  0x00FFF3D0u
+// Alpha 0xFF on purpose. The framebuffer is added as XRGB8888, but the stock
+// 4.4.103 VOP driver blends it as ARGB: with 0x00 in the top byte the whole
+// window is transparent and the panel shows a washed-out white with a ghost
+// of the picture. Measured 2026-09-03; glcube never hit it because GBM
+// buffers carry 0xFF. The own 4.4.167 kernel does not care either way.
+#define AMBER 0xFFE08A00u
+#define INK   0xFF201000u
+#define PALE  0xFFFFF3D0u
 
 // 3x5 glyphs, three bits per row, bit 2 the left column: A..Z, 0..9, then
 // '.', ':', '-', '/'. Anything else advances without drawing.
