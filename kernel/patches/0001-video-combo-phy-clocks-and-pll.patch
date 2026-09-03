@@ -14,23 +14,52 @@
  	void __iomem *phy_base;
  	void __iomem *host_base;
  	struct reset_control *rst;
-@@ -522,6 +529,7 @@
+@@ -440,8 +447,14 @@
  
+ static void inno_video_phy_lvds_mode_enable(struct inno_video_phy *inno)
+ {
+-	u8 prediv = 2;
+-	u16 fbdiv = 28;
++	/*
++	 * The serial clock has to be exactly 7x the pixel clock, or the data
++	 * slips and the panel saturates to white. 2/28 is 336 MHz, which is
++	 * 7x48 MHz -- the sibling board's panel, not this one. This board
++	 * runs dclk_vop at 50 MHz and so needs 350: 24 / 12 * 175.
++	 */
++	u8 prediv = 12;
++	u16 fbdiv = 175;
+ 	u32 val;
+ 	int ret;
+ 
+@@ -520,8 +533,16 @@
+ {
+ 	struct inno_video_phy *inno = phy_get_drvdata(phy);
+ 
++	/*
++	 * The reference clock is only ever read here to name the PLL parent,
++	 * never enabled: on a MIPI board the DSI driver brings it up. In LVDS
++	 * mode nothing does, so the PHY PLL has no reference and never locks --
++	 * "PLL is not lock", and a panel lit but showing nothing.
++	 */
++	clk_prepare_enable(inno->ref_clk);
  	clk_prepare_enable(inno->pclk_host);
  	clk_prepare_enable(inno->pclk_phy);
 +	clk_prepare_enable(inno->h2p_clk);
  	pm_runtime_get_sync(inno->dev);
  
  	/* Bandgap power on */
-@@ -570,6 +578,7 @@
+@@ -570,8 +591,10 @@
  			LVDS_PLL_POWER_OFF | LVDS_BANDGAP_POWER_DOWN);
  
  	pm_runtime_put(inno->dev);
 +	clk_disable_unprepare(inno->h2p_clk);
  	clk_disable_unprepare(inno->pclk_phy);
  	clk_disable_unprepare(inno->pclk_host);
++	clk_disable_unprepare(inno->ref_clk);
  
-@@ -809,6 +818,11 @@
+ 	return 0;
+ }
+@@ -809,6 +832,11 @@
  		return ret;
  	}
  
