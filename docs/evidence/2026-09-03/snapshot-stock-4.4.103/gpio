@@ -1,0 +1,18 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+GPIOs 1000-1031, platform/pinctrl, gpio0:
+
+GPIOs 1032-1063, platform/pinctrl, gpio1:
+ gpio-1043 (                    |bt_default_rts      ) out hi    
+
+GPIOs 1064-1095, platform/pinctrl, gpio2:
+ gpio-1067 (                    |cd                  ) in  hi    
+ gpio-1072 (                    |?                   ) out hi    
+ gpio-1073 (                    |bt_default_reset    ) out hi    
+ gpio-1075 (                    |spk-ctl             ) out lo    
+ gpio-1076 (                    |enable              ) in  hi    
+ gpio-1077 (                    |reset               ) out hi    
+ gpio-1078 (                    |?                   ) out hi    
+ gpio-1080 (                    |bt_default_wake_host) out hi    
+
+GPIOs 1096-1127, platform/pinctrl, gpio3:
+ gpio-1107 (                    |?                   ) out lo    

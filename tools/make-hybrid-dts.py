@@ -106,5 +106,21 @@ if "\t\tbus-format = <0x1009>;" not in text:
     raise SystemExit("bus-format 0x1009 not found: the JEIDA-24 graft would be lost")
 text = text.replace("\t\tbus-format = <0x1009>;", "\t\tbus-format = <0x1012>;", 1)
 
+# 6. LDO6 of the RK816 powers the panel and nothing in the tree claims it. The
+# stock node says only regulator-boot-on, so this kernel's regulator core
+# switches the unused rail off at late init ("ldo6: disabling") and the panel
+# goes deaf: white, and still white when the VOP is forced to emit black. The
+# 4.4.103 kernel logs the same "disabling" and then "couldn't disable: -1" --
+# a vendor hack in its regulator core is what kept this panel alive. Measured
+# 2026-09-03: RK816 register 0x28 reads 0x73 on stock and 0xf1 here; setting
+# bit 1 over i2c and re-running the modeset put the picture on the panel.
+a, b = node(text, r"^\t\t\t\tLDO_REG6 \{")
+ldo6 = text[a:b]
+if "\t\t\t\t\tregulator-boot-on;\n" not in ldo6:
+    raise SystemExit("LDO_REG6 regulator-boot-on not found: the always-on graft would be lost")
+text = text[:a] + ldo6.replace("\t\t\t\t\tregulator-boot-on;\n",
+                               "\t\t\t\t\tregulator-boot-on;\n\t\t\t\t\tregulator-always-on;\n",
+                               1) + text[b:]
+
 open(dst, "w").write(text)
 print(f"wrote {dst}")

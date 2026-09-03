@@ -1,0 +1,6 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+== /sys/class/backlight/backlight
+brightness=255
+actual_brightness=255
+max_brightness=255
+bl_power=0

@@ -1,0 +1,10 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+rootfs on / type rootfs (rw,size=475996k,nr_inodes=118999)
+proc on /proc type proc (rw,relatime)
+sysfs on /sys type sysfs (rw,relatime)
+tmpfs on /run type tmpfs (rw,relatime,size=500968k,nr_inodes=125242)
+tmpfs on /tmp type tmpfs (rw,relatime,size=500968k,nr_inodes=125242)
+devtmpfs on /dev type devtmpfs (rw,relatime,size=475996k,nr_inodes=118999,mode=755)
+none on /sys/kernel/config type configfs (rw,relatime)
+none on /sys/kernel/debug type debugfs (rw,relatime)
+/dev/mmcblk1p16 on /data type ext4 (rw,noatime,data=ordered)

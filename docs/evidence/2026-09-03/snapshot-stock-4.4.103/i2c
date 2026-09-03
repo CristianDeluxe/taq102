@@ -1,0 +1,20 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+total 0
+drwxr-xr-x    2 root     root             0 Sep  3 17:59 .
+drwxr-xr-x    4 root     root             0 Sep  3 17:59 ..
+lrwxrwxrwx    1 root     root             0 Sep  3 17:59 0-0021 -> ../../../devices/platform/20072000.i2c/i2c-0/0-0021
+lrwxrwxrwx    1 root     root             0 Sep  3 17:59 0-003c -> ../../../devices/platform/20072000.i2c/i2c-0/0-003c
+lrwxrwxrwx    1 root     root             0 Sep  3 17:59 2-0018 -> ../../../devices/platform/2005a000.i2c/i2c-2/2-0018
+lrwxrwxrwx    1 root     root             0 Sep  3 17:59 2-0019 -> ../../../devices/platform/2005a000.i2c/i2c-2/2-0019
+lrwxrwxrwx    1 root     root             0 Sep  3 17:59 2-001a -> ../../../devices/platform/2005a000.i2c/i2c-2/2-001a
+lrwxrwxrwx    1 root     root             0 Sep  3 17:59 2-0040 -> ../../../devices/platform/2005a000.i2c/i2c-2/2-0040
+lrwxrwxrwx    1 root     root             0 Sep  3 17:59 i2c-0 -> ../../../devices/platform/20072000.i2c/i2c-0
+lrwxrwxrwx    1 root     root             0 Sep  3 17:59 i2c-2 -> ../../../devices/platform/2005a000.i2c/i2c-2
+== /sys/bus/i2c/devices/0-0021 gc0312 i2c:gc0312
+== /sys/bus/i2c/devices/0-003c gc2145 i2c:gc2145
+== /sys/bus/i2c/devices/2-0018 gs_stk8baxx i2c:gs_stk8baxx
+== /sys/bus/i2c/devices/2-0019 gs_sc7660 i2c:gs_sc7660
+== /sys/bus/i2c/devices/2-001a rk816 i2c:rk816
+== /sys/bus/i2c/devices/2-0040 GSL3673 i2c:GSL3673
+== /sys/bus/i2c/devices/i2c-0 rk3x-i2c 
+== /sys/bus/i2c/devices/i2c-2 rk3x-i2c 

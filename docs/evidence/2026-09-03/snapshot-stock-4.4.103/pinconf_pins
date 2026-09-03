@@ -1,0 +1,131 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+Pin config settings per pin
+Format: pin (name): configs
+pin 0 (gpio0-0): input bias disabled
+pin 1 (gpio0-1): input bias disabled
+pin 2 (gpio0-2): input bias pull to pin specific state pin output (1 level)
+pin 3 (gpio0-3): input bias pull to pin specific state
+pin 4 (gpio0-4): input bias pull to pin specific state pin output (0 level)
+pin 5 (gpio0-5): input bias pull to pin specific state pin output (0 level)
+pin 6 (gpio0-6): input bias pull to pin specific state pin output (1 level)
+pin 7 (gpio0-7): input bias pull to pin specific state pin output (1 level)
+pin 8 (gpio0-8): input bias pull to pin specific state pin output (1 level)
+pin 9 (gpio0-9): input bias pull to pin specific state pin output (1 level)
+pin 10 (gpio0-10): input bias pull to pin specific state pin output (0 level)
+pin 11 (gpio0-11): input bias pull to pin specific state pin output (1 level)
+pin 12 (gpio0-12): input bias pull to pin specific state pin output (1 level)
+pin 13 (gpio0-13): input bias pull to pin specific state pin output (1 level)
+pin 14 (gpio0-14): input bias pull to pin specific state pin output (1 level)
+pin 15 (gpio0-15): input bias pull to pin specific state pin output (0 level)
+pin 16 (gpio0-16): input bias pull to pin specific state pin output (0 level)
+pin 17 (gpio0-17): input bias pull to pin specific state pin output (1 level)
+pin 18 (gpio0-18): input bias pull to pin specific state pin output (0 level)
+pin 19 (gpio0-19): input bias pull to pin specific state pin output (1 level)
+pin 20 (gpio0-20): input bias pull to pin specific state pin output (1 level)
+pin 21 (gpio0-21): input bias pull to pin specific state pin output (0 level)
+pin 22 (gpio0-22): input bias pull to pin specific state pin output (1 level)
+pin 23 (gpio0-23): input bias pull to pin specific state pin output (1 level)
+pin 24 (gpio0-24): input bias pull to pin specific state pin output (1 level)
+pin 25 (gpio0-25): input bias pull to pin specific state pin output (1 level)
+pin 26 (gpio0-26): input bias disabled
+pin 27 (gpio0-27): input bias pull to pin specific state pin output (0 level)
+pin 28 (gpio0-28): input bias pull to pin specific state pin output (1 level)
+pin 29 (gpio0-29): input bias pull to pin specific state pin output (0 level)
+pin 30 (gpio0-30): input bias pull to pin specific state
+pin 31 (gpio0-31): input bias pull to pin specific state pin output (0 level)
+pin 32 (gpio1-0): input bias disabled
+pin 33 (gpio1-1): input bias pull to pin specific state
+pin 34 (gpio1-2): input bias pull to pin specific state
+pin 35 (gpio1-3): input bias pull to pin specific state pin output (0 level)
+pin 36 (gpio1-4): input bias pull to pin specific state
+pin 37 (gpio1-5): input bias pull to pin specific state
+pin 38 (gpio1-6): input bias pull to pin specific state pin output (0 level)
+pin 39 (gpio1-7): input bias pull to pin specific state pin output (0 level)
+pin 40 (gpio1-8): input bias disabled
+pin 41 (gpio1-9): input bias pull to pin specific state
+pin 42 (gpio1-10): input bias pull to pin specific state
+pin 43 (gpio1-11): input bias disabled
+pin 44 (gpio1-12): input bias pull to pin specific state pin output (1 level)
+pin 45 (gpio1-13): input bias pull to pin specific state pin output (0 level)
+pin 46 (gpio1-14): input bias pull to pin specific state
+pin 47 (gpio1-15): input bias pull to pin specific state
+pin 48 (gpio1-16): input bias disabled
+pin 49 (gpio1-17): input bias pull to pin specific state pin output (0 level)
+pin 50 (gpio1-18): input bias pull to pin specific state
+pin 51 (gpio1-19): input bias pull to pin specific state
+pin 52 (gpio1-20): input bias pull to pin specific state
+pin 53 (gpio1-21): input bias pull to pin specific state
+pin 54 (gpio1-22): input bias pull to pin specific state
+pin 55 (gpio1-23): input bias pull to pin specific state pin output (1 level)
+pin 56 (gpio1-24): input bias pull to pin specific state
+pin 57 (gpio1-25): input bias pull to pin specific state
+pin 58 (gpio1-26): input bias pull to pin specific state
+pin 59 (gpio1-27): input bias pull to pin specific state
+pin 60 (gpio1-28): input bias pull to pin specific state
+pin 61 (gpio1-29): input bias pull to pin specific state
+pin 62 (gpio1-30): input bias pull to pin specific state
+pin 63 (gpio1-31): input bias pull to pin specific state
+pin 64 (gpio2-0): input bias pull to pin specific state
+pin 65 (gpio2-1): input bias pull to pin specific state
+pin 66 (gpio2-2): input bias pull to pin specific state
+pin 67 (gpio2-3): input bias pull to pin specific state pin output (1 level)
+pin 68 (gpio2-4): input bias pull to pin specific state
+pin 69 (gpio2-5): input bias pull to pin specific state
+pin 70 (gpio2-6): input bias pull to pin specific state
+pin 71 (gpio2-7): input bias pull to pin specific state
+pin 72 (gpio2-8): input bias pull to pin specific state pin output (1 level)
+pin 73 (gpio2-9): input bias pull to pin specific state pin output (1 level)
+pin 74 (gpio2-10): input bias pull to pin specific state pin output (0 level)
+pin 75 (gpio2-11): input bias pull to pin specific state pin output (0 level)
+pin 76 (gpio2-12): input bias pull to pin specific state pin output (1 level)
+pin 77 (gpio2-13): input bias pull to pin specific state pin output (1 level)
+pin 78 (gpio2-14): input bias pull to pin specific state pin output (1 level)
+pin 79 (gpio2-15): input bias pull to pin specific state pin output (0 level)
+pin 80 (gpio2-16): input bias pull to pin specific state pin output (1 level)
+pin 81 (gpio2-17): input bias pull to pin specific state pin output (0 level)
+pin 82 (gpio2-18): input bias pull to pin specific state pin output (0 level)
+pin 83 (gpio2-19): input bias pull to pin specific state pin output (0 level)
+pin 84 (gpio2-20): input bias disabled
+pin 85 (gpio2-21): input bias disabled
+pin 86 (gpio2-22): input bias pull to pin specific state pin output (0 level)
+pin 87 (gpio2-23): input bias pull to pin specific state pin output (0 level)
+pin 88 (gpio2-24): input bias pull to pin specific state pin output (0 level)
+pin 89 (gpio2-25): input bias pull to pin specific state pin output (0 level)
+pin 90 (gpio2-26): input bias pull to pin specific state pin output (0 level)
+pin 91 (gpio2-27): input bias pull to pin specific state pin output (0 level)
+pin 92 (gpio2-28): input bias pull to pin specific state pin output (0 level)
+pin 93 (gpio2-29): input bias pull to pin specific state pin output (0 level)
+pin 94 (gpio2-30): input bias pull to pin specific state pin output (0 level)
+pin 95 (gpio2-31): input bias pull to pin specific state pin output (0 level)
+pin 96 (gpio3-0): input bias pull to pin specific state pin output (0 level)
+pin 97 (gpio3-1): input bias pull to pin specific state pin output (0 level)
+pin 98 (gpio3-2): input bias pull to pin specific state pin output (0 level)
+pin 99 (gpio3-3): input bias pull to pin specific state pin output (0 level)
+pin 100 (gpio3-4): input bias pull to pin specific state pin output (0 level)
+pin 101 (gpio3-5): input bias pull to pin specific state pin output (0 level)
+pin 102 (gpio3-6): input bias pull to pin specific state pin output (0 level)
+pin 103 (gpio3-7): input bias pull to pin specific state pin output (0 level)
+pin 104 (gpio3-8): input bias pull to pin specific state pin output (0 level)
+pin 105 (gpio3-9): input bias pull to pin specific state pin output (0 level)
+pin 106 (gpio3-10): input bias pull to pin specific state pin output (0 level)
+pin 107 (gpio3-11): input bias pull to pin specific state pin output (0 level)
+pin 108 (gpio3-12): input bias pull to pin specific state pin output (0 level)
+pin 109 (gpio3-13): input bias pull to pin specific state pin output (0 level)
+pin 110 (gpio3-14): input bias pull to pin specific state pin output (0 level)
+pin 111 (gpio3-15): input bias pull to pin specific state pin output (0 level)
+pin 112 (gpio3-16): input bias pull to pin specific state pin output (0 level)
+pin 113 (gpio3-17): input bias pull to pin specific state pin output (0 level)
+pin 114 (gpio3-18): input bias pull to pin specific state pin output (0 level)
+pin 115 (gpio3-19): input bias pull to pin specific state pin output (0 level)
+pin 116 (gpio3-20): input bias pull to pin specific state pin output (0 level)
+pin 117 (gpio3-21): input bias pull to pin specific state pin output (0 level)
+pin 118 (gpio3-22): input bias pull to pin specific state pin output (1 level)
+pin 119 (gpio3-23): input bias pull to pin specific state pin output (1 level)
+pin 120 (gpio3-24): input bias pull to pin specific state pin output (0 level)
+pin 121 (gpio3-25): input bias pull to pin specific state pin output (1 level)
+pin 122 (gpio3-26): input bias pull to pin specific state pin output (1 level)
+pin 123 (gpio3-27): input bias pull to pin specific state pin output (1 level)
+pin 124 (gpio3-28): input bias pull to pin specific state pin output (0 level)
+pin 125 (gpio3-29): input bias pull to pin specific state pin output (0 level)
+pin 126 (gpio3-30): input bias pull to pin specific state pin output (0 level)
+pin 127 (gpio3-31): input bias pull to pin specific state pin output (0 level)

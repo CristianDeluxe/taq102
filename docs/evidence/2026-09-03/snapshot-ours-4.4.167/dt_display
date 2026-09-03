@@ -1,0 +1,40 @@
+Warning: Permanently added '192.168.1.57' (ED25519) to the list of known hosts.
+== /proc/device-tree/lvds-panel
+backlight:  00 00 00 58
+bus-format:  00 00 10 12
+compatible:  73 69 6d 70 6c 65 2d 70 61 6e 65 6c 00
+disable-delay-ms:  00 00 00 14
+enable-delay-ms:  00 00 00 78
+enable-gpios:  00 00 00 2e 00 00 00 0c 00 00 00 00
+init-delay-ms:  00 00 00 32
+name:  6c 76 64 73 2d 70 61 6e 65 6c 00
+prepare-delay-ms:  00 00 00 32
+reset-delay-ms:  00 00 00 32
+rockchip,data-mapping:  6a 65 69 64 61 00
+rockchip,data-width:  00 00 00 18
+rockchip,output:  6c 76 64 73 00
+status:  6f 6b 61 79 00
+unprepare-delay-ms:  00 00 00 14
+== /proc/device-tree/syscon@20008000/lvds
+compatible:  72 6f 63 6b 63 68 69 70 2c 72 6b 33 31 32 36 2d 6c 76 64 73 00
+name:  6c 76 64 73 00
+phy-names:  70 68 79 00
+phys:  00 00 00 25
+pinctrl-0:  00 00 00 34
+pinctrl-names:  6c 63 64 63 00
+status:  6f 6b 61 79 00
+== /proc/device-tree/backlight
+brightness-levels:  00 00 00 00 00 00 00 01 00 00 00 02 00 00 00 03 00 00 00 04 00 00 00 05 00 00 00 06 00 00 00 07 00 00 00 08 00 00 00 09 00 00 00 0a 00 00 00 0b 00 00 00 0c 00 00 00 0d 00 00 00 0e 00 00 00 0f 00 00 00 10 00 00 00 11 00 00 00 12 00 00 00 13 00 00 00 14 00 00 00 15 00 00 00 16 00 00 00 17 00 00 00 18 00 00 00 19 00 00 00 1a 00 00 00 1b 00 00 00 1c 00 00 00 1d 00 00 00 1e 00 00 00 1f 00 00 00 20 00 
+compatible:  70 77 6d 2d 62 61 63 6b 6c 69 67 68 74 00
+default-brightness-level:  00 00 00 80
+linux,phandle:  00 00 00 58
+name:  62 61 63 6b 6c 69 67 68 74 00
+phandle:  00 00 00 58
+pwms:  00 00 00 57 00 00 00 00 00 00 61 a8 00 00 00 00
+== /proc/device-tree/display-subsystem
+compatible:  72 6f 63 6b 63 68 69 70 2c 64 69 73 70 6c 61 79 2d 73 75 62 73 79 73 74 65 6d 00
+logo-memory-region:  00 00 00 0e
+memory-region:  00 00 00 0d
+name:  64 69 73 70 6c 61 79 2d 73 75 62 73 79 73 74 65 6d 00
+ports:  00 00 00 0c
+status:  6f 6b 61 79 00
