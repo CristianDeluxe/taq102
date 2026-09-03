@@ -949,9 +949,9 @@ kernels expose them. `/proc/net/wireless` prints `100.  -37.` and `%f`
 swallows the dot, so the fields are read as integers with a literal dot after
 each -- the first build showed the address and no signal.
 
-The battery line paid for itself the moment it existed. On the Mac's USB port
-with the backlight at 255 the tablet said `Charging` while draining 300 to
-450 mA, and ran the battery from 12% to 0% at 3.36 V over the evening. At
+The battery line paid for itself the moment it existed. On a powered 12 V
+USB hub with the backlight at 255 the tablet said `Charging` while draining
+300 to 450 mA, and ran the battery from 12% to 0% at 3.36 V over the evening. At
 brightness 40 it charges at 170 mA. `/init` raises the backlight to the
 maximum because a half-lit panel read as bad colour; on USB power that
 choice empties the battery, and the number, not the status word, is what
@@ -986,18 +986,22 @@ resting value whenever no finger is down and the coast has fallen below a
 floor. Measured: motion 8.0 / 10.1 / 9.9 at 30 s, 2 min and 4 min.
 
 **The power source decides whether the tablet lives.** The RK816 classifies
-the source and sets the input current limit from it, and the battery line on
-the rescue screen made the difference visible:
+the source by its data lines and sets the input current limit from that, and
+the battery line on the rescue screen made the difference visible:
 
 | source | detected as | input limit | brightness 40 | brightness 255 |
 | --- | --- | --- | --- | --- |
-| Mac USB port | `NONE USB` | 450 mA | +170 mA | -300 to -450 mA |
-| powered 12 V hub | `CDP1.5A` | 1500 mA | +989 mA | +551 mA |
+| powered 12 V USB hub | `NONE USB` | 450 mA | +170 mA | -300 to -450 mA |
+| USB-C hub | `CDP1.5A` | 1500 mA | +989 mA | +551 mA |
 
-On the Mac port with the backlight at the maximum `/init` sets, the tablet
-reported `Charging` and ran the battery to 0% at 3.36 V. On the hub it
-charges at full brightness. `current_now` is the number to read; the status
-word is not.
+On the 12 V hub -- which sounds like the stronger source and is not, because
+its data lines do not advertise a charging port -- the tablet reported
+`Charging` with the backlight at the maximum `/init` sets, and ran the
+battery to 0% at 3.36 V. On the USB-C hub, whose port enumerates as CDP, it
+charges at full brightness. What matters is what the port *advertises*, not
+the supply behind it; and `current_now` is the number to read, the status
+word is not. (The session first wrote this table the other way round; the
+owner corrected which hub was which.)
 
 Images: `boot` = `recovery-taq102-v36-appliance.img` (build `c50d311`);
 `recovery` still v35 (`9dc924d`), which differs only by the glcube it does
