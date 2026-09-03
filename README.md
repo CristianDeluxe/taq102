@@ -788,7 +788,12 @@ file` cut the stream at a round 0x6A0000 without an error -- the second
 silent short copy of the day, after the zero-byte module. `tools/pull-kernel.sh`
 now copies through the shared `/Users` mount and hashes both sides, and the
 rebuilt `recovery-taq102-v29-loaderprotect.img` carries the full kernel
-(`047c0cba...`). It is built and verified and **not yet tested**: U-Boot
-raises no USB at the logo, so the tablet needs the volume button held from
-before power-on to boot the v18 rescue image in `recovery`, then
-`reboot-loader` and `tools/flash-boot.sh` with the v29 image.
+(`047c0cba...`). U-Boot raises no USB at the logo and the volume button did
+not reach `recovery` this time; both buttons at power-on brought loader mode
+up after a few tries, `tools/flash-boot.sh` wrote and verified the image, and
+**the fixed v29 shows the picture from a clean boot with nothing done by
+hand**: `ldo6=enabled`, RK816 `0x28 = 0x73`, `gpio-76 enable out hi` after
+the first modeset, and the camera at `YAVG 84..92, motion 5.7 / 8.5 / 20.5`
+(`docs/evidence/2026-09-03/camera/2026-09-03-v29-boot.jpg`). The display path
+on the own-built kernel is closed. Still by hand for now: `insmod` of the PHY
+module after boot, which belongs in the image next.
