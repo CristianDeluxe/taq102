@@ -12,6 +12,7 @@ RESCUE_SCREEN_DEPENDENCIES = libdrm
 
 define RESCUE_SCREEN_BUILD_CMDS
 	$(TARGET_CC) $(TARGET_CFLAGS) -O2 -o $(@D)/rescue-screen $(@D)/rescue-screen.c \
+		$(@D)/canvas.c $(@D)/status.c $(@D)/statusbar.c \
 		`$(PKG_CONFIG_HOST_BINARY) --cflags --libs libdrm` -lm
 endef
 

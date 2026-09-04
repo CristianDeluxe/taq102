@@ -20,6 +20,29 @@ LIMIT=5
 
 log() { echo "taq102-app: $1" > /dev/kmsg; }
 
+# Take the framebuffer console off fb0. The kernel command line carries
+# console=tty0 and consoleblank=600, so ten idle minutes after boot fbcon
+# blanked the framebuffer; the fb-blank notifier then put the GSL3673 touch
+# controller into reset (gsl_ts_suspend) and the backlight to zero, and
+# nothing ever unblanks a KMS appliance. Measured 2026-09-04: the reset pin
+# low, the chip silent on i2c, six touch interrupts in eleven hours. With
+# fbcon unbound the vt blank timer has no framebuffer to blank. The console
+# binds as fb0 registers, a moment after the DRM node appears, hence the wait.
+release_console() {
+    i=0
+    while [ $i -lt 20 ]; do
+        for v in /sys/class/vtconsole/vtcon*; do
+            if grep -q "frame buffer" "$v/name" 2>/dev/null; then
+                echo 0 > "$v/bind" && log "fbcon unbound from $v"
+                return
+            fi
+        done
+        usleep 100000
+        i=$((i + 1))
+    done
+    log "no fbcon to unbind"
+}
+
 # A rescue boot must look like one. Under the stock kernel nothing sets a
 # mode until an application does, so a rescue that draws nothing is a white
 # panel -- indistinguishable from an appliance that failed. rescue-screen
@@ -28,6 +51,7 @@ rescue() {
     log "$1"
     if [ -x /usr/bin/rescue-screen ]; then
         [ -e /dev/dri/card0 ] || sleep 3
+        release_console
         exec /usr/bin/rescue-screen >> /tmp/taq102-app.log 2>&1
     fi
     exit 0
@@ -54,6 +78,7 @@ while [ ! -e /dev/dri/card0 ] && [ $i -lt 100 ]; do
     i=$((i + 1))
 done
 [ -e /dev/dri/card0 ] || log "no /dev/dri/card0 after 10 s; starting $APP anyway"
+release_console
 
 n=0
 while [ $n -lt $LIMIT ]; do
