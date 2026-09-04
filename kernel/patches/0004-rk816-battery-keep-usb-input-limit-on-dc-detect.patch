@@ -1,0 +1,58 @@
+rk816_battery: keep the USB input limit when the DC-detect path runs
+
+On every boot with the cable in, the driver logs "set charger type: CDP1.5A,
+input=1500" and, four milliseconds later, "NONE DC, input=450": the DC-jack
+detection -- on a board that has no jack -- takes the DC_TYPE_NONE_CHARGER
+path, sees usb_in set, and writes 450 mA over the limit the USB detection
+just chose. The tablet then drains at full brightness while reporting
+Charging; only re-plugging the cable after boot restores 1500 mA. Measured
+2026-09-04 on the TAQ-102 with a CDP port: -340 mA at boot, +551 mA after a
+re-plug. The stock 4.4.103 logs the same two lines.
+
+Remember the current the USB detection chose and re-apply it there.
+
+diff --git a/drivers/power/rk816_battery.c b/drivers/power/rk816_battery.c
+index 9c6f8dbd..9ed4cdb7 100644
+--- a/drivers/power/rk816_battery.c
++++ b/drivers/power/rk816_battery.c
+@@ -156,6 +156,8 @@ static const char *bat_status[] = {
+ };
+ 
+ struct rk816_battery {
++	/* input limit the USB detection chose; the DC-detect path re-applies it */
++	int			usb_cur;
+ 	struct platform_device		*pdev;
+ 	struct rk808			*rk816;
+ 	struct regmap			*regmap;
+@@ -1535,6 +1537,7 @@ static void rk816_bat_set_chrg_param(struct rk816_battery *di,
+ 	case USB_TYPE_USB_CHARGER:
+ 		di->usb_in = 1;
+ 		di->ac_in = 0;
++		di->usb_cur = INPUT_CUR450MA;
+ 		di->prop_status = POWER_SUPPLY_STATUS_CHARGING;
+ 		if (di->dc_in == 0)
+ 			rk816_bat_set_current(di, INPUT_CUR450MA);
+@@ -1543,6 +1546,7 @@ static void rk816_bat_set_chrg_param(struct rk816_battery *di,
+ 	case USB_TYPE_CDP_CHARGER:
+ 		di->usb_in = 1;
+ 		di->ac_in = 0;
++		di->usb_cur = INPUT_CUR1500MA;
+ 		di->prop_status = POWER_SUPPLY_STATUS_CHARGING;
+ 		if (di->dc_in == 0)
+ 			rk816_bat_set_current(di, INPUT_CUR1500MA);
+@@ -1585,7 +1589,14 @@ static void rk816_bat_set_chrg_param(struct rk816_battery *di,
+ 			di->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
+ 			rk816_bat_set_current(di, INPUT_CUR450MA);
+ 		} else if (di->usb_in) {
+-			rk816_bat_set_current(di, INPUT_CUR450MA);
++			/*
++			 * Keep what the USB detection chose. This ran after it on
++			 * every boot with the cable in, and threw a CDP port's
++			 * 1500 mA away for 450: the tablet then drained at full
++			 * brightness while reporting Charging.
++			 */
++			rk816_bat_set_current(di, di->usb_cur ? di->usb_cur
++							    : INPUT_CUR450MA);
+ 			di->prop_status = POWER_SUPPLY_STATUS_CHARGING;
+ 		}
+ 		power_supply_changed(di->usb);

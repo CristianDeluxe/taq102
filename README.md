@@ -1050,3 +1050,20 @@ One more thing the camera did catch while flipping slowly: a 250 ms blackout
 after `[drm] flip_done timed out` followed by two `vop_crtc_enable` -- a
 page flip whose completion never came, once in twenty slow flips and never
 in 45 minutes of glcube. Separate, rare, and left open.
+
+## The charger limit was thrown away on every boot
+
+2026-09-04, 02:45. With the cable already in at power-on, `rk816-bat` logs
+`set charger type: CDP1.5A, input=1500` and four milliseconds later
+`NONE DC, input=450`. The DC-jack detection, on a board with no jack, takes
+the `DC_TYPE_NONE_CHARGER` path, sees `usb_in`, and writes 450 mA over the
+limit the USB detection just chose. That is why the tablet drained at full
+brightness on every boot and charged only after a re-plug, and why the
+evening's battery numbers depended on when the cable had last moved. The
+stock kernel logs the same two lines and has the same defect.
+
+`kernel/patches/0004-*` remembers the current the USB detection chose and
+re-applies it on that path. Measured on v38, cable in from power-on,
+brightness 255: `NONE DC, input=1500`, `current_now +584 mA`. `boot` =
+`recovery-taq102-v38-charger-appliance.img` (kernel v38, ramdisk v36,
+resource without the VOP IOMMU).
