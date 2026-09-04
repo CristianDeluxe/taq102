@@ -1094,3 +1094,21 @@ it is the upstream configuration.
 
 Nothing found on the rk816 DC-detect override; the vendor repository's
 issues do not mention it.
+
+## The rescue screen got an iOS status bar
+
+2026-09-04, 04:20. Top right of the amber screen: a Wi-Fi fan (a dot and
+three arcs, lit from -55 dBm for three, -70 for two, one below), the battery
+percentage, and a battery outline with a nub whose fill is the charge --
+green while current flows in, red at or under 20% -- and a bolt while
+charging. Every shape is a pixel test into the shadow buffer; nothing is
+shipped but the binary. `RESCUE_DUMP=<file.ppm>` writes each painted frame,
+which is how the bar was checked without a camera
+(`docs/evidence/2026-09-04/rescue-screen-ios-frame.png`).
+
+`boot` = `recovery-taq102-v39-appliance.img`, `recovery` =
+`recovery-taq102-v39-stockkernel-rescue.img`, both build `70968c1`, BCB
+zero. Worth knowing when reading the bar in `recovery`: that image runs the
+stock kernel, whose rk816 driver still carries the DC-detect override that
+patch 0004 fixes in ours, so it shows the battery draining on a port where
+`boot` charges. The bar is telling the truth about that kernel.
