@@ -1006,3 +1006,47 @@ owner corrected which hub was which.)
 Images: `boot` = `recovery-taq102-v36-appliance.img` (build `c50d311`);
 `recovery` still v35 (`9dc924d`), which differs only by the glcube it does
 not run.
+
+## The flicker was the VOP's IOMMU
+
+2026-09-04, 02:40. I saw the panel flicker "like a horror film" on
+the appliance and the webcam saw nothing, four recordings running: every
+band flat to 0.3 of brightness at 10 to 26 fps. That gap was the clue. A
+33 ms exposure averages two panel frames, so what the eye caught and the
+camera could not was frame-by-frame alternation. The chain that found it,
+each step against my eyes because no instrument here could see it:
+
+| test | flicker | what it rules out |
+| --- | --- | --- |
+| rescue-screen, one buffer, no flips | no | backlight, panel, LVDS link, power |
+| `fliptest`, two identical buffers, 55 flips/s | yes | content, GPU |
+| `fliptest` with `FLIP_SAME=1`, same buffer, 55 flips/s | no | the commit / `cfg_done` cycle itself |
+| glcube on v37, VOP without IOMMU | **no** | -- |
+
+Along the way, each measured: the battery (charging at +551 mA, still
+flickering), DDR frequency scaling (one transition since boot), GPU
+frequency and power domain (none, always on), the VOP `bus_error` interrupt
+(enabled by the driver, never raised), ghost touches (0 events in 5 s), and
+a register sweep of the whole VOP block at 55 flips/s that changes exactly
+two words per flip: `WIN0_YRGB_MST` and `REG_CFG_DONE`.
+
+So the flicker came with the *address*, not with the commit: every frame
+that starts at a new IOVA pays the IOMMU's page-table walks and the VOP's
+first lines arrive late, below the threshold of any error flag.
+`make-hybrid-dts.py` now drops `iommus` from the VOP node; rockchip-drm then
+allocates contiguous CMA buffers from its 24 MiB pool at 0x88000000 (the
+summary shows `buf addr 0x88600000` where it showed the IOVA `0x00258000`),
+glcube runs at the same 54.8 FPS, and the picture is steady. The stock
+kernel keeps its IOMMU and does not flicker; how its allocation or its
+`rk_iommu` differs is not yet known and does not need to be for the
+appliance.
+
+The generated tree the tablet runs is now tracked as
+`kernel/rk3126-taq102-hybrid.dts`; `boot` holds
+`recovery-taq102-v37-noiommu-appliance.img` (kernel v29, ramdisk v36,
+resource with this tree). `recovery` is unchanged, v35 on the stock kernel.
+
+One more thing the camera did catch while flipping slowly: a 250 ms blackout
+after `[drm] flip_done timed out` followed by two `vop_crtc_enable` -- a
+page flip whose completion never came, once in twenty slow flips and never
+in 45 minutes of glcube. Separate, rare, and left open.
