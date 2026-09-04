@@ -1067,3 +1067,30 @@ re-applies it on that path. Measured on v38, cable in from power-on,
 brightness 255: `NONE DC, input=1500`, `current_now +584 mA`. `boot` =
 `recovery-taq102-v38-charger-appliance.img` (kernel v38, ramdisk v36,
 resource without the VOP IOMMU).
+
+### Mainline says the same thing, in 2023
+
+Searched 2026-09-04 after the fact. Alex Bee's series "[PATCH v2 00/27] Add
+HDMI support for RK3128" (LKML, 16 December 2023) reads:
+
+> The VOP has an IOMMU attached, but it has a serious silicon bug:
+> Registers can only be written, but not be read. As it's not possible to
+> use it with the IOMMU driver in it's current state I'm not adding it here
+> and we have to live with CMA for now. I got response from the vendor,
+> that there is no possibility to read the registers and an workaround must
+> be implemented in software in order to use it.
+
+And mainline's `arch/arm/boot/dts/rockchip/rk3128.dtsi` ships the
+`vop@1010e000` node with **no `iommus` property and no `vop_mmu` node at
+all**: the RK3128 VOP runs on CMA upstream, which is exactly the tree this
+tablet now boots. The vendor 4.4.167 driver carries the other half of the
+story as a quirk, `skip_read` ("rk3126/rk3128 can't read vop iommu
+registers", enabled by `rockchip,skip-mmu-read`) which no rk312x device
+tree in that tree sets, and its `rk_mk_pte()` leaves the PTE cache and
+prefetch bits at the bus defaults with a `TODO` above it. Nobody documents
+flicker specifically; what is documented is that this IOMMU is broken
+silicon that mainline refuses to drive. Dropping it is not a workaround,
+it is the upstream configuration.
+
+Nothing found on the rk816 DC-detect override; the vendor repository's
+issues do not mention it.
