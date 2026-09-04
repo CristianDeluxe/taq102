@@ -1181,3 +1181,38 @@ running, cube moving, bar drawn. `recovery` stays v39.
 `recovery-taq102-v40-stockkernel-rescue.img` is packed and not flashed.
 What only I can check: a finger on the glass (interrupt count on
 line 130 of `/proc/interrupts` must climb), the button, and the flicker.
+
+## The wobble was the resting spin, and the tablet learned which way up it is
+
+2026-09-04, 17:25. With the touch alive I reported the picture
+"wobbling a millimetre every second". Two instruments that could not see
+it: the CPU governor pinned (`interactive` was switching frequency twice a
+second, no change) and the touch chip held in reset (no change). The camera
+then said what the eyes could not separate: a static bar region jumps with
+glcube running and is dead flat with glcube frozen (`SIGSTOP`), and phase
+correlation of that region finds **zero pixel shift** in both -- the jumps
+were exposure, from the cube's light. Nothing on the panel moves. What
+moves once a second is the cube: the resting spin from `c50d311` let the
+coast decay to half the resting rate before topping it up, a kick every
+0.84 s. The rate is now held at the resting value once the coast reaches
+it. The frame-difference `YAVG` is a brightness meter, not a motion meter;
+`tools/panel-camera` gained nothing, but the two scripts live in the session
+scratch as `wobble.sh` and `shift.py` and are worth reviving if needed.
+
+The status bar sits 12 units from the right edge (the bezel covers a few
+millimetres of panel, the nub of the battery was cut off), shows the bolt
+and the green whenever the USB port is online (iOS semantics; the rk816
+reports 0 mA at 100%), and is painted at four times the size and averaged
+down, with a 5x7 face for the percentage.
+
+**Orientation from the accelerometer.** The device tree calls the sensor at
+`0x18` an STK8BAxx and the kernel has no driver for it (`sensor_chip_init:
+ops is null`); the chip's `WHO_AM_I` at `0x0F` reads `0x11`, which is the
+Silan SC7A20, a LIS3DH-compatible part. `accel.c` wakes it over
+`/dev/i2c-2` (50 Hz, high resolution, +-2 g) and glcube samples it every
+ten frames. Y runs along the short side of the screen: +966 mg with the
+picture upside down. Above +500 mg for three samples the picture, the bar
+and the touch coordinates turn half a turn; below -500 mg they turn back.
+
+Live on the tablet at 17:22 (glcube replaced in the running ramdisk), then
+packed as v41 and flashed to `boot`.

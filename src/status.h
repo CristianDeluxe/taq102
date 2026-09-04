@@ -5,6 +5,7 @@
 
 struct status {
     int have_batt, cap, mv, ma;       // ma > 0 means current flows in
+    int plugged;                      // a charger is on the USB port
     char word[16];                    // the driver's status word, for a text line
     int have_wifi, level, quality;    // from /proc/net/wireless
     char addr[64];

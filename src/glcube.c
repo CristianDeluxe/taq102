@@ -6,7 +6,10 @@
 // The power button puts the tablet to sleep and wakes it, the way Android
 // did: the panel and the backlight go off, the touch controller is put to
 // rest, rendering stops, and the next press brings it all back. Wi-Fi and
-// ssh stay up. Along the top, the status bar from statusbar.c.
+// ssh stay up. Along the top, the status bar from statusbar.c. The
+// accelerometer turns the picture round when the tablet is held the other
+// way up: this is a landscape device, so there are two orientations, and
+// gravity along the short axis of the screen picks one.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,6 +39,7 @@ struct kev { uint32_t sec, usec; uint16_t type, code; int32_t value; };
 #include "canvas.h"
 #include "status.h"
 #include "statusbar.h"
+#include "accel.h"
 
 // Writing to fb0's blank attribute is how the kernel is told the screen is
 // off. It does nothing to the picture -- fbdev is not bound while a KMS
@@ -216,7 +220,6 @@ static uint32_t fb_for(int fd, struct gbm_bo *bo) {
 }
 
 #define IDLE_HALF 0.004f    // half-angle per frame of the resting spin
-#define IDLE_FLOOR 0.002f   // below this the coast has died; top it back up
 
 static void idle_spin(struct arcball *b) {
     b->spin[0] = cosf(IDLE_HALF);
@@ -366,6 +369,23 @@ int main(void) {
     int pfd = open("/dev/input/event0", O_RDONLY | O_NONBLOCK);
     int waking = 0;      // the modeset that wakes the panel is pending
 
+    // Orientation. The SC7A20's Y axis runs along the short side of the
+    // screen: +1 g when the tablet is held the other way up, -1 g the usual
+    // way (measured 2026-09-04 with the picture upside down: Y = +966 mg).
+    // Half a g of hysteresis and three agreeing samples, so a tablet lying
+    // flat or being turned does not flap.
+    int afd = accel_open();
+    int flipped = 0, flip_votes = 0;
+    printf("accelerometer: %s\n", afd >= 0 ? "SC7A20 on i2c-2" : "none");
+    // The touch axes as the driver declares them, to mirror a contact when
+    // the picture is turned round.
+    int tmax_x = W, tmax_y = H;
+    if (tfd >= 0) {
+        struct input_absinfo ai;
+        if (ioctl(tfd, EVIOCGABS(ABS_MT_POSITION_X), &ai) == 0) tmax_x = ai.maximum;
+        if (ioctl(tfd, EVIOCGABS(ABS_MT_POSITION_Y), &ai) == 0) tmax_y = ai.maximum;
+    }
+
     // Protocol B multitouch, and two things about it that are easy to get
     // wrong and were both got wrong here first:
     //
@@ -441,8 +461,11 @@ int main(void) {
     // picture: a small rotation about a tilted axis, replayed by the coast.
     // The coast bleeds 1.5% of the angle off per frame, so this alone stops
     // in five seconds -- measured 2026-09-04, a tablet up for 45 minutes with
-    // the cube dead still and glcube at 54.8 FPS. Below IDLE_HALF the spin is
-    // topped back up to this value whenever no finger is down.
+    // the cube dead still and glcube at 54.8 FPS. Whenever no finger is down
+    // and the coast has fallen to the resting rate, the spin is held there.
+    // The first version let it fall to half the rate before topping it up,
+    // which is a kick every 0.84 s, and I saw the cube "wobble a
+    // millimetre every second".
     arcball_twist(&ball, 0.3f);
     idle_spin(&ball);
     float cam = 6.f;         // where the camera is now, along -Z
@@ -529,16 +552,31 @@ int main(void) {
                 break;
             case ABS_MT_POSITION_X:
                 slots[cur_slot].active = 1;
-                slots[cur_slot].x =
-                    oneeuro_apply(&slots[cur_slot].fx, ev.value, evtime);
+                slots[cur_slot].x = oneeuro_apply(&slots[cur_slot].fx,
+                    flipped ? tmax_x - ev.value : ev.value, evtime);
                 break;
             case ABS_MT_POSITION_Y:
                 slots[cur_slot].active = 1;
-                slots[cur_slot].y =
-                    oneeuro_apply(&slots[cur_slot].fy, ev.value, evtime);
+                slots[cur_slot].y = oneeuro_apply(&slots[cur_slot].fy,
+                    flipped ? tmax_y - ev.value : ev.value, evtime);
                 break;
             default:
                 break;
+            }
+        }
+
+        if (afd >= 0 && frames % 10 == 0) {
+            int ax, ay, az;
+            if (accel_read(afd, &ax, &ay, &az) == 0) {
+                int want = ay > 500 ? 1 : ay < -500 ? 0 : flipped;
+                if (want != flipped && ++flip_votes >= 3) {
+                    flipped = want;
+                    flip_votes = 0;
+                    printf("orientation: %s (y %d mg)\n", flipped ? "turned round" : "normal", ay);
+                    fflush(stdout);
+                } else if (want == flipped) {
+                    flip_votes = 0;
+                }
             }
         }
 
@@ -618,7 +656,7 @@ int main(void) {
         if (!touching && !ball.dragging) {
             float w = ball.spin[0];
             if (w > 1.f) w = 1.f;
-            if (acosf(w) < IDLE_FLOOR) idle_spin(&ball);
+            if (acosf(w) <= IDLE_HALF) idle_spin(&ball);
         }
         view[14] = -cam;
 
@@ -626,6 +664,8 @@ int main(void) {
         arcball_matrix(&ball, model);
         mat_mul(mv, view, model);
         mat_mul(mvp, proj, mv);
+        if (flipped)   // a half turn in the screen plane: negate clip x and y
+            for (int i = 0; i < 4; i++) { mvp[i * 4] = -mvp[i * 4]; mvp[i * 4 + 1] = -mvp[i * 4 + 1]; }
 
         glClearColor(0.07f, 0.08f, 0.13f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -638,8 +678,11 @@ int main(void) {
         glUseProgram(oprog);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glDisableVertexAttribArray(2);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), bar_quad);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), bar_quad + 2);
+        GLfloat quad[24];
+        for (int i = 0; i < 24; i++)
+            quad[i] = (flipped && (i % 4) < 2) ? -bar_quad[i] : bar_quad[i];
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), quad);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), quad + 2);
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_CULL_FACE);   // the quad is wound as read, top-left first
         glEnable(GL_BLEND);
