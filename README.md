@@ -1112,3 +1112,72 @@ zero. Worth knowing when reading the bar in `recovery`: that image runs the
 stock kernel, whose rk816 driver still carries the DC-detect override that
 patch 0004 fixes in ours, so it shows the battery draining on a port where
 `boot` charges. The bar is telling the truth about that kernel.
+
+## The touch was never alive on our kernel, and the console blank made sure of it
+
+2026-09-04, 16:50. "The tablet is stuck": the cube dead still, no touch, and
+I sees the flicker again. Underneath, the system was fine -- up 11
+hours, glcube at 54.8 FPS, page flips alternating between its two buffers,
+battery full, Wi-Fi at -36 dBm -- and every symptom had a cause that the
+device could state over ssh.
+
+**The GSL3673 was held in reset.** `/sys/kernel/debug/gpio` showed the
+touch controller's reset line, `gpio2 14` (`gpio-78`), driven low, and the
+chip NAKed every i2c read. The driver's probe raises that pin; what lowers
+it is `gsl_ts_suspend`, hung off an fb-blank notifier in `tp_suspend.h`.
+The kernel command line carries `console=tty0` and `consoleblank=600`, so
+ten idle minutes after boot fbcon blanked fb0, the notifier put the touch
+controller into reset, and nothing ever unblanks a KMS appliance. Raising
+the pin by `devmem` made the chip answer (`0xe0 = 0x80`); writing 0 to
+`/sys/class/graphics/fb0/blank` ran the resume path. `taq102-app` now
+unbinds fbcon from fb0 before starting anything, so the vt blank timer has
+no framebuffer to act on.
+
+**And the firmware was the wrong one.** With the reset released the chip
+ran its firmware (`0xb0..0xb3 = 5a`) and still raised no interrupt for a
+finger: six interrupts in eleven hours, all from the firmware download at
+boot. The vendor tree's `gsl3673.h` carries 4 950 records and a config
+whose resolution word reads `0x08000600`; the array lifted from the stock
+kernel image (see the brain page) has 4 719 records and `0x02580400`. It is
+another panel's firmware. `kernel/patches/0005-*` replaces both arrays with
+the stock ones; kernel v40 is v38 plus that patch.
+
+**The cube stopped because of a phantom finger.** The driver's suspend
+clears tracking ids for slots 1 and up, never slot 0, so a contact parked
+there blocked the resting spin from `c50d311` for good, and the cube sat
+still while rendering at full rate. The camera cannot tell a frozen cube
+from a spinning one right after a restart -- its auto-exposure produced
+`motion 10.5` on a still picture -- so the instrument is now the scanout
+buffer itself: `dd` the two page-flip buffers out of `/dev/mem` a second
+apart and compare hashes. glcube now treats a contact that has said nothing
+for half a second as lifted, and reactivates it on the next position.
+
+**The status bar rides on the cube.** `statusbar.c`, `status.c` and
+`canvas.c` are the rescue screen's drawing, split out so both programs
+share it; glcube paints the bar into a texture once a second and blends it
+over the picture. The first attempt drew nothing: the overlay quad is wound
+clockwise and the cube's face culling ate it.
+
+**The power button sleeps and wakes, as Android did.** glcube reads
+KEY_POWER from the rk8xx power key. Off: backlight `bl_power` to 4, fb0
+blank to 4 (the touch controller into reset through the same notifier that
+bit above), and the CRTC taken down, which switches the LVDS panel off.
+Then it blocks on the button; touch events are drained. On: the next frame's
+modeset brings the panel back, and only then the backlight and the touch.
+pwm-backlight on this tree does not follow fb blank (measured: 255 through
+a blank), hence the explicit write. Wi-Fi and ssh stay up in sleep.
+
+Two build traps paid for today: `make <pkg>-rebuild` does **not** re-sync a
+local package's source into the build directory -- two "fixed" binaries
+were the same stale bytes, and `<pkg>-dirclean` is what re-syncs; and the
+VM can read a **short copy** of a source file through the shared mount,
+which showed as `missing terminating " character` at a line that was fine
+on the Mac. Hash the file on both sides before building.
+
+`boot` = `recovery-taq102-v40-appliance.img` (kernel v40 = v38 + patch
+0005, ramdisk v40, resource unchanged), flashed and verified 16:47, booted
+`20260904-143936-5304230`: fbcon unbound at 5.1 s, reset pin high, firmware
+running, cube moving, bar drawn. `recovery` stays v39.
+`recovery-taq102-v40-stockkernel-rescue.img` is packed and not flashed.
+What only I can check: a finger on the glass (interrupt count on
+line 130 of `/proc/interrupts` must climb), the button, and the flicker.
