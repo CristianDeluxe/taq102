@@ -122,5 +122,19 @@ text = text[:a] + ldo6.replace("\t\t\t\t\tregulator-boot-on;\n",
                                "\t\t\t\t\tregulator-boot-on;\n\t\t\t\t\tregulator-always-on;\n",
                                1) + text[b:]
 
+# 7. Experiment, off by default: TAQ102_NO_VOP_IOMMU=1 drops the VOP's iommus
+# property, so rockchip-drm allocates contiguous CMA buffers instead of
+# mapping pages through the VOP's IOMMU. Built 2026-09-04 to test whether the
+# flicker I sees on every page flip -- flips to the same buffer do
+# not flicker, flips between two identical buffers do -- is the per-frame
+# page-table walk of a new address.
+import os
+if os.environ.get("TAQ102_NO_VOP_IOMMU"):
+    a, b = node(text, r"^\tvop@1010e000 \{")
+    vop = text[a:b]
+    if "\t\tiommus = <0x22>;\n" not in vop:
+        raise SystemExit("vop iommus = <0x22> not found: the no-iommu graft would be lost")
+    text = text[:a] + vop.replace("\t\tiommus = <0x22>;\n", "", 1) + text[b:]
+
 open(dst, "w").write(text)
 print(f"wrote {dst}")
