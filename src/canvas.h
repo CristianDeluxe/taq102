@@ -14,5 +14,8 @@ void canvas_round_rect(struct canvas *c, int x, int y, int w, int h, int r, uint
 // A..Z (either case), 0..9 and . : - / % at s pixels per glyph cell.
 void canvas_text(struct canvas *c, int x, int y, const char *str, int s, uint32_t col);
 int canvas_text_width(const char *str, int s);
+// Digits and '%' in a 5x7 face, for the status bar's percentage.
+void canvas_text7(struct canvas *c, int x, int y, const char *str, int s, uint32_t col);
+int canvas_text7_width(const char *str, int s);
 
 #endif

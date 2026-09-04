@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include "statusbar.h"
 
@@ -49,21 +50,59 @@ static void battery_icon(struct canvas *c, int x, int y, int w, int h, int cap, 
     }
 }
 
-int statusbar_height(int w) { return 11 * (w / 200); }
+// Everything is laid out in units of s, one 256th of the width: text 7
+// units tall, the battery 13 by 7, the bar 12. Painted at four times that
+// scale and averaged down, so the curves and the diagonals of the glyphs do
+// not show the blocks they are built from.
+#define UNIT(w) ((w) / 256)
+#define SS 4
 
-void statusbar_paint(struct canvas *c, const struct status *st, const struct statusbar_style *sty) {
-    int s = c->w / 200;                     // the text scale used below
-    int bar_h = statusbar_height(c->w);
-    int margin = 3 * s;
+int statusbar_height(int w) { return 12 * UNIT(w); }
+
+static void paint_at(struct canvas *c, const struct status *st, const struct statusbar_style *sty, int s) {
+    int bar_h = 12 * s;
+    // The panel's edge sits under the bezel by a few millimetres: measured
+    // 2026-09-04, the battery's nub was cut off at a 3-unit margin.
+    int margin = 12 * s;
     canvas_fill_rect(c, 0, 0, c->w, bar_h, sty->bar);
-    int icon_h = 5 * s, icon_w = 11 * s;
+    int icon_h = 7 * s, icon_w = 13 * s;
     int y = (bar_h - icon_h) / 2;
     int right = c->w - margin - icon_w - s - 1;
-    battery_icon(c, right, y, icon_w, icon_h, st->have_batt ? st->cap : 0, st->have_batt && st->ma > 0, sty);
+    // iOS: plugged in is the bolt and the green, whatever the current does;
+    // the rescue screen's text line still prints the milliamps.
+    battery_icon(c, right, y, icon_w, icon_h, st->have_batt ? st->cap : 0, st->plugged, sty);
     char pct[8];
     snprintf(pct, sizeof pct, "%d%%", st->have_batt ? st->cap : 0);
-    right -= 2 * s + canvas_text_width(pct, s);
-    canvas_text(c, right, (bar_h - 5 * s) / 2, pct, s, sty->ink);
-    right -= 4 * s + icon_h;
-    wifi_fan(c, right, y + icon_h, icon_h + s, status_wifi_bars(st), sty);
+    right -= 3 * s + canvas_text7_width(pct, s);
+    canvas_text7(c, right, (bar_h - 7 * s) / 2, pct, s, sty->ink);
+    right -= 5 * s + icon_h;
+    wifi_fan(c, right, y + icon_h, icon_h, status_wifi_bars(st), sty);
+}
+
+// Average SS*SS supersampled pixels into one, alpha-weighted.
+static void downsample(struct canvas *dst, const struct canvas *src) {
+    for (int y = 0; y < dst->h; y++)
+        for (int x = 0; x < dst->w; x++) {
+            unsigned a = 0, r = 0, g = 0, b = 0;
+            for (int j = 0; j < SS; j++)
+                for (int i = 0; i < SS; i++) {
+                    uint32_t p = src->px[(y * SS + j) * src->w + x * SS + i];
+                    unsigned pa = p >> 24;
+                    a += pa;
+                    r += ((p >> 16) & 0xff) * pa;
+                    g += ((p >> 8) & 0xff) * pa;
+                    b += (p & 0xff) * pa;
+                }
+            uint32_t out = 0;
+            if (a) out = ((a / (SS * SS)) << 24) | ((r / a) << 16) | ((g / a) << 8) | (b / a);
+            dst->px[y * dst->w + x] = out;
+        }
+}
+
+void statusbar_paint(struct canvas *c, const struct status *st, const struct statusbar_style *sty) {
+    struct canvas big = { calloc((size_t)c->w * SS * c->h * SS, 4), c->w * SS, c->h * SS };
+    if (!big.px) return;
+    paint_at(&big, st, sty, UNIT(c->w) * SS);
+    downsample(c, &big);
+    free(big.px);
 }

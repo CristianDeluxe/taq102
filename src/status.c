@@ -27,6 +27,13 @@ static void read_battery(struct status *st) {
     read_line("/sys/class/power_supply/battery/voltage_now", vol, sizeof vol);
     read_line("/sys/class/power_supply/battery/current_now", cur, sizeof cur);
     read_line("/sys/class/power_supply/battery/status", st->word, sizeof st->word);
+    char on[8];
+    read_line("/sys/class/power_supply/usb/online", on, sizeof on);
+    st->plugged = atoi(on) == 1;
+    if (!st->plugged) {
+        read_line("/sys/class/power_supply/ac/online", on, sizeof on);
+        st->plugged = atoi(on) == 1;
+    }
     st->have_batt = cap[0] != 0;
     st->cap = atoi(cap);
     st->mv = atoi(vol) / 1000;
