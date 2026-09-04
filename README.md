@@ -1216,3 +1216,67 @@ and the touch coordinates turn half a turn; below -500 mg they turn back.
 
 Live on the tablet at 17:22 (glcube replaced in the running ramdisk), then
 packed as v41 and flashed to `boot`.
+
+## The shimmer was the PHY's own PLL, and the fix is the vendor's divider pair
+
+2026-09-05. Two days of "a small wave of water passing over things, like
+electric noise", on any content, on a fixed picture, with occasional coloured
+flashes. What finally measured it was not the eye and not brightness: a
+single-pixel vertical line pattern (`src/testpattern.c`, one dumb buffer, one
+modeset, no flips, no GPU) recorded by a **motionless** camera, and the
+horizontal phase of that pattern extracted row by row. The artifact is a
+sideways displacement of the picture, not a change in brightness, which is why
+every brightness instrument used before had said "flat".
+
+My own report ranks the patterns and names the mechanism: single-pixel
+vertical lines are unwatchable, horizontal lines less so, flat grey shows a
+little, **flat white shows nothing at all**. With every data bit at one, a
+mis-sampled bit is still one; the artifact scales with how much the LVDS data
+toggles, so it is bit errors on the link.
+
+`kernel/patches/0001` had set the PHY's PLL to `prediv 12, fbdiv 175` --
+350 MHz, exactly seven times the 50 MHz pixel clock -- reasoning that the
+serial clock must be 7x or the data slips. The vendor's own driver
+(`drivers/video/rockchip/transmitter/rk31xx_lvds.c`, the legacy FB path Android
+ran on this tablet for years) uses `prediv 2, fbdiv 28` = 336 MHz, which is not
+7x anything on this board. Measured against the panel, 60 frames each:
+
+| PHY PLL | picture movement, rms | peak to peak |
+| --- | --- | --- |
+| 350 MHz (`prediv 12`), three variants | 0.63 - 0.81 px | 3.0 - 3.7 px |
+| 350 MHz, vendor register order | 0.15 px | 0.63 px |
+| **336 MHz (`prediv 2`)** | **0.005 px** | **0.02 px** |
+
+A hundredfold, reproduced twice live and again from a cold boot with the fix
+in the image (0.06 px rms). The likely mechanism is the prediv itself rather
+than the frequency: dividing 24 MHz by 12 runs the PLL's phase detector at
+2 MHz, where dividing by 2 runs it at 12 MHz, and a loop that compares its
+phases six times less often is a jittery one. The "must be exactly 7x" reading
+was taken during the era when LDO6 was off and the panel unpowered -- one of
+the results this project already knew to treat as void.
+
+Ruled out along the way, each by a live experiment that was reverted after it:
+the renderer (a static scene page-flips two bit-identical buffers), the VOP's
+dither (`DSP_CTRL0` reads `out_mode` P888 with every dither bit clear), the
+LVDS data format (18-bit vs 24-bit in `GRF_LVDS_CON0`), the pixel clock
+(50 MHz vs 49.5), the LVDS common-mode voltage (`REGE4` VOCM 2 vs the vendor's
+0), the CPU governor, and the touch controller held in reset. `src/lvdsdiag.c`
+holds all of it: it does a clean modeset, applies one named PHY variant over
+`/dev/mem`, and holds a pattern, so any of these can be re-tested in seconds.
+
+Two traps this cost time to see through. **A hand-held camera cannot measure
+this**: the rolling shutter turns hand tremor into exactly the same zigzag, and
+the first recording measured +-2 px of my pulse. **Frame-difference
+brightness is not a motion meter**: it reported "flat" throughout, and the
+whole earlier flicker hunt had leaned on it. The measurement that works is the
+phase of a periodic pattern, split into a fixed bend (the panel's own geometry,
+about 1 px, which nobody notices) and the frame-to-frame movement, which is
+what the eye reads as a wave.
+
+The kernel tree also carried an **unrecorded** `REGE4 = 0x80` write that was in
+no patch and in no built module; it is gone, and `kernel/patches/0001` now
+matches the tree.
+
+`boot` = `recovery-taq102-v42-appliance.img` (kernel v40, ramdisk
+`20260904-235144`, PHY module rebuilt with the vendor dividers), flashed and
+verified; `recovery` stays v39. Evidence in `docs/evidence/2026-09-05/`.

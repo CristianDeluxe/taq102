@@ -39,7 +39,8 @@ struct kev { uint32_t sec, usec; uint16_t type, code; int32_t value; };
 #include "canvas.h"
 #include "status.h"
 #include "statusbar.h"
-#include "accel.h"
+#include "accel_monitor.h"
+#include "touch_flip.h"
 
 // Writing to fb0's blank attribute is how the kernel is told the screen is
 // off. It does nothing to the picture -- fbdev is not bound while a KMS
@@ -248,6 +249,10 @@ int main(void) {
     drmModeEncoder *enc = drmModeGetEncoder(fd, conn->encoder_id);
     uint32_t crtc_id = enc ? enc->crtc_id : res->crtcs[0];
 
+    int trace = getenv("GLCUBE_TRACE") != NULL;
+    int finish = getenv("GLCUBE_FINISH") != NULL;
+    int static_scene = getenv("GLCUBE_STATIC") != NULL;
+
     struct gbm_device *gbm = gbm_create_device(fd);
     if (!gbm) { fprintf(stderr, "gbm_create_device failed\n"); return 1; }
     printf("gbm backend: %s\n", gbm_device_get_backend_name(gbm));
@@ -374,17 +379,28 @@ int main(void) {
     // way (measured 2026-09-04 with the picture upside down: Y = +966 mg).
     // Half a g of hysteresis and three agreeing samples, so a tablet lying
     // flat or being turned does not flap.
-    int afd = accel_open();
+    struct accel_monitor *accelerometer = getenv("GLCUBE_NOACCEL") ? NULL :
+                                          accel_monitor_start();
+    unsigned accel_sequence = 0;
+    long accel_max_read_us = 0;
     int flipped = 0, flip_votes = 0;
-    printf("accelerometer: %s\n", afd >= 0 ? "SC7A20 on i2c-2" : "none");
-    // The touch axes as the driver declares them, to mirror a contact when
-    // the picture is turned round.
-    int tmax_x = W, tmax_y = H;
+    printf("accelerometer: %s\n", accelerometer ? "background reader" : "disabled");
+
+    int declared_x = 0, declared_y = 0;
     if (tfd >= 0) {
         struct input_absinfo ai;
-        if (ioctl(tfd, EVIOCGABS(ABS_MT_POSITION_X), &ai) == 0) tmax_x = ai.maximum;
-        if (ioctl(tfd, EVIOCGABS(ABS_MT_POSITION_Y), &ai) == 0) tmax_y = ai.maximum;
+        if (ioctl(tfd, EVIOCGABS(ABS_MT_POSITION_X), &ai) == 0) declared_x = ai.maximum;
+        if (ioctl(tfd, EVIOCGABS(ABS_MT_POSITION_Y), &ai) == 0) declared_y = ai.maximum;
     }
+    struct touch_flip touch_flip;
+    const char *touch_flip_mode = getenv("GLCUBE_TOUCH_FLIP");
+    if (touch_flip_configure(&touch_flip, W, H, touch_flip_mode) != 0)
+        fprintf(stderr, "invalid GLCUBE_TOUCH_FLIP=%s; using xy\n", touch_flip_mode);
+    printf("touch: declared %dx%d, mapping %dx%d, flip %s\n",
+           declared_x, declared_y, W, H, touch_flip.name);
+    printf("diagnostics: finish %s, static %s, trace %s\n",
+           finish ? "on" : "off", static_scene ? "on" : "off",
+           trace ? "on" : "off");
 
     // Protocol B multitouch, and two things about it that are easy to get
     // wrong and were both got wrong here first:
@@ -467,16 +483,31 @@ int main(void) {
     // which is a kick every 0.84 s, and I saw the cube "wobble a
     // millimetre every second".
     arcball_twist(&ball, 0.3f);
-    idle_spin(&ball);
+    if (static_scene) {
+        ball.spin[0] = 1.f;
+        ball.spin[1] = ball.spin[2] = ball.spin[3] = 0.f;
+    } else {
+        idle_spin(&ball);
+    }
     float cam = 6.f;         // where the camera is now, along -Z
 
     struct gbm_bo *prev_bo = NULL;
     int first = 1;
     struct timespec t0 = {0, 0};
+    struct timespec last_frame = {0, 0};
+    double max_frame_ms = 0.0;
     long frames = 0;
 
     for (;;) {
         struct kev ev;
+        struct timespec frame_start;
+        clock_gettime(CLOCK_MONOTONIC, &frame_start);
+        if (last_frame.tv_sec != 0) {
+            double frame_ms = (frame_start.tv_sec - last_frame.tv_sec) * 1000.0 +
+                              (frame_start.tv_nsec - last_frame.tv_nsec) / 1e6;
+            if (frame_ms > max_frame_ms) max_frame_ms = frame_ms;
+        }
+        last_frame = frame_start;
 
         if (pfd >= 0) {
             struct kev pe;
@@ -512,6 +543,8 @@ int main(void) {
                 first = 1;
                 waking = 1;
                 t0.tv_sec = 0;
+                last_frame.tv_sec = 0;
+                max_frame_ms = 0.0;
                 frames = 0;
                 printf("wake\n");
                 fflush(stdout);
@@ -553,26 +586,30 @@ int main(void) {
             case ABS_MT_POSITION_X:
                 slots[cur_slot].active = 1;
                 slots[cur_slot].x = oneeuro_apply(&slots[cur_slot].fx,
-                    flipped ? tmax_x - ev.value : ev.value, evtime);
+                    touch_flip_value(&touch_flip, TOUCH_AXIS_X, ev.value, flipped), evtime);
                 break;
             case ABS_MT_POSITION_Y:
                 slots[cur_slot].active = 1;
                 slots[cur_slot].y = oneeuro_apply(&slots[cur_slot].fy,
-                    flipped ? tmax_y - ev.value : ev.value, evtime);
+                    touch_flip_value(&touch_flip, TOUCH_AXIS_Y, ev.value, flipped), evtime);
                 break;
             default:
                 break;
             }
         }
 
-        if (afd >= 0 && frames % 10 == 0) {
-            int ax, ay, az;
-            if (accel_read(afd, &ax, &ay, &az) == 0) {
-                int want = ay > 500 ? 1 : ay < -500 ? 0 : flipped;
+        if (!static_scene && accelerometer && frames % 10 == 0) {
+            struct accel_snapshot sample;
+            if (accel_monitor_snapshot(accelerometer, &sample) == 0 &&
+                sample.sequence != accel_sequence) {
+                accel_sequence = sample.sequence;
+                accel_max_read_us = sample.max_read_us;
+                int want = sample.y_mg > 500 ? 1 : sample.y_mg < -500 ? 0 : flipped;
                 if (want != flipped && ++flip_votes >= 3) {
                     flipped = want;
                     flip_votes = 0;
-                    printf("orientation: %s (y %d mg)\n", flipped ? "turned round" : "normal", ay);
+                    printf("orientation: %s (y %d mg)\n",
+                           flipped ? "turned round" : "normal", sample.y_mg);
                     fflush(stdout);
                 } else if (want == flipped) {
                     flip_votes = 0;
@@ -586,77 +623,79 @@ int main(void) {
                 touching = 0;
             }
 
-        // Whichever slots the driver happens to be using: the first two
-        // active ones, in slot order.
-        struct slot *a = NULL, *b = NULL;
-        for (int i = 0; i < MAX_SLOTS; i++) {
-            if (!slots[i].active) continue;
-            if (!a) a = &slots[i];
-            else if (!b) { b = &slots[i]; break; }
-        }
-
-        if (a && b) {
-            // Two fingers carry three independent measurements, and each one
-            // drives exactly one thing: the distance between them is the zoom,
-            // the point between them is the drag, and the angle of the line
-            // joining them is the twist. Taking them apart this way is what
-            // lets one movement do all three at once.
-            float dx = a->x - b->x, dy = a->y - b->y;
-            float d = sqrtf(dx * dx + dy * dy);
-            float cx = (a->x + b->x) * 0.5f, cy = (a->y + b->y) * 0.5f;
-            float twist = atan2f(dy, dx);
-
-            lone_frames = 0;
-            if (d > PINCH_MIN_SPAN) {
-                if (pinch_ref == 0.f) {
-                    pinch_ref = d;
-                    dist_ref = cam;
-                    prev_twist = twist;
-                    arcball_begin(&ball, cx, cy, W, H);
-                } else {
-                    // atan2 wraps at pi; without unwrapping, one crossing would
-                    // spin the cube half a turn in a single frame.
-                    float dt = twist - prev_twist;
-                    while (dt > (float)M_PI) dt -= 2.f * (float)M_PI;
-                    while (dt < -(float)M_PI) dt += 2.f * (float)M_PI;
-                    prev_twist = twist;
-
-                    arcball_drag(&ball, cx, cy, W, H);
-                    arcball_twist(&ball, dt);
-                }
-                cam = dist_ref * (pinch_ref / d);
-                // Anti-windup. Held against a limit, the anchor would keep
-                // integrating a zoom that cannot happen, and the fingers would
-                // have to give all of it back before the cube moved again --
-                // which is what "it gets stuck" was. Re-anchor at the limit so
-                // the very next pixel in the other direction responds.
-                if (cam < CAM_NEAR || cam > CAM_FAR) {
-                    cam = cam < CAM_NEAR ? CAM_NEAR : CAM_FAR;
-                    pinch_ref = d;
-                    dist_ref = cam;
-                }
+        if (!static_scene) {
+            // Whichever slots the driver happens to be using: the first two
+            // active ones, in slot order.
+            struct slot *a = NULL, *b = NULL;
+            for (int i = 0; i < MAX_SLOTS; i++) {
+                if (!slots[i].active) continue;
+                if (!a) a = &slots[i];
+                else if (!b) { b = &slots[i]; break; }
             }
-            touching = 0;   // a fresh single-finger drag starts on release
-        } else if (a) {
-            if (pinch_ref != 0.f && lone_frames++ < PINCH_GRACE) {
-                // Probably a dropout, not a finger leaving: hold the pinch and
-                // change nothing this frame.
+
+            if (a && b) {
+                // Two fingers carry three independent measurements, and each one
+                // drives exactly one thing: the distance between them is the zoom,
+                // the point between them is the drag, and the angle of the line
+                // joining them is the twist. Taking them apart this way is what
+                // lets one movement do all three at once.
+                float dx = a->x - b->x, dy = a->y - b->y;
+                float d = sqrtf(dx * dx + dy * dy);
+                float cx = (a->x + b->x) * 0.5f, cy = (a->y + b->y) * 0.5f;
+                float twist = atan2f(dy, dx);
+
+                lone_frames = 0;
+                if (d > PINCH_MIN_SPAN) {
+                    if (pinch_ref == 0.f) {
+                        pinch_ref = d;
+                        dist_ref = cam;
+                        prev_twist = twist;
+                        arcball_begin(&ball, cx, cy, W, H);
+                    } else {
+                        // atan2 wraps at pi; without unwrapping, one crossing would
+                        // spin the cube half a turn in a single frame.
+                        float dt = twist - prev_twist;
+                        while (dt > (float)M_PI) dt -= 2.f * (float)M_PI;
+                        while (dt < -(float)M_PI) dt += 2.f * (float)M_PI;
+                        prev_twist = twist;
+
+                        arcball_drag(&ball, cx, cy, W, H);
+                        arcball_twist(&ball, dt);
+                    }
+                    cam = dist_ref * (pinch_ref / d);
+                    // Anti-windup. Held against a limit, the anchor would keep
+                    // integrating a zoom that cannot happen, and the fingers would
+                    // have to give all of it back before the cube moved again --
+                    // which is what "it gets stuck" was. Re-anchor at the limit so
+                    // the very next pixel in the other direction responds.
+                    if (cam < CAM_NEAR || cam > CAM_FAR) {
+                        cam = cam < CAM_NEAR ? CAM_NEAR : CAM_FAR;
+                        pinch_ref = d;
+                        dist_ref = cam;
+                    }
+                }
+                touching = 0;   // a fresh single-finger drag starts on release
+            } else if (a) {
+                if (pinch_ref != 0.f && lone_frames++ < PINCH_GRACE) {
+                    // Probably a dropout, not a finger leaving: hold the pinch and
+                    // change nothing this frame.
+                } else {
+                    pinch_ref = 0.f;
+                    if (!touching) { arcball_begin(&ball, a->x, a->y, W, H); touching = 1; }
+                    else arcball_drag(&ball, a->x, a->y, W, H);
+                }
             } else {
                 pinch_ref = 0.f;
-                if (!touching) { arcball_begin(&ball, a->x, a->y, W, H); touching = 1; }
-                else arcball_drag(&ball, a->x, a->y, W, H);
+                lone_frames = 0;
+                touching = 0;
+                arcball_end(&ball);
             }
-        } else {
-            pinch_ref = 0.f;
-            lone_frames = 0;
-            touching = 0;
-            arcball_end(&ball);
-        }
-        arcball_coast(&ball, 0.985f);
-        if (!touching && !ball.dragging) {
-            float w = ball.spin[0];
-            if (w > 1.f) w = 1.f;
-            if (acosf(w) <= IDLE_HALF) idle_spin(&ball);
+            arcball_coast(&ball, 0.985f);
+            if (!touching && !ball.dragging) {
+                float w = ball.spin[0];
+                if (w > 1.f) w = 1.f;
+                if (acosf(w) <= IDLE_HALF) idle_spin(&ball);
+            }
         }
         view[14] = -cam;
 
@@ -689,7 +728,7 @@ int main(void) {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glBindTexture(GL_TEXTURE_2D, bar_tex);
         glDrawArrays(GL_TRIANGLES, 0, 6);
-        if (getenv("GLCUBE_TRACE") && frames == 0)
+        if (trace && frames == 0)
             printf("overlay: glGetError after draw 0x%x, tex %u, bar %dx%d\n", glGetError(), bar_tex, bar.w, bar.h);
         glDisable(GL_BLEND);
         glEnable(GL_CULL_FACE);
@@ -703,6 +742,7 @@ int main(void) {
         }
 
         eglSwapBuffers(dpy, egl_surf);
+        if (finish) glFinish();
 
         struct gbm_bo *bo = gbm_surface_lock_front_buffer(surf);
         if (!bo) { fprintf(stderr, "lock_front_buffer failed\n"); return 1; }
@@ -748,7 +788,7 @@ int main(void) {
                 statusbar_paint(&bar, &st, &OVERLAY_STYLE);
                 glBindTexture(GL_TEXTURE_2D, bar_tex);
                 upload_canvas(&bar, bar_rgba);
-                if (getenv("GLCUBE_TRACE")) {
+                if (trace) {
                     int lit = 0;
                     for (int i = 0; i < bar.w * bar.h; i++) if (bar.px[i]) lit++;
                     printf("overlay: painted %d px, key %s, glGetError after upload 0x%x\n", lit, bar_key, glGetError());
@@ -757,7 +797,7 @@ int main(void) {
             }
         }
         if (el >= 1.0) {
-            if (getenv("GLCUBE_TRACE")) {
+            if (trace) {
                 int n = 0;
                 char which[64] = "";
                 for (int i = 0; i < MAX_SLOTS; i++)
@@ -766,13 +806,17 @@ int main(void) {
                         snprintf(which + strlen(which), sizeof which - strlen(which),
                                  "%d(%.0f,%.0f) ", i, slots[i].x, slots[i].y);
                     }
-                printf("%.1f FPS | slots %d: %s| cam %.2f pinch_ref %.0f dragging %d\n",
-                       frames / el, n, which, cam, pinch_ref, ball.dragging);
+                printf("%.1f FPS | max frame %.2f ms | accel read %ld us | "
+                       "slots %d: %s| cam %.2f pinch_ref %.0f dragging %d\n",
+                       frames / el, max_frame_ms, accel_max_read_us, n, which,
+                       cam, pinch_ref, ball.dragging);
             } else {
                 printf("%.1f FPS\n", frames / el);
             }
             fflush(stdout);
-            frames = 0; t0 = now;
+            frames = 0;
+            max_frame_ms = 0.0;
+            t0 = now;
         }
     }
     return 0;
