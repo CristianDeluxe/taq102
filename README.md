@@ -1286,8 +1286,18 @@ built by hand and copied into tmpfs while the shimmer was being chased, which
 means they died with every reboot and had to be rebuilt to ask the panel the
 same question twice. `recovery` was rewritten at the same time with the
 matching stock-kernel rescue, so the way back carries today's fixes as well;
-it was written and read back byte for byte, and unlike v39 it has not been
-booted. Note that `tools/flash-recovery.sh` also sets the BCB and reboots into
+it was written and read back byte for byte, then proved by a BCB round trip:
+`boot-recovery` at raw sector 32800, reboot, and the tablet came up on the
+stock 4.4.103 with build `20260905-002916`, the amber screen drawn, Wi-Fi and
+ssh up and the diagnostics present; zeroing the same sector and rebooting
+brought the appliance back with the PHY PLL at 336 MHz
+(`docs/evidence/2026-09-05/rescue-v43-round-trip.jpg`). The USB console was
+held open throughout as the way back that does not need Wi-Fi -- `stty -f
+/dev/cu.usbmodem* 115200 raw -echo`, a backgrounded `cat` on it for the log,
+and `printf 'root\r' >` it to log in; `screen -X stuff` never reached the
+getty and wasted a few minutes. Worth knowing: the rescue screen does not
+rotate with the accelerometer the way glcube does, so on a tablet held the
+other way up it reads upside down. Note that `tools/flash-recovery.sh` also sets the BCB and reboots into
 what it just wrote, which is the right thing when the point is to test the
 rescue and the wrong thing when the point is to keep the appliance running:
 this write used `rkdeveloptool wl 196608` directly and left the BCB zero.
