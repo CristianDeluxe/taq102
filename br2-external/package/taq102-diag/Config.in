@@ -1,0 +1,15 @@
+config BR2_PACKAGE_TAQ102_DIAG
+	bool "taq102-diag (display and LVDS link diagnostics)"
+	select BR2_PACKAGE_LIBDRM
+	help
+	  The three tools that found the panel's shimmer, kept in the image so
+	  the next one does not have to be rebuilt and copied in by hand.
+
+	  testpattern paints one dumb buffer and holds it: single-pixel lines,
+	  a checkerboard, flat fields. No GPU and no page flips, so anything
+	  that moves on screen is the display path rather than an application.
+
+	  lvdsdiag does a clean modeset and then applies one named PHY variant
+	  over /dev/mem, which is how the vendor's PLL dividers were compared
+	  against ours. phytune walks the PHY's sampling phase with the current
+	  setting shown as large blocks, legible even when the link is failing.
