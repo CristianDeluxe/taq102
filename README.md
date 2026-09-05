@@ -1277,6 +1277,17 @@ The kernel tree also carried an **unrecorded** `REGE4 = 0x80` write that was in
 no patch and in no built module; it is gone, and `kernel/patches/0001` now
 matches the tree.
 
-`boot` = `recovery-taq102-v42-appliance.img` (kernel v40, ramdisk
-`20260904-235144`, PHY module rebuilt with the vendor dividers), flashed and
-verified; `recovery` stays v39. Evidence in `docs/evidence/2026-09-05/`.
+`boot` = `recovery-taq102-v43-appliance.img` (kernel v40, ramdisk
+`20260905-002916`, PHY module rebuilt with the vendor dividers), flashed and
+verified. Evidence in `docs/evidence/2026-09-05/`.
+
+The three tools ship in the image now, as `package/taq102-diag`: they were
+built by hand and copied into tmpfs while the shimmer was being chased, which
+means they died with every reboot and had to be rebuilt to ask the panel the
+same question twice. `recovery` was rewritten at the same time with the
+matching stock-kernel rescue, so the way back carries today's fixes as well;
+it was written and read back byte for byte, and unlike v39 it has not been
+booted. Note that `tools/flash-recovery.sh` also sets the BCB and reboots into
+what it just wrote, which is the right thing when the point is to test the
+rescue and the wrong thing when the point is to keep the appliance running:
+this write used `rkdeveloptool wl 196608` directly and left the BCB zero.
