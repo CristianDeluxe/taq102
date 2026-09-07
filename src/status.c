@@ -1,6 +1,10 @@
 #include <stdio.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -9,35 +13,58 @@
 #include <arpa/inet.h>
 #include "status.h"
 
-static void read_line(const char *path, char *out, size_t n) {
+static int read_line(const char *path, char *out, size_t n) {
     out[0] = 0;
     FILE *f = fopen(path, "r");
-    if (!f) return;
-    if (fgets(out, (int)n, f)) out[strcspn(out, "\n")] = 0;
+    if (!f) return 0;
+    int ok = fgets(out, (int)n, f) != NULL;
+    if (ok) {
+        size_t length = strlen(out);
+        if (length && out[length - 1] == '\n') out[length - 1] = '\0';
+        else if (!feof(f)) ok = 0;
+    }
     fclose(f);
+    return ok;
 }
 
-// The rk816 driver's view, which is what decides whether the tablet is about
-// to switch off. current_now is negative while discharging, and it stayed
-// negative on a hub with the status still saying Charging -- the number, not
-// the word, is the truth, so the bolt follows the sign of the current.
-static void read_battery(struct status *st) {
-    char cap[16], vol[16], cur[16];
-    read_line("/sys/class/power_supply/battery/capacity", cap, sizeof cap);
-    read_line("/sys/class/power_supply/battery/voltage_now", vol, sizeof vol);
-    read_line("/sys/class/power_supply/battery/current_now", cur, sizeof cur);
-    read_line("/sys/class/power_supply/battery/status", st->word, sizeof st->word);
-    char on[8];
-    read_line("/sys/class/power_supply/usb/online", on, sizeof on);
-    st->plugged = atoi(on) == 1;
-    if (!st->plugged) {
-        read_line("/sys/class/power_supply/ac/online", on, sizeof on);
-        st->plugged = atoi(on) == 1;
-    }
-    st->have_batt = cap[0] != 0;
-    st->cap = atoi(cap);
-    st->mv = atoi(vol) / 1000;
-    st->ma = atoi(cur) / 1000;
+static int read_int(const char *path, int *value) {
+    char text[32], *end;
+    if (!read_line(path, text, sizeof text)) return 0;
+    errno = 0;
+    long parsed = strtol(text, &end, 10);
+    if (errno || end == text || *end != '\0' || parsed < INT_MIN || parsed > INT_MAX) return 0;
+    *value = (int)parsed;
+    return 1;
+}
+
+static int read_root_int(const char *root, const char *relative, int *value) {
+    char path[256];
+    int n = snprintf(path, sizeof path, "%s/%s", root, relative);
+    return n > 0 && (size_t)n < sizeof path && read_int(path, value);
+}
+
+void status_power_read_at(struct status *st, const char *root, int64_t read_ms) {
+    int voltage_uv = 0;
+    char path[256];
+    st->usb_online = st->ac_online = st->current_ua = 0;
+    st->cap = st->mv = st->ma = 0;
+    st->usb_valid = read_root_int(root, "usb/online", &st->usb_online) &&
+                    (st->usb_online == 0 || st->usb_online == 1);
+    st->ac_valid = read_root_int(root, "ac/online", &st->ac_online) &&
+                   (st->ac_online == 0 || st->ac_online == 1);
+    st->online_valid = st->usb_valid && st->ac_valid;
+    // Unknown supply state is conservative so an incomplete snapshot cannot sleep the display.
+    st->plugged = st->online_valid ? st->usb_online || st->ac_online : 1;
+    st->current_valid = read_root_int(root, "battery/current_now", &st->current_ua);
+    if (st->current_valid) st->ma = st->current_ua / 1000;
+    st->cap_valid = read_root_int(root, "battery/capacity", &st->cap) &&
+                    st->cap >= 0 && st->cap <= 100;
+    st->have_batt = st->cap_valid;
+    if (read_root_int(root, "battery/voltage_now", &voltage_uv)) st->mv = voltage_uv / 1000;
+    int n = snprintf(path, sizeof path, "%s/battery/status", root);
+    st->word_valid = n > 0 && (size_t)n < sizeof path && read_line(path, st->word, sizeof st->word);
+    if (!st->word_valid) st->word[0] = '\0';
+    st->read_ms = read_ms;
 }
 
 // Address from the interface, level and link quality from
@@ -67,9 +94,12 @@ static void read_wifi(struct status *st) {
 }
 
 void status_read(struct status *st) {
+    struct timespec now;
     memset(st, 0, sizeof *st);
     read_wifi(st);
-    read_battery(st);
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    status_power_read_at(st, "/sys/class/power_supply",
+                         (int64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000);
 }
 
 int status_wifi_bars(const struct status *st) {
