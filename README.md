@@ -288,7 +288,11 @@ each time. The script saves the first one it is given and sets it thereafter.
 target: the package's stamp was already there, so the install step never re-ran,
 and the tablet kept the old script while the build looked clean. Use
 `make taq102-wifi-reinstall` after editing a file a package installs from its
-own directory.
+own directory. For a package that compiles sources (`glcube`, `rescue-screen`,
+`particles`), `make <pkg>-rebuild` does not re-sync the source either; only
+`make <pkg>-dirclean` followed by `make <pkg>` does. And the mount the VM
+reads the tree through has served stale and truncated files: run
+`tools/vm-hash-check.sh` before a build that matters.
 
 ## The gestures, and the four ways they were wrong
 

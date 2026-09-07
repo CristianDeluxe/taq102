@@ -4,6 +4,14 @@
 # The address moves: the Wi-Fi MAC is randomised per boot. Override with
 # TAQ102_HOST. The key is the dedicated ~/.ssh/taq102, installed on /root
 # of the ramdisk, so it must be reinstalled after a reboot of the rescue image.
+#
+# `tablet.sh reboot-loader` is special: the tablet reboots under the ssh
+# session, the connection never closes, and the caller hung on it on
+# 2026-09-03. The command is detached on the tablet and the session returns
+# at once; the loader shows up a few seconds later.
+if [ "${1:-}" = reboot-loader ]; then
+	set -- 'setsid sh -c "sleep 1; exec reboot-loader" >/dev/null 2>&1 </dev/null & exit 0'
+fi
 exec ssh -i "$HOME/.ssh/taq102" \
 	-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
 	-o IdentitiesOnly=yes -o ConnectTimeout=8 \

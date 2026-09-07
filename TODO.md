@@ -27,6 +27,9 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   address. The MAC is pinned in `/data/wifi.mac`, so a DHCP reservation plus a
   `known_hosts` entry is feasible. Accepted trade-off until then.
 ## Bugs
+- [~] `tools/panel-camera/tablet.sh reboot-loader` now detaches the command on
+  the tablet and returns at once (edited 2026-09-07, `sh -n` clean); the hang
+  itself cannot be re-tested until the next trip into loader mode.
 
 - [ ] Wi-Fi sometimes fails at boot (`sdio_disable_func` -5, then probe -110),
   and a wedged RTL8723CS recovers only by a full power-off; `taq102-wifi`
@@ -37,9 +40,6 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 - [ ] Rare `[drm] flip_done timed out` followed by two `vop_crtc_enable`, a
   250 ms blackout: 1 in 20 slow flips, 0 in 45 min of glcube (2026-09-04).
   Reproduce with `fliptest` pause mode before touching the driver.
-- [ ] `tools/panel-camera/tablet.sh reboot-loader` hung the pipeline over ssh
-  (2026-09-03; the connection dies with the reboot) and was bypassed by calling
-  `reboot-loader` directly. Make the helper detach from the dropped session.
 ## Kernel and drivers
 
 - [ ] The combo-PHY driver acquires `SRST_MIPIPHY_P` (reset id 36) and never
@@ -61,14 +61,11 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   (phantom finger; `glcube` expires a silent slot after 0.5 s), and the fb-blank
   notifier holds the chip in reset with no unblank (`taq102-app` unbinds
   fbcon). A driver patch would cover the rescue image and any future app.
-- [ ] The touch driver advertises 2048x1536 while the panel is 1024x600;
-  `src/touch_flip.c` maps by the KMS mode instead. Check whether
-  `screen_max_x/y` from `kernel/rk3126-taq102.dts:118` belong in the hybrid
-  tree or in patch 0005's config.
 - [ ] The device tree names the i2c-2 0x18 sensor `STK8BAxx`; it is a Silan
-  SC7A20 (WHO_AM_I 0x11) and no kernel driver claims it (`sensor_chip_init:
-  ops is null` every boot). `src/accel.c` drives it raw. Fix the node or drop
-  it to silence the probe.
+  SC7A20 (WHO_AM_I 0x11), and the vendor `lis3dh.c` would refuse it too (it
+  checks for 0x33), so no DT rename binds a kernel driver. `src/accel.c` drives
+  it raw. Drop the node with the next resource-image flash to silence
+  `sensor_chip_init: ops is null`; not worth a flash on its own.
 - [ ] U-Boot parks the panel-enable GPIO2_B4 low because the hybrid tree has no
   `lvds@20038000` node for it to read; patch 0003 repairs that at the first
   modeset. Adding the node would hand over a lit panel and drop the dependency.
@@ -88,17 +85,10 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   into charger mode instead of switching off (measured 2026-09-03).
 ## Infrastructure and tooling
 
-- [ ] Every Mac-to-VM copy has bitten once: `orb cat` truncated a zImage
-  silently (2026-09-03) and the shared mount served a short `glcube.c`
-  (2026-09-04). `tools/pull-kernel.sh` hashes the kernel; add the same
-  hash-both-sides step for `src/` and the overlay, and put
-  `make <pkg>-dirclean` (not `-rebuild`) in the README build section.
 - [ ] Buildroot in the OrbStack VM was OOM-killed twice (exit 137) even at
   `-j1` during the 2026-09-04 the reviewer run; the `taq102` VM holds 16 GB with
   `kbuild` beside it at 5.8 GB. Raise the VM's memory or stop `kbuild` while
   building.
-## Documentation
-
 ## Pending decisions
 
 - [ ] Mainline track or appliance polish next (asked 2026-09-03, not answered).
