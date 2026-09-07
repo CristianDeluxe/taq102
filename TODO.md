@@ -52,23 +52,30 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   Blocked: a device-tree change U-Boot itself reads; needs a resource flash and someone at the buttons if it does not come up.
 - [ ] Why the stock 4.4.103 does not flicker with the VOP IOMMU while our
   4.4.167 did is unknown and not needed (mainline drops the IOMMU too). Minor.
-- [-] Move to a current mainline kernel. Researched 2026-09-07, not worth
-  starting: mainline has the SoC (`rockchip,rk3126-vop` and an `arm,mali-400`
-  node in `arch/arm/boot/dts/rockchip/rk3128.dtsi`), the Wi-Fi natively
-  (`RTW88_8723CS` selects `RTW88_8703B`, so the vendor `8723cs.ko` and its
-  vermagic problem disappear) and the GPU through Lima instead of the r7p0
-  blob -- but it has no LVDS for this SoC. `rockchip_lvds.c` matches only
-  `rockchip,rk3288-lvds` and `rockchip,px30-lvds`, `rk3128.dtsi` has a
-  `rockchip,rk3128-dsi-dphy` and no LVDS node, so the combo PHY's LVDS mode
-  and the panel path this project spent weeks on would be written from
-  scratch. Also missing: the RK816 fuel gauge (the mainline `rk816s` MFD cells
-  are pinctrl, clkout, regulator, pwrkey and rtc -- no charger cell, unlike
-  RK817), so `/sys/class/power_supply/battery` and everything the control
-  centre and the brightness policy read from it would be gone; and the touch,
-  whose `gsl3673` config array has no mainline equivalent (`silead.c` knows
-  gsl1680/1688/3670/3675/3692). If it is ever wanted, the bounded first step
-  is a mainline zImage with the stock `rk3126.dtsi`, no display and no app,
-  judged only by whether the ACM console answers.
+- [~] Move to a current mainline kernel. Re-researched 2026-09-07 against a
+  local clone of 7.3.0-rc2, correcting an earlier note that called the display
+  a from-scratch job: it is not. `phy-rockchip-inno-dsidphy.c` already matches
+  `rockchip,rk3128-dsi-dphy` and already implements `PHY_MODE_LVDS`
+  (`inno_dsidphy_lvds_mode_enable`); `rockchip,rk3126-vop` is in
+  `rockchip_vop_reg.c`. Two pieces are missing and both are small, with the
+  vendor tree supplying the values: the VOP's LVDS output bits
+  (`RK3036_AXI_BUS_CTRL` bit 26 `lvds_en`, bit 27 `lvds_dclk_pol`, per
+  `/work/kernel` `rockchip_vop_reg.c:1150`), and an rk312x entry in
+  `rockchip_lvds.c`, which upstream has only for rk3288 and px30 -- the
+  vendor's `rk3126_lvds_enable` is one GRF write with P2S_EN, MODE_EN, MSBSEL
+  and SELECT, structurally the px30 path. Wi-Fi improves: `rtw8723cs.c` and
+  `rtw8703b.c` are in-tree, so the vendor `8723cs.ko` and its vermagic
+  constraint go away. Still missing for parity: the RK816 fuel gauge (mainline
+  `rk816s` MFD cells are pinctrl, clkout, regulator, pwrkey, rtc -- no charger,
+  unlike RK817), so `/sys/class/power_supply/battery` and the brightness policy
+  that reads it would need a driver; and the touch, since `silead.c` knows
+  gsl1680/1688/3670/3675/3692 and not the gsl3673 config array of patch 0005.
+  Open risk: whether mainline's PHY PLL picks the same divider pair patch 0001
+  needed here, measurable with the panel camera. Nothing goes near `boot` until
+  panel, touch, battery and Wi-Fi are all four proved.
+  Done so far: 7.3.0-rc2 clone at `/work/linux-mainline` in the `taq102` VM
+  builds with the Buildroot GCC 14.3 toolchain -- `multi_v7_defconfig`, zImage
+  and `rockchip/rk3128-evb.dtb`, no errors; the VM needed `libssl-dev`.
 - [ ] The PLL jitter mechanism is probable, not proven (prediv 12 runs the
   phase detector at 2 MHz, prediv 2 at 12 MHz); a 348 MHz probe on 2026-09-04
   was cut off. Only matters if the panel clock ever changes.
