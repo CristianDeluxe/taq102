@@ -24,11 +24,6 @@
 #include <linux/input-event-codes.h>
 #include <sys/ioctl.h>
 
-// The kernel's input_event on this 32-bit kernel is 16 bytes; a libc with
-// 64-bit time_t describes it as 24 and a sizeof() check then never matches.
-// Pin the wire format, as particles.c does.
-struct kev { uint32_t sec, usec; uint16_t type, code; int32_t value; };
-
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include <gbm.h>
@@ -36,68 +31,15 @@ struct kev { uint32_t sec, usec; uint16_t type, code; int32_t value; };
 #include <GLES2/gl2.h>
 
 #include "arcball.h"
-#include "oneeuro.h"
-#include "canvas.h"
+#include "control_input.h"
+#include "control_overlay.h"
+#include "control_runtime.h"
+#include "display_power.h"
+#include "power_key.h"
+#include "sleep_state.h"
 #include "status.h"
-#include "statusbar.h"
 #include "accel_monitor.h"
 #include "touch_flip.h"
-
-// Writing to fb0's blank attribute is how the kernel is told the screen is
-// off. It does nothing to the picture -- fbdev is not bound while a KMS
-// client owns the display -- but the notifier chain behind it is what the
-// vendor drivers listen to: the GSL3673 driver suspends (reset pin low) and
-// resumes (reset, firmware check) on it, and pwm-backlight follows it too.
-#define FB_BLANK_PATH "/sys/class/graphics/fb0/blank"
-// pwm-backlight on this tree does not follow the fb notifier (measured:
-// brightness stayed at 255 through a blank), so the light is switched by
-// hand as well; the panel's own enable/disable also sets it, and both write
-// the same power field.
-#define BL_POWER_PATH "/sys/class/backlight/backlight/bl_power"
-
-static int write_str(const char *path, const char *str) {
-    int fd = open(path, O_WRONLY | O_CLOEXEC);
-    if (fd < 0) return -1;
-    ssize_t n = write(fd, str, strlen(str));
-    close(fd);
-    return n < 0 ? -1 : 0;
-}
-
-// The status bar rides on top of the picture as a textured strip: white
-// shapes on a transparent background, so only the icons show.
-static const char *OVERLAY_VERT =
-    "attribute vec2 pos;\n"
-    "attribute vec2 uv;\n"
-    "varying vec2 v_uv;\n"
-    "void main() { v_uv = uv; gl_Position = vec4(pos, 0.0, 1.0); }\n";
-
-static const char *OVERLAY_FRAG =
-    "precision mediump float;\n"
-    "varying vec2 v_uv;\n"
-    "uniform sampler2D tex;\n"
-    "void main() { gl_FragColor = texture2D(tex, v_uv); }\n";
-
-static const struct statusbar_style OVERLAY_STYLE = {
-    0x00000000u,   // bar: nothing behind the icons
-    0x00000000u,   // hollow battery
-    0xFFFFFFFFu,   // ink
-    0x66FFFFFFu,   // unlit arcs, faint
-    0xFFFFFFFFu,   // bolt
-    "/usr/share/fonts/taq102/Inter-SemiBold.ttf",
-};
-
-// 0xAARRGGBB in memory is B,G,R,A on this little-endian machine; GL wants
-// R,G,B,A. Straight alpha, and the blend below is SRC_ALPHA / ONE_MINUS.
-static void upload_canvas(const struct canvas *c, unsigned char *rgba) {
-    for (int i = 0; i < c->w * c->h; i++) {
-        uint32_t p = c->px[i];
-        rgba[4 * i + 0] = (p >> 16) & 0xff;
-        rgba[4 * i + 1] = (p >> 8) & 0xff;
-        rgba[4 * i + 2] = p & 0xff;
-        rgba[4 * i + 3] = p >> 24;
-    }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, c->w, c->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
-}
 
 static const char *VERT =
     "attribute vec3 pos;\n"
@@ -322,37 +264,18 @@ int main(void) {
     GLint u_model = glGetUniformLocation(prog, "model");
     GLint u_modelview = glGetUniformLocation(prog, "modelview");
 
-    GLuint oprog = glCreateProgram();
-    glAttachShader(oprog, compile(GL_VERTEX_SHADER, OVERLAY_VERT));
-    glAttachShader(oprog, compile(GL_FRAGMENT_SHADER, OVERLAY_FRAG));
-    glBindAttribLocation(oprog, 0, "pos");
-    glBindAttribLocation(oprog, 1, "uv");
-    glLinkProgram(oprog);
-    glGetProgramiv(oprog, GL_LINK_STATUS, &linked);
-    if (!linked) { fprintf(stderr, "overlay link failed\n"); return 1; }
-    glUseProgram(oprog);
-    glUniform1i(glGetUniformLocation(oprog, "tex"), 0);
-    glUseProgram(prog);
-
-    // The bar's canvas, its texture, and the quad it is drawn on: the top
-    // bar_h rows of the screen, in clip space.
-    int bar_h = statusbar_height(W);
-    struct canvas bar = { calloc((size_t)W * bar_h, 4), W, bar_h };
-    unsigned char *bar_rgba = malloc((size_t)W * bar_h * 4);
-    if (!bar.px || !bar_rgba) { perror("status bar"); return 1; }
-    GLuint bar_tex;
-    glGenTextures(1, &bar_tex);
-    glBindTexture(GL_TEXTURE_2D, bar_tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    float bar_bottom = 1.f - 2.f * (float)bar_h / (float)H;
-    const GLfloat bar_quad[] = {   // x, y, u, v
-        -1.f, 1.f, 0.f, 0.f,   1.f, 1.f, 1.f, 0.f,   -1.f, bar_bottom, 0.f, 1.f,
-         1.f, 1.f, 1.f, 0.f,   1.f, bar_bottom, 1.f, 1.f,   -1.f, bar_bottom, 0.f, 1.f,
-    };
-    char bar_key[128] = "", bar_shown[128] = "";
+    const char *fonts = getenv("GLCUBE_FONTS");
+    struct control_overlay *overlay = control_overlay_new(W, H,
+        fonts ? fonts : "/usr/share/fonts/taq102");
+    if (!overlay) { fprintf(stderr, "overlay initialization failed\n"); return 1; }
+    struct timespec started;
+    clock_gettime(CLOCK_MONOTONIC, &started);
+    const char *settings = getenv("GLCUBE_SETTINGS");
+    struct control_runtime controls;
+    if (control_runtime_init(&controls, settings ? settings : "/data/taq102.conf",
+        (int64_t)started.tv_sec * 1000 + started.tv_nsec / 1000000) < 0) {
+        fprintf(stderr, "control initialization failed\n"); return 1;
+    }
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -375,10 +298,15 @@ int main(void) {
     mat_identity(view);
     view[14] = -6.f;   // rewritten every frame once a pinch moves the camera
 
-    int tfd = open("/dev/input/event1", O_RDONLY | O_NONBLOCK);
+    const char *touch_path = getenv("GLCUBE_TOUCH");
+    int tfd = open(touch_path ? touch_path : "/dev/input/event1", O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    if (tfd < 0) perror("touch open");
     int touching = 0;
     // The PMIC's power button, KEY_POWER on press (1) and release (0).
-    int pfd = open("/dev/input/event0", O_RDONLY | O_NONBLOCK);
+    const char *power_path = getenv("GLCUBE_POWER");
+    int pfd = open(power_path ? power_path : "/dev/input/event0", O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    if (pfd < 0) perror("power open");
+    struct power_key power_key = {0};
     int waking = 0;      // the modeset that wakes the panel is pending
 
     // Orientation. The SC7A20's Y axis runs along the short side of the
@@ -409,62 +337,12 @@ int main(void) {
            finish ? "on" : "off", static_scene ? "on" : "off",
            trace ? "on" : "off");
 
-    // Protocol B multitouch, and two things about it that are easy to get
-    // wrong and were both got wrong here first:
-    //
-    // ABS_MT_SLOT is *state*, not a field of each event: the kernel emits it
-    // only when the slot changes, so a reader that opens the device mid-stream
-    // does not know which slot the positions it receives belong to. Assuming 0
-    // parked a phantom contact in slot 0 that never lifted -- the driver never
-    // selects slot 0, so it never sends that slot a tracking id of -1 -- and
-    // every pinch then measured against a frozen point.
-    //
-    // A slot becomes active on a tracking id and only on a tracking id.
-    // Positions carry no such meaning, and treating them as if they did is
-    // what made the phantom stick.
-    //
-    // EVIOCGMTSLOTS asks the kernel for the current state at open, which is
-    // the supported way to start from the truth rather than from a guess.
-    //
-    // This driver happens to number its slots from 1 -- one finger is slot 1,
-    // two are slots 1 and 2 -- but nothing promises that, so the array is
-    // indexed by slot number and no number is assumed.
-    #define MAX_SLOTS 8
-    struct slot {
-        int active;
-        int quiet;                   // frames since this slot last spoke
-        float x, y;                  // filtered, which is what the gesture uses
-        struct oneeuro fx, fy;
-    } slots[MAX_SLOTS];
-    memset(slots, 0, sizeof slots);
-    // 1 Hz minimum cutoff kills the standing jitter; the speed term hands the
-    // signal straight back as soon as a finger actually moves.
-    for (int i = 0; i < MAX_SLOTS; i++) {
-        oneeuro_init(&slots[i].fx, 1.0f, 0.02f);
-        oneeuro_init(&slots[i].fy, 1.0f, 0.02f);
+    struct control_input input;
+    if (control_input_init(&input, &touch_flip) < 0) {
+        fprintf(stderr, "touch initialization failed\n"); return 1;
     }
-
     struct arcball ball;
     arcball_init(&ball);
-    int cur_slot = -1;
-
-    if (tfd >= 0) {
-        int32_t q[1 + MAX_SLOTS];
-        q[0] = ABS_MT_TRACKING_ID;
-        if (ioctl(tfd, EVIOCGMTSLOTS(sizeof q), q) >= 0)
-            for (int i = 0; i < MAX_SLOTS; i++)
-                slots[i].active = (q[1 + i] >= 0);
-    }
-    // A contact that stops reporting is treated as lifted. The tablet sat
-    // for hours with the cube dead still because the touch driver's suspend
-    // path clears tracking ids for slots 1 and up only, and a contact parked
-    // in slot 0 -- or one the controller simply dropped -- then blocked the
-    // resting spin for good. A finger really on the glass jitters by a pixel
-    // every few frames, and if it does hold perfectly still, its next
-    // movement arrives as a position on a slot the kernel still considers
-    // down, which reactivates it below. Only a tracking id of -1 ends a
-    // contact for the kernel; this is the application's own patience.
-    #define SLOT_SILENCE 30      // frames, about half a second at 55 FPS
     float pinch_ref = 0.f;   // finger distance when the pinch started
     float dist_ref = 6.f;    // camera distance at that moment
     float prev_twist = 0.f;  // angle of the line between the fingers
@@ -506,7 +384,6 @@ int main(void) {
     long frames = 0;
 
     for (;;) {
-        struct kev ev;
         struct timespec frame_start;
         clock_gettime(CLOCK_MONOTONIC, &frame_start);
         if (last_frame.tv_sec != 0) {
@@ -516,93 +393,57 @@ int main(void) {
         }
         last_frame = frame_start;
 
-        if (pfd >= 0) {
-            struct kev pe;
-            int pressed = 0;
-            while (read(pfd, &pe, sizeof pe) == (ssize_t)sizeof pe)
-                if (pe.type == EV_KEY && pe.code == KEY_POWER && pe.value == 1) pressed = 1;
-            if (pressed && !first) {
-                // Off: backlight and touch first, through the fb notifier,
-                // then the panel, by taking the CRTC down. Then nothing
-                // happens until the button again; touch events are drained
-                // so a poke at the dark glass does not queue up for later.
-                write_str(BL_POWER_PATH, "4");
-                write_str(FB_BLANK_PATH, "4");
-                drmModeSetCrtc(fd, crtc_id, 0, 0, 0, NULL, 0, NULL);
-                printf("sleep\n");
-                fflush(stdout);
-                for (;;) {
-                    struct pollfd pp[2] = { { pfd, POLLIN, 0 }, { tfd, POLLIN, 0 } };
-                    if (poll(pp, tfd >= 0 ? 2 : 1, -1) < 0) continue;
-                    int wake = 0;
-                    while (read(pfd, &pe, sizeof pe) == (ssize_t)sizeof pe)
-                        if (pe.type == EV_KEY && pe.code == KEY_POWER && pe.value == 1) wake = 1;
-                    while (tfd >= 0 && read(tfd, &ev, sizeof ev) == (ssize_t)sizeof ev) {}
-                    if (wake) break;
-                }
-                // On: the panel comes back with the next frame's modeset, and
-                // only then the backlight and the touch, so the panel is
-                // already showing the picture when the light comes on.
-                for (int i = 0; i < MAX_SLOTS; i++) slots[i].active = 0;
-                cur_slot = -1;
-                touching = 0;
-                arcball_end(&ball);
-                first = 1;
-                waking = 1;
-                t0.tv_sec = 0;
-                last_frame.tv_sec = 0;
-                max_frame_ms = 0.0;
-                frames = 0;
-                printf("wake\n");
-                fflush(stdout);
-            }
+        int64_t now_ms = (int64_t)frame_start.tv_sec * 1000 + frame_start.tv_nsec / 1000000;
+        double now_seconds = (double)frame_start.tv_sec + frame_start.tv_nsec / 1e9;
+        if (power_key_read(&power_key, pfd) && !first) controls.sleep_requested = 1;
+        if (control_input_read(&input, &controls, tfd, now_seconds) < 0) {
+            perror("touch read"); return 1;
         }
-
-        while (tfd >= 0 && read(tfd, &ev, sizeof ev) == (ssize_t)sizeof ev) {
-            if (ev.type != EV_ABS) continue;
-            // The filter needs the event's own timestamp: the interval between
-            // touch samples is what sets how hard it smooths, and it is not the
-            // frame interval.
-            float evtime = (float)ev.sec + (float)ev.usec * 1e-6f;
-            if (ev.code == ABS_MT_SLOT) {
-                cur_slot = ev.value;
-                continue;
+        if (input.cube_released) touching = 0;
+        control_runtime_tick(&controls, now_ms, 0);
+        touch_router_set_panel_open(input.router, cc_visible(&controls.panel));
+        if (controls.sleep_requested && !first) {
+            control_runtime_sleep(&controls, now_ms);
+            control_input_reset(&input, &controls, flipped);
+            touching = 0; pinch_ref = 0; lone_frames = 0;
+            arcball_end(&ball);
+            if (display_power_off() < 0) fprintf(stderr, "sleep: power write failed\n");
+            if (drmModeSetCrtc(fd, crtc_id, 0, 0, 0, NULL, 0, NULL)) {
+                perror("sleep CRTC"); display_power_on(); return 1;
             }
-            // Until the first slot arrives there is nothing to attribute
-            // positions to, and guessing is exactly the bug above.
-            if (cur_slot < 0 || cur_slot >= MAX_SLOTS) continue;
-
-            slots[cur_slot].quiet = 0;
-            switch (ev.code) {
-            case ABS_MT_TRACKING_ID:
-                slots[cur_slot].active = (ev.value != -1);
-                if (ev.value == -1) {
-                    touching = 0;
-                } else {
-                    // A new contact is a new signal. The filter keeps its state
-                    // per slot, and a slot gets reused: without this reset the
-                    // finger appears to start where the *previous* finger in
-                    // that slot ended and slides to where it really is, over
-                    // the tenth of a second the adaptive cutoff needs to notice
-                    // the jump. Two fingers closing then read as separating,
-                    // and the cube grows while you pinch it smaller.
-                    oneeuro_init(&slots[cur_slot].fx, 1.0f, 0.02f);
-                    oneeuro_init(&slots[cur_slot].fy, 1.0f, 0.02f);
+            struct pickup pickup;
+            pickup_start(&pickup, now_ms);
+            unsigned sleep_sequence = accel_sequence;
+            printf("sleep\n"); fflush(stdout);
+            for (;;) {
+                struct pollfd pp[2] = {{pfd, POLLIN, 0}, {tfd, POLLIN, 0}};
+                int ready = poll(pp, 2, 250);
+                if (ready < 0 && errno != EINTR) { perror("sleep poll"); break; }
+                int wake = power_key_read(&power_key, pfd);
+                /* Decode and discard while dark; preserve the decoder's fd/clock. */
+                struct touch_event discarded[64];
+                int n;
+                do { n = tfd >= 0 ? touch_input_read_fd(input.decoder, tfd, discarded, 64) : 0; } while (n == 64);
+                if (n < 0) { perror("sleep touch read"); break; }
+                struct timespec current;
+                clock_gettime(CLOCK_MONOTONIC, &current);
+                now_ms = (int64_t)current.tv_sec * 1000 + current.tv_nsec / 1000000;
+                control_runtime_tick(&controls, now_ms, 1);
+                struct accel_snapshot sample;
+                if (accelerometer && accel_monitor_snapshot(accelerometer, &sample) == 0 &&
+                    sample.sequence != sleep_sequence) {
+                    sleep_sequence = sample.sequence;
+                    if (pickup_feed(&pickup, sample.x_mg, sample.y_mg, sample.z_mg, sample.at_ms)) wake = 1;
                 }
-                break;
-            case ABS_MT_POSITION_X:
-                slots[cur_slot].active = 1;
-                slots[cur_slot].x = oneeuro_apply(&slots[cur_slot].fx,
-                    touch_flip_value(&touch_flip, TOUCH_AXIS_X, ev.value, flipped), evtime);
-                break;
-            case ABS_MT_POSITION_Y:
-                slots[cur_slot].active = 1;
-                slots[cur_slot].y = oneeuro_apply(&slots[cur_slot].fy,
-                    touch_flip_value(&touch_flip, TOUCH_AXIS_Y, ev.value, flipped), evtime);
-                break;
-            default:
-                break;
+                if (wake) break;
             }
+            control_input_reset(&input, &controls, flipped);
+            sleep_timer_touch(&controls.idle, now_ms);
+            first = 1; waking = 1;
+            t0.tv_sec = last_frame.tv_sec = 0;
+            max_frame_ms = 0; frames = 0;
+            control_overlay_take_uploads(overlay);
+            printf("wake\n"); fflush(stdout);
         }
 
         if (!static_scene && accelerometer && frames % 10 == 0) {
@@ -615,6 +456,9 @@ int main(void) {
                 if (want != flipped && ++flip_votes >= 3) {
                     flipped = want;
                     flip_votes = 0;
+                    control_input_reset(&input, &controls, flipped);
+                    touching = 0; pinch_ref = 0; lone_frames = 0;
+                    arcball_end(&ball);
                     printf("orientation: %s (y %d mg)\n",
                            flipped ? "turned round" : "normal", sample.y_mg);
                     fflush(stdout);
@@ -624,20 +468,14 @@ int main(void) {
             }
         }
 
-        for (int i = 0; i < MAX_SLOTS; i++)
-            if (slots[i].active && ++slots[i].quiet > SLOT_SILENCE) {
-                slots[i].active = 0;
-                touching = 0;
-            }
-
         if (!static_scene) {
             // Whichever slots the driver happens to be using: the first two
             // active ones, in slot order.
-            struct slot *a = NULL, *b = NULL;
-            for (int i = 0; i < MAX_SLOTS; i++) {
-                if (!slots[i].active) continue;
-                if (!a) a = &slots[i];
-                else if (!b) { b = &slots[i]; break; }
+            const typeof(input.cube.slot[0]) *a = NULL, *b = NULL;
+            for (int i = 0; i < TOUCH_MAX_SLOTS; i++) {
+                if (!input.cube.slot[i].active) continue;
+                if (!a) a = &input.cube.slot[i];
+                else if (!b) { b = &input.cube.slot[i]; break; }
             }
 
             if (a && b) {
@@ -720,33 +558,7 @@ int main(void) {
         glUniformMatrix4fv(u_modelview, 1, GL_FALSE, mv);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        // The status bar, over everything, once a second at most.
-        glUseProgram(oprog);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glDisableVertexAttribArray(2);
-        GLfloat quad[24];
-        for (int i = 0; i < 24; i++)
-            quad[i] = (flipped && (i % 4) < 2) ? -bar_quad[i] : bar_quad[i];
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), quad);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), quad + 2);
-        glDisable(GL_DEPTH_TEST);
-        glDisable(GL_CULL_FACE);   // the quad is wound as read, top-left first
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glBindTexture(GL_TEXTURE_2D, bar_tex);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        if (trace && frames == 0)
-            printf("overlay: glGetError after draw 0x%x, tex %u, bar %dx%d\n", glGetError(), bar_tex, bar.w, bar.h);
-        glDisable(GL_BLEND);
-        glEnable(GL_CULL_FACE);
-        glEnable(GL_DEPTH_TEST);
-        glUseProgram(prog);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        for (int i = 0; i < 3; i++) {
-            glVertexAttribPointer(i, 3, GL_FLOAT, GL_FALSE, stride,
-                                  (const void *)(uintptr_t)(i * 3 * sizeof(GLfloat)));
-            glEnableVertexAttribArray(i);
-        }
+        control_overlay_draw(overlay, &controls.panel, &controls.status, flipped, now_ms);
 
         eglSwapBuffers(dpy, egl_surf);
         if (finish) glFinish();
@@ -760,8 +572,8 @@ int main(void) {
                 perror("setcrtc"); return 1;
             }
             if (waking) {
-                write_str(BL_POWER_PATH, "0");
-                write_str(FB_BLANK_PATH, "0");
+                control_runtime_wake(&controls, now_ms);
+                if (display_power_on() < 0) fprintf(stderr, "wake: power write failed\n");
                 waking = 0;
             } else {
                 printf("KMS up: %dx%d@%d on connector %u\n",
@@ -787,39 +599,21 @@ int main(void) {
         if (t0.tv_sec == 0) t0 = now;
         frames++;
         double el = (now.tv_sec - t0.tv_sec) + (now.tv_nsec - t0.tv_nsec) / 1e9;
-        if (el >= 1.0 || bar_shown[0] == 0) {
-            struct status st;
-            status_read(&st);
-            snprintf(bar_key, sizeof bar_key, "%d|%d|%d|%d", st.have_wifi, status_wifi_bars(&st), st.cap, st.ma > 0);
-            if (strcmp(bar_key, bar_shown)) {
-                // The bar composites over what the canvas holds, so a repaint
-                // starts from transparent or the old digits show through.
-                memset(bar.px, 0, (size_t)W * bar_h * 4);
-                statusbar_paint(&bar, &st, &OVERLAY_STYLE);
-                glBindTexture(GL_TEXTURE_2D, bar_tex);
-                upload_canvas(&bar, bar_rgba);
-                if (trace) {
-                    int lit = 0;
-                    for (int i = 0; i < bar.w * bar.h; i++) if (bar.px[i]) lit++;
-                    printf("overlay: painted %d px, key %s, glGetError after upload 0x%x\n", lit, bar_key, glGetError());
-                }
-                strcpy(bar_shown, bar_key);
-            }
-        }
         if (el >= 1.0) {
+            unsigned uploads = control_overlay_take_uploads(overlay);
             if (trace) {
                 int n = 0;
                 char which[64] = "";
-                for (int i = 0; i < MAX_SLOTS; i++)
-                    if (slots[i].active) {
+                for (int i = 0; i < TOUCH_MAX_SLOTS; i++)
+                    if (input.cube.slot[i].active) {
                         n++;
                         snprintf(which + strlen(which), sizeof which - strlen(which),
-                                 "%d(%.0f,%.0f) ", i, slots[i].x, slots[i].y);
+                                 "%d(%.0f,%.0f) ", i, input.cube.slot[i].x, input.cube.slot[i].y);
                     }
                 printf("%.1f FPS | max frame %.2f ms | accel read %ld us | "
-                       "slots %d: %s| cam %.2f pinch_ref %.0f dragging %d\n",
+                       "slots %d: %s| cam %.2f pinch_ref %.0f dragging %d | uploads/s %.1f | glGetError 0x%x\n",
                        frames / el, max_frame_ms, accel_max_read_us, n, which,
-                       cam, pinch_ref, ball.dragging);
+                       cam, pinch_ref, ball.dragging, uploads / el, glGetError());
             } else {
                 printf("%.1f FPS\n", frames / el);
             }

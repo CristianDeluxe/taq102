@@ -85,6 +85,7 @@ static struct font *get_bar_font(const char *path) {
     if (!bar_font_path) return NULL;
     // Match the canvas supersampling; cache failed paths as well as open faces.
     bar_font = font_open(path, 18 * SS);
+    printf("statusbar text: %s (%s)\n", bar_font ? "Inter" : "bitmap fallback", path);
     return bar_font;
 }
 
