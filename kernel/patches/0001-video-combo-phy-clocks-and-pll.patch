@@ -2,7 +2,7 @@ diff --git a/drivers/phy/rockchip/phy-rockchip-inno-video-combo-phy.c b/drivers/
 index 37855657..9e64e8f3 100644
 --- a/drivers/phy/rockchip/phy-rockchip-inno-video-combo-phy.c
 +++ b/drivers/phy/rockchip/phy-rockchip-inno-video-combo-phy.c
-@@ -197,6 +197,13 @@ struct inno_video_phy {
+@@ -197,6 +197,13 @@
  	struct clk *ref_clk;
  	struct clk *pclk_phy;
  	struct clk *pclk_host;
@@ -16,7 +16,7 @@ index 37855657..9e64e8f3 100644
  	void __iomem *phy_base;
  	void __iomem *host_base;
  	struct reset_control *rst;
-@@ -440,6 +447,20 @@ static void inno_video_phy_mipi_mode_enable(struct inno_video_phy *inno)
+@@ -440,6 +447,20 @@
  
  static void inno_video_phy_lvds_mode_enable(struct inno_video_phy *inno)
  {
@@ -37,34 +37,7 @@ index 37855657..9e64e8f3 100644
  	u8 prediv = 2;
  	u16 fbdiv = 28;
  	u32 val;
-@@ -461,6 +482,15 @@ static void inno_video_phy_lvds_mode_enable(struct inno_video_phy *inno)
- 	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x04,
- 			REG_FBDIV_LO_MASK, REG_FBDIV_LO(fbdiv));
- 	phy_update_bits(inno, REGISTER_PART_LVDS, 0x08, 0xff, 0xfc);
-+	/* Power up the common analog LDO and PLL, as MIPI mode does */
-+	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x01,
-+			REG_LDOPD_MASK | REG_PLLPD_MASK,
-+			REG_LDOPD_POWER_ON | REG_PLLPD_POWER_ON);
-+	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x01,
-+			REG_SYNCRST_MASK, REG_SYNCRST_RESET);
-+	udelay(1);
-+	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x01,
-+			REG_SYNCRST_MASK, REG_SYNCRST_NORMAL);
- 	/* Enable PLL and Bandgap */
- 	phy_update_bits(inno, REGISTER_PART_LVDS, 0x0b,
- 			LVDS_PLL_POWER_MASK | LVDS_BANDGAP_POWER_MASK,
-@@ -488,6 +518,10 @@ static void inno_video_phy_lvds_mode_enable(struct inno_video_phy *inno)
- 			LVDS_LANE_EN_MASK, LVDS_CLK_LANE_EN |
- 			LVDS_DATA_LANE0_EN | LVDS_DATA_LANE1_EN |
- 			LVDS_DATA_LANE2_EN | LVDS_DATA_LANE3_EN);
-+	/* and the common analog lanes behind it, as MIPI mode does */
-+	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x00,
-+			LANE_EN_MASK, LANE_EN_CK | LANE_EN_3 | LANE_EN_2 |
-+			LANE_EN_1 | LANE_EN_0);
- }
- 
- static void inno_video_phy_ttl_mode_enable(struct inno_video_phy *inno)
-@@ -520,8 +554,16 @@ static int inno_video_phy_power_on(struct phy *phy)
+@@ -520,8 +541,16 @@
  {
  	struct inno_video_phy *inno = phy_get_drvdata(phy);
  
@@ -81,7 +54,7 @@ index 37855657..9e64e8f3 100644
  	pm_runtime_get_sync(inno->dev);
  
  	/* Bandgap power on */
-@@ -570,8 +612,10 @@ static int inno_video_phy_power_off(struct phy *phy)
+@@ -570,8 +599,10 @@
  			LVDS_PLL_POWER_OFF | LVDS_BANDGAP_POWER_DOWN);
  
  	pm_runtime_put(inno->dev);
@@ -92,7 +65,7 @@ index 37855657..9e64e8f3 100644
  
  	return 0;
  }
-@@ -809,6 +853,11 @@ static int inno_video_phy_probe(struct platform_device *pdev)
+@@ -809,6 +840,11 @@
  		return ret;
  	}
  

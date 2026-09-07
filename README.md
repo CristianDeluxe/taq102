@@ -428,7 +428,7 @@ only that change onto the stock tree moves the error to `-517`
 
 With the PHY driver built in, the boot hangs the moment LVDS powers the PHY,
 before fbdev registers, which is why even a framebuffer console shows nothing.
-`kernel/patches/0001-video-combo-phy-enable-h2p-clock.patch` enables
+`kernel/patches/0001-video-combo-phy-clocks-and-pll.patch` enables
 HCLK_VIO_H2P around the DSI-host accesses that path makes -- the dsi node lists
 that clock beside PCLK_MIPI, and in LVDS mode no DSI driver is there to enable
 it -- but the hang survives it, so the cause is still open.

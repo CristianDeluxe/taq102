@@ -6,6 +6,15 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Kernel:** Patch series reconciled: `0001` had absorbed
+  `0002`'s two analog-power hunks, so a fresh checkout could not take the
+  series in order. `0001` regenerated as the tree minus `0007` minus `0002`.
+  - Evidence: in the VM, pristine `HEAD` file + `0001` + `0002` + `0007`
+    is byte-identical (`cmp`) to the driver the kernel is built from; before,
+    `0002` reported "2 out of 2 hunks ignored". README's stale
+    `0001-video-combo-phy-enable-h2p-clock.patch` name corrected.
+  - Files: `kernel/patches/0001-video-combo-phy-clocks-and-pll.patch`, `README.md`.
+
 - [x] 2026-09-07 — **Kernel:** Backlog run, wave 3 (the reviewer, session
   `01a07c17`): patches 0006 (GSL3673 releases slots 0..10 on suspend and
   resume) and 0007 (combo PHY pulses its reset at power-on) written, applied
