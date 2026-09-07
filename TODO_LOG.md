@@ -6,6 +6,35 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Appliance:** The control centre, the brightness policy,
+  idle sleep with pick-up wake, and Inter on every screen (v46 in `boot` and
+  `recovery`).
+  - Result: spec `docs/2026-09-07-control-centre-design.md`
+    (reworked after a the reviewer review with ten blocking issues), plan
+    `docs/2026-09-07-control-centre.md`, twelve tasks;
+    the reviewer implemented tasks 1 to 11 in five runs, each committed with its
+    tests; new modules `font`, `canvas_blend`, `settings`, `backlight`,
+    `power_policy`, `sleep_state`, `touch_input`, `touch_router`,
+    `control_center` (model, layout, painter), `action_worker`,
+    `wifi_status`, `reboot_target`, `touchsim`; `glcube.c` down to 627
+    lines of wiring. Rescue backlight boots at 40.
+  - Evidence: 17 host tests under ASan/UBSan pass
+    (`tools/test-control-centre-host.sh`); the device test on the clean v46
+    boot passes 22 of 22 (`docs/evidence/2026-09-07-control-centre/device-test-v46.log`,
+    scanouts `open.png`, `mid-drag.png`, `armed.png`, four 60 s phases at
+    54.8 FPS, zero GL errors); rescue round trip on v46: backlight 40 of
+    255 logged by `/init`, battery +9 mA on the CDP port instead of -292,
+    `rescue-screen text: Inter`, dump `rescue-v46-dump.png`, BCB zeroed and
+    the appliance back at 54.8 FPS. Flashes readback-verified; images
+    archived as `recovery-taq102-v46-*.img`.
+  - Files: `src/`, `tests/control-centre/`, `tools/test-control-centre-*.sh`,
+    `br2-external/package/taq102-fonts/`, `README.md` section "The control
+    centre".
+
+- [-] 2026-09-07 — **Pending decisions:** Backlight default.
+  - Resolution: I wants it to adjust itself; the brightness
+    controller and the manual slider replace a fixed default.
+
 - [x] 2026-09-07 — **Kernel:** v44 and v45 flashed and proved: kernel with
   patches 0006 and 0007, the reset-pulse PHY module, and the new user space in
   `boot`; the matching stock-kernel rescue in `recovery`; BCB round trip done.
