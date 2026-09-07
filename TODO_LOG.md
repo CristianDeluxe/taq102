@@ -6,6 +6,27 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Appliance:** Backlog run, wave 2 (the reviewer, session
+  `01a07c06`): rescue screen rotates with the accelerometer (`RESCUE_FLIP=0|1`
+  override), `RESCUE_DUMP` refuses symlinks, `glcube` and `rescue-screen` take
+  DRM master explicitly and exit when refused, `particles` paints opaque
+  pixels, BusyBox gains `timeout`, `taq102-app` logs to `/data/log`.
+  - Evidence: cross-built in the VM with no new warnings; deployed live to the
+    tablet's tmpfs with hash checks: second `glcube` exits with
+    `drmSetMaster: Invalid argument` while the first keeps 54.8 FPS; with
+    fixed telemetry the `RESCUE_FLIP=1` dump equals the `RESCUE_FLIP=0` dump
+    rotated a half turn at every pixel, and the unforced run equals the
+    flipped one because the sensor reads Y +989 mg; `/dev/mem` scanout of the
+    new `particles` has 614,400 of 614,400 pixels at alpha 255; the new
+    busybox lists `timeout` and `timeout 1 sleep 5` exits 143; the new
+    supervisor wrote 54.8 FPS lines to `/data/log/taq102-app.log`. Appliance
+    restored at 54.8 FPS. Full record: the reviewer `FINDINGS-A.md` of the run.
+  - Files: `src/rescue-screen.c`, `src/glcube.c`, `src/particles.c`,
+    `br2-external/package/rescue-screen/rescue-screen.mk`,
+    `br2-external/configs/taq102_defconfig`,
+    `br2-external/board/taq102/busybox.fragment`,
+    `br2-external/board/taq102/rootfs-overlay/usr/bin/taq102-app`.
+
 - [x] 2026-09-07 — **Infrastructure:** Backlog run, wave 1: repo-only items.
   - Result: `get-rkdeveloptool.sh` pinned to `304f073` and `get-mkbootimg.sh`
     to `d2bb0af`; `flash-recovery.sh` gained `--no-bcb` and both flash scripts

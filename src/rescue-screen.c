@@ -7,15 +7,19 @@
 //
 // Top right, the iOS-style status bar from statusbar.c, which glcube shares.
 //
-// One buffer, no page flips: the picture changes only when a status line
-// does, and a full redraw once every two seconds is nothing. Runs until
-// killed; `killall rescue-screen` frees the display for whatever is being
-// debugged. RESCUE_DUMP=<file.ppm> writes each painted frame there, so the
-// screen can be checked without a camera.
+// One buffer, no page flips: status and orientation are sampled every two
+// seconds, with a repaint when either changes. Like glcube, three Y samples
+// above +500 mg turn the entire canvas halfway round; below -500 mg turn it
+// back, keeping the orientation between thresholds. No sensor means normal.
+// RESCUE_FLIP=0|1 forces orientation without a sensor or physically turning
+// the tablet. Runs until killed; `killall rescue-screen` frees the display.
+// RESCUE_DUMP=<file.ppm> writes the oriented frame and refuses a symlink at
+// that path, so the screen can be checked without a camera.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
@@ -26,6 +30,7 @@
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
+#include "accel.h"
 #include "canvas.h"
 #include "status.h"
 #include "statusbar.h"
@@ -72,8 +77,10 @@ static void paint(struct canvas *c, const char *kernel, const char *build, const
 }
 
 static void dump_ppm(const struct canvas *c, const char *path) {
-    FILE *f = fopen(path, "wb");
-    if (!f) return;
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0644);
+    if (fd < 0) { perror("RESCUE_DUMP open"); return; }
+    FILE *f = fdopen(fd, "wb");
+    if (!f) { perror("RESCUE_DUMP fdopen"); close(fd); return; }
     fprintf(f, "P6\n%d %d\n255\n", c->w, c->h);
     for (int i = 0; i < c->w * c->h; i++) {
         uint32_t p = c->px[i];
@@ -89,6 +96,11 @@ static void on_signal(int sig) { (void)sig; stop = 1; }
 int main(void) {
     int fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     if (fd < 0) { perror("open card0"); return 1; }
+    if (drmSetMaster(fd) != 0) {
+        fprintf(stderr, "drmSetMaster: %s\n", strerror(errno));
+        close(fd);
+        return 1;
+    }
 
     drmModeRes *res = drmModeGetResources(fd);
     if (!res) { perror("drmModeGetResources"); return 1; }
@@ -121,17 +133,52 @@ int main(void) {
     char build[64], shown[200] = "", key[200];
     read_line("/etc/taq102-build-id", build, sizeof build);
     const char *dump = getenv("RESCUE_DUMP");
+    const char *override = getenv("RESCUE_FLIP");
+    int forced = override && (!strcmp(override, "0") || !strcmp(override, "1"));
+    if (override && !forced)
+        fprintf(stderr, "invalid RESCUE_FLIP=%s; using accelerometer\n", override);
+    int flipped = forced && !strcmp(override, "1"), flip_votes = 0;
+    int accel_fd = forced ? -1 : accel_open();
+    printf("accelerometer: %s; orientation: %s\n",
+           forced ? "override" : accel_fd >= 0 ? "enabled" : "unavailable",
+           flipped ? "turned round" : "normal");
 
     signal(SIGTERM, on_signal);
     signal(SIGINT, on_signal);
 
     int first = 1;
     while (!stop) {
+        int orientation_changed = 0;
+        if (accel_fd >= 0) {
+            int x_mg, y_mg, z_mg;
+            if (accel_read(accel_fd, &x_mg, &y_mg, &z_mg) == 0) {
+                int want = y_mg > 500 ? 1 : y_mg < -500 ? 0 : flipped;
+                if (want != flipped && ++flip_votes >= 3) {
+                    flipped = want;
+                    flip_votes = 0;
+                    orientation_changed = 1;
+                    printf("orientation: %s (y %d mg)\n",
+                           flipped ? "turned round" : "normal", y_mg);
+                } else if (want == flipped) {
+                    flip_votes = 0;
+                }
+            } else {
+                flip_votes = 0;
+            }
+        }
         struct status st;
         status_read(&st);
         snprintf(key, sizeof key, "%s|%d|%d|%d|%d|%d|%s", st.addr, st.have_wifi, st.level, st.quality, st.cap, st.ma > 0, st.word);
-        if (first || strcmp(key, shown)) {
+        if (first || orientation_changed || strcmp(key, shown)) {
             paint(&canvas, u.release, build, &st);
+            if (flipped) {
+                size_t count = (size_t)W * H;
+                for (size_t i = 0; i < count / 2; i++) {
+                    uint32_t pixel = canvas.px[i];
+                    canvas.px[i] = canvas.px[count - 1 - i];
+                    canvas.px[count - 1 - i] = pixel;
+                }
+            }
             for (int y = 0; y < H; y++) memcpy(base + (size_t)y * cd.pitch, canvas.px + (size_t)y * W, (size_t)W * 4);
             if (dump) dump_ppm(&canvas, dump);
             if (first) {
@@ -158,5 +205,6 @@ int main(void) {
         }
         sleep(2);
     }
+    if (accel_fd >= 0) close(accel_fd);
     return 0;
 }

@@ -140,7 +140,9 @@ int main(void) {
         if (drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &m) < 0) { perror("map dumb"); return 1; }
         bufs[i] = mmap(0, c.size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, m.offset);
         if (bufs[i] == MAP_FAILED) { perror("mmap"); return 1; }
-        memset(bufs[i], 0, c.size);
+        // The stock VOP blends XRGB as ARGB, including the initial black.
+        for (size_t pixel = 0; pixel < c.size / sizeof(uint32_t); pixel++)
+            ((uint32_t *)bufs[i])[pixel] = 0xFF000000u;
         if (i == 0) creq = c;
     }
     uint8_t *base = bufs[0];
@@ -149,6 +151,8 @@ int main(void) {
     // buffer maps write-combining, so writes are tolerable but reads are not.
     uint32_t *shadow = calloc((size_t)W * H, 4);
     if (!shadow) { perror("shadow"); return 1; }
+    for (size_t pixel = 0; pixel < (size_t)W * H; pixel++)
+        shadow[pixel] = 0xFF000000u;
 
     job.shadow = shadow; job.base = base; job.pitch = creq.pitch;
     job.W = W; job.H = H;
@@ -203,8 +207,8 @@ int main(void) {
             if (q->y < 0) { q->y = 0; q->vy = -q->vy * .8f; }
             if (q->y >= H) { q->y = H - 1; q->vy = -q->vy * .8f; }
             int px = (int)q->x, py = (int)q->y;
-            uint32_t core = (q->r << 16) | (q->g << 8) | q->b;
-            uint32_t halo = ((q->r >> 1) << 16) | ((q->g >> 1) << 8) | (q->b >> 1);
+            uint32_t core = 0xFF000000u | (q->r << 16) | (q->g << 8) | q->b;
+            uint32_t halo = 0xFF000000u | ((q->r >> 1) << 16) | ((q->g >> 1) << 8) | (q->b >> 1);
             for (int dy = -1; dy <= 1; dy++) {
                 int yy = py + dy;
                 if (yy < 0 || yy >= H) continue;
@@ -229,7 +233,7 @@ int main(void) {
             printf("%s\n", fps); fflush(stdout);
             frames = 0; t0 = now;
         }
-        text(shadow, W, H, 12, 12, fps, 4, 0xffffff);
+        text(shadow, W, H, 12, 12, fps, 4, 0xFFFFFFFFu);
 
         int back = frame & 1;
         job.base = bufs[back];
