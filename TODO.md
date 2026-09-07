@@ -27,6 +27,13 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   rate over cold boots into `/data`, then try cutting the chip's rail through
   the RK816 instead of the BSP nodes. `br2-external/package/taq102-wifi/taq102-wifi`.
   Blocked: needs repeated cold power-offs of the tablet by hand to measure the rate; the running appliance has been up for days.
+- [~] Wi-Fi died after the panel's wrong state was tapped: `taq102-wifi up`
+  ran twice and left two `wpa_supplicant`, two `udhcpc` and two `mdnsd` on
+  `wlan0`, which never associated again (measured over the USB console
+  2026-09-07, `README.md`, "What the wrong state cost"). `up` is idempotent
+  now and `read_wifi` no longer counts -256 dBm as a level. Unverified: both
+  fixes are in the tree and the tablet still runs v47, which has neither.
+  Next: build v48 and flash `boot`.
 - [ ] Rare `[drm] flip_done timed out` followed by two `vop_crtc_enable`, a
   250 ms blackout: 1 in 20 slow flips, 0 in 45 min of glcube (2026-09-04).
   Reproduce with `fliptest` pause mode before touching the driver.

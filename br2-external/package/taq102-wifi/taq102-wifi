@@ -81,6 +81,21 @@ load() {
 
 case "${1:-up}" in
 up)
+    # `up` has to be safe to run when it has already run. The panel can ask for
+    # it on a boot whose own `taq102-wifi up` already succeeded, and starting a
+    # second wpa_supplicant on one interface is not harmless: the two reset
+    # each other's association forever. Measured on the tablet 2026-09-07 --
+    # two wpa_supplicant, two udhcpc and two mdnsd, wlan0 UP with NO-CARRIER
+    # and `rtw_set_802_11_connect` repeating for the best part of two hours.
+    # Killing the later set alone did not recover it; one clean supplicant
+    # associated at -32 dBm in fifteen seconds.
+    if ip link show $IFACE 2>/dev/null | grep -q LOWER_UP &&
+       ip -4 addr show $IFACE 2>/dev/null | grep -q inet; then
+        echo "$IFACE is already associated and addressed; nothing to do" >&2
+        exit 0
+    fi
+    # Anything left over from a previous attempt goes before a new one starts.
+    killall mdnsd udhcpc wpa_supplicant 2>/dev/null
     load || { echo "8723cs did not give us $IFACE" >&2; exit 1; }
     ip link set $IFACE up
     if [ ! -f "$CONF" ]; then
@@ -88,8 +103,12 @@ up)
         echo "  wpa_passphrase <ssid> <psk> > $CONF" >&2
         exit 0
     fi
-    wpa_supplicant -B -i $IFACE -c "$CONF" -D nl80211 2>/dev/null ||
-        wpa_supplicant -B -i $IFACE -c "$CONF" -D wext ||
+    # -O supplies the control interface the conf lacks: `wpa_passphrase` does
+    # not write a `ctrl_interface=` line, so without this `taq102-wifi status`
+    # and `scan` fail with "No such file or directory" and there is no way to
+    # ask the daemon anything.
+    wpa_supplicant -B -i $IFACE -c "$CONF" -O /var/run/wpa_supplicant -D nl80211 2>/dev/null ||
+        wpa_supplicant -B -i $IFACE -c "$CONF" -O /var/run/wpa_supplicant -D wext ||
         { echo "wpa_supplicant refused both nl80211 and wext" >&2; exit 1; }
     # Option 12 with the hostname, so a router that resolves its leases
     # answers to `taq102`; mDNS answers to `taq102.local` once the address

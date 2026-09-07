@@ -1389,6 +1389,34 @@ its own actions is in flight, since a toggle to off owns the state until its
 worker exits and `down` has removed the module by then
 (`src/control_runtime.c`, covered by `runtime_test`).
 
+### What the wrong state cost, read off the tablet the same night
+
+The tablet was plugged in an hour later and the USB console told the rest of
+the story. Wi-Fi was down: `wlan0` UP with `NO-CARRIER`, no address, and
+`RTW: rtw_set_802_11_connect(wlan0)` repeating in `dmesg` every minute or two
+for the best part of two hours. `ps` said why -- **two** `wpa_supplicant`, two
+`udhcpc` and two `mdnsd`, all on `wlan0`. The panel had offered "Turn on" for
+a Wi-Fi that was already associated, the tap ran `taq102-wifi up` a second
+time on a boot whose own `up` had already succeeded, and `load()` returns
+early when `wlan0` exists, so the script went straight on to start a second
+supplicant. Two of them reset each other's association and neither ever
+finishes.
+
+Killing the later set alone did not recover it. One clean `wpa_supplicant`
+associated at -32 dBm in fifteen seconds and `udhcpc` took the lease at
+192.168.1.51. So `up` is now idempotent: it exits at once when the interface
+is already associated and addressed, and otherwise kills whatever is left over
+before starting anything. The same edit passes `-O /var/run/wpa_supplicant`,
+because `wpa_passphrase` writes no `ctrl_interface=` line and without one the
+script's own `status` and `scan` could never reach the daemon -- which is why
+`wpa_cli` answered "No such file or directory" all evening.
+
+One more thing the console settled: `/proc/net/wireless` lists the interface
+from the moment the driver registers it, associated or not, and an
+unassociated one reads `0 0. -256. -256.`. `status_wifi_bars` took -256 dBm as
+a level and lit one bar on a radio connected to nothing, so `read_wifi` now
+only counts a level that could have come from a radio (`src/status.c`).
+
 **Overrides** for tests: `GLCUBE_TOUCH` and `GLCUBE_POWER` (input devices),
 `GLCUBE_SETTINGS` (the conf path), `GLCUBE_FONTS` (the font directory),
 `GLCUBE_TRACE` (the per-second line now carries uploads/s, glGetError and
