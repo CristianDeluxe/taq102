@@ -27,15 +27,17 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   rate over cold boots into `/data`, then try cutting the chip's rail through
   the RK816 instead of the BSP nodes. `br2-external/package/taq102-wifi/taq102-wifi`.
   Blocked: needs repeated cold power-offs of the tablet by hand to measure the rate; the running appliance has been up for days.
-- [~] Wi-Fi died after the panel's wrong state was tapped: `taq102-wifi up`
-  ran twice and left two `wpa_supplicant`, two `udhcpc` and two `mdnsd` on
-  `wlan0`, which never associated again (measured over the USB console
-  2026-09-07, `README.md`, "What the wrong state cost"). `up` is idempotent
-  now and `read_wifi` no longer counts -256 dBm as a level. Unverified on the
-  device: `recovery-taq102-v48-appliance.img` is built and checked -- kernel
-  and resource byte-identical to v47, only the ramdisk differs and it is the
-  rootfs this tree builds -- but the tablet still runs v47, which has neither
-  fix. Next: flash `boot` and watch a clean boot bring Wi-Fi up by itself.
+- [!] Unseen on the panel: v48 carries the Wi-Fi state fix and the tablet
+  boots with a real link, but nobody has looked at the control centre's Wi-Fi
+  tile since. The inputs are right (-35 dBm and an address at boot, from the
+  device) and `runtime_test` covers the transition; the pixels are not
+  evidence yet. Blocked: needs eyes on the tablet, or a glcube restart under
+  `tools/test-control-centre-device.sh`, which wants `GLCUBE_TOUCH` pointed at
+  touchsim -- a plain `touchsim create` against the running appliance gets
+  "no evdev reader".
+- [ ] The -256 dBm gate in `read_wifi` is untested against a live
+  unassociated interface: it went in after the link had already been
+  recovered. Check it the next time the chip comes up without associating.
 - [ ] Rare `[drm] flip_done timed out` followed by two `vop_crtc_enable`, a
   250 ms blackout: 1 in 20 slow flips, 0 in 45 min of glcube (2026-09-04).
   Reproduce with `fliptest` pause mode before touching the driver.

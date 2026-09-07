@@ -6,6 +6,32 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Bugs:** The control centre offered "Turn on" for a Wi-Fi
+  that was already associated, and the tap that followed killed the Wi-Fi.
+  `taq102-wifi up` and the app are both `::once` entries in inittab, so the
+  runtime latched `wanted_wifi` from a status read taken before the link
+  existed and never revised it. Tapping the wrong state ran `taq102-wifi up` a
+  second time; `load()` returns early when `wlan0` exists, so a second
+  `wpa_supplicant` started and the two reset each other's association for
+  nearly two hours.
+  - Fixes: `read_status` adopts an observed link as the wanted state except
+    while an action of its own is in flight (`src/control_runtime.c`); `up`
+    exits when the interface is already associated and addressed and otherwise
+    clears leftovers first, and passes `-O /var/run/wpa_supplicant` because
+    `wpa_passphrase` writes no `ctrl_interface=` line
+    (`br2-external/package/taq102-wifi/taq102-wifi`); `read_wifi` ignores the
+    -256 dBm an unassociated interface reports, which had been lighting a bar
+    on a radio connected to nothing (`src/status.c`).
+  - Evidence: the new case at `tests/control-centre/runtime_test.c:117` fails
+    without the runtime fix and passes with it; 17 host tests pass. On the
+    tablet, v48 (build `20260907-222214-8066348`) written to `boot` and read
+    back byte for byte, SHA-256 matching, kernel and resource identical to
+    v47. From a clean boot: Wi-Fi up by itself at 192.168.1.51, -35 dBm, one
+    `wpa_supplicant`, one `udhcpc`, one `mdnsd`; a second `taq102-wifi up`
+    answered "already associated and addressed" and left the count at one; and
+    `taq102-wifi status` reached the daemon for the first time,
+    `wpa_state=COMPLETED`.
+
 - [x] 2026-09-07 — **Bugs:** the reviewer's review of the whole control-centre change
   (session `01a07d7f`) found three defects, fixed and shipped as v47: the
   rescue reboot skipped `sync()` (pending `/data` writes could be lost);
