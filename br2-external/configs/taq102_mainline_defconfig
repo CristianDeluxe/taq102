@@ -1,0 +1,114 @@
+# Denver TAQ-102 on mainline — Rockchip RK3126C, ARMv7 Cortex-A7, 1 GB RAM.
+#
+# The sibling of taq102_defconfig, for the mainline kernel in kernel/mainline/.
+# One difference of substance and three that follow from it: the Mali-400 is
+# driven by Lima and Mesa here, not by the r7p0 Utgard blob, because mainline
+# has no mali-utgard kernel driver and does have CONFIG_DRM_LIMA. glcube needs
+# no change -- it links libegl, libgles and libgbm through pkg-config, so the
+# provider is a Buildroot choice, not a source one.
+#
+# The kernel is still built outside Buildroot, by tools/build-kernel.sh against
+# /work/linux-mainline. This file builds userspace only, as its sibling does.
+
+BR2_arm=y
+BR2_cortex_a7=y
+BR2_ARM_ENABLE_NEON=y
+BR2_ARM_ENABLE_VFP=y
+BR2_ARM_FPU_NEON_VFPV4=y
+
+# glibc and hard-float ARM EABI. The blob's requirement is gone with the blob,
+# but Mesa is happier on glibc and keeping the toolchain identical to the
+# sibling means one Buildroot download cache serves both.
+BR2_ARM_EABIHF=y
+BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
+
+# Headers for the kernel this runs on. The tree is 7.3-rc, which Buildroot does
+# not offer; 6.19 is the newest it has and is close enough for userspace, which
+# uses only DRM, input and the gadget interfaces.
+BR2_KERNEL_HEADERS_VERSION=y
+BR2_DEFAULT_KERNEL_VERSION="6.19"
+BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_6_19=y
+
+# The 4.4-headers patch the sibling needs does not apply here and is not needed.
+BR2_GLOBAL_PATCH_DIR="
+
+BR2_SYSTEM_DHCP=""
+BR2_TARGET_GENERIC_HOSTNAME="taq102"
+BR2_TARGET_GENERIC_ISSUE="TAQ-102 rescue image"
+BR2_INIT_BUSYBOX=y
+BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_TAQ102_PATH)/board/taq102/busybox.fragment"
+
+# mDNS: the Mac finds the tablet as taq102.local instead of a moving DHCP address.
+BR2_PACKAGE_MDNSD=y
+BR2_PACKAGE_MDNSD_MQUERY=y
+BR2_PACKAGE_MDNSD_SSH_SERVICE=y
+
+# Our own /init lives here; it raises the USB ACM gadget before anything else.
+BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_TAQ102_PATH)/board/taq102/rootfs-overlay $(BR2_EXTERNAL_TAQ102_PATH)/board/taq102/rootfs-overlay-mainline"
+BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_TAQ102_PATH)/board/taq102/post-build.sh"
+
+# gzip is the only initramfs compression this kernel can decompress:
+# CONFIG_RD_GZIP=y, and RD_LZO / RD_LZ4 / RD_XZ are all unset.
+BR2_TARGET_ROOTFS_CPIO=y
+BR2_TARGET_ROOTFS_CPIO_GZIP=y
+# BR2_TARGET_ROOTFS_TAR is not set
+
+# For the KMS and touch bring-up in Gate 4.
+BR2_PACKAGE_LIBDRM=y
+# modetest, to prove the panel with a real modeset. The stock kernel keeps
+# scanning out U-Boot's logo buffer (rockchip,drm-logo reserved region) until
+# something does drmModeSetCrtc, so writing to /dev/fb0 changes nothing.
+BR2_PACKAGE_LIBDRM_INSTALL_TESTS=y
+BR2_PACKAGE_LIBEVDEV=y
+BR2_PACKAGE_EVTEST=y
+
+# Mesa with the Lima gallium driver: the Mali-400 MP2's open user space,
+# against mainline's CONFIG_DRM_LIMA. kmsro is what lets a GBM surface on the
+# Rockchip VOP be rendered by a separate GPU node, which is exactly this
+# arrangement: /dev/dri/card0 is the display, the render node is Lima's.
+BR2_PACKAGE_MESA3D=y
+BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_LIMA=y
+BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_KMSRO=y
+BR2_PACKAGE_MESA3D_OPENGL_ES=y
+BR2_PACKAGE_MESA3D_OPENGL_EGL=y
+BR2_PACKAGE_MESA3D_GBM=y
+
+# Kept: dropbear and the rest still want it, and it costs nothing now.
+BR2_PACKAGE_OPENSSL=y
+
+# The two firmware blobs mainline asks for and never complains about missing.
+# Both are requested asynchronously, so absent they give a silently absent
+# touchscreen and a silently absent wlan0 rather than a probe error.
+# rtw88/rtw8703b_fw.bin comes from linux-firmware; silead/gsl3673.fw is
+# generated from the tablet's own stock configuration array by
+# kernel/mainline/taq102-gsl3673-firmware.py and installed by the overlay.
+BR2_PACKAGE_LINUX_FIRMWARE=y
+BR2_PACKAGE_LINUX_FIRMWARE_RTL_RTW88=y
+
+# Our own KMS applications: one on the CPU, one on the GPU.
+BR2_PACKAGE_PARTICLES=y
+BR2_PACKAGE_GLCUBE=y
+
+# Reflashing has to be reachable without booting Android, because Android
+# restores the stock recovery partition on every normal boot.
+BR2_PACKAGE_REBOOT_LOADER=y
+
+# mkfs.ext4 and fsck for the data partition. The kernel already has
+# CONFIG_EXT4_FS=y -- Android's system and cache were ext4 -- so only the
+# user-space tools were missing.
+BR2_PACKAGE_E2FSPROGS=y
+BR2_PACKAGE_E2FSPROGS_FSCK=y
+BR2_PACKAGE_E2FSPROGS_MKE2FS=y
+
+# Wi-Fi: the vendor's RTL8723CS module, wpa_supplicant, and iw for scanning.
+BR2_PACKAGE_TAQ102_WIFI=y
+BR2_PACKAGE_TAQ102_DISPLAY=y
+BR2_PACKAGE_TAQ102_DIAG=y
+BR2_PACKAGE_RESCUE_SCREEN=y
+# Inter and stb_truetype: the one typeface every screen renders with.
+BR2_PACKAGE_STB=y
+BR2_PACKAGE_TAQ102_FONTS=y
+BR2_PACKAGE_IW=y
+
+# SSH, so the serial cable stops being the only way in.
+BR2_PACKAGE_TAQ102_SSH=y
