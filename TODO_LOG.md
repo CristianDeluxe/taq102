@@ -6,6 +6,23 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Appliance:** The status bar's battery and Wi-Fi icons were
+  oversized and heavy, "nothing like iOS" in my words after v48.
+  - Resolution: 5 by 11 units instead of 13 by 7, radius h/3, outline h/10,
+    the Wi-Fi sector widened to 55 degrees each side with thinner arcs, gaps
+    tightened, and the real systemGreen and systemRed
+    (`src/statusbar.c`).
+  - Evidence: photographed off the panel's own scanout before and after,
+    `docs/evidence/2026-09-07-control-centre/statusbar-icons-before-after.png`;
+    17 host tests pass; shipped as v49 (build `20260907-225750-25be25d`),
+    written to `boot` and read back with SHA-256 matching.
+
+- [x] 2026-09-07 — **Appliance:** The control centre's Wi-Fi tile, unseen on
+  glass when v48 shipped.
+  - Resolution: read off the panel's framebuffer with the control centre open.
+    It shows `Wi-Fi`, `TestNet`, `192.168.1.51` and `-35 dBm`
+    (`docs/evidence/2026-09-07-control-centre/panel-open-wifi-connected.png`).
+
 - [x] 2026-09-07 — **Bugs:** The control centre offered "Turn on" for a Wi-Fi
   that was already associated, and the tap that followed killed the Wi-Fi.
   `taq102-wifi up` and the app are both `::once` entries in inittab, so the
