@@ -31,9 +31,11 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   ran twice and left two `wpa_supplicant`, two `udhcpc` and two `mdnsd` on
   `wlan0`, which never associated again (measured over the USB console
   2026-09-07, `README.md`, "What the wrong state cost"). `up` is idempotent
-  now and `read_wifi` no longer counts -256 dBm as a level. Unverified: both
-  fixes are in the tree and the tablet still runs v47, which has neither.
-  Next: build v48 and flash `boot`.
+  now and `read_wifi` no longer counts -256 dBm as a level. Unverified on the
+  device: `recovery-taq102-v48-appliance.img` is built and checked -- kernel
+  and resource byte-identical to v47, only the ramdisk differs and it is the
+  rootfs this tree builds -- but the tablet still runs v47, which has neither
+  fix. Next: flash `boot` and watch a clean boot bring Wi-Fi up by itself.
 - [ ] Rare `[drm] flip_done timed out` followed by two `vop_crtc_enable`, a
   250 ms blackout: 1 in 20 slow flips, 0 in 45 min of glcube (2026-09-04).
   Reproduce with `fliptest` pause mode before touching the driver.
