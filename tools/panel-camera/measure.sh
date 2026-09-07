@@ -9,8 +9,11 @@
 # auto-exposure alone once produced motion=4.15 on a blank white panel.
 here="$(dirname "$0")"
 tag="$1"
-a=$(mktemp "${TMPDIR:-/tmp}/panel_${tag}_a.XXXXXX.jpg")
-b=$(mktemp "${TMPDIR:-/tmp}/panel_${tag}_b.XXXXXX.jpg")
+# macOS mktemp ignores the template when a suffix follows the Xs, so the
+# unique part is a directory and the frames live inside it.
+dir=$(mktemp -d "${TMPDIR:-/tmp}/panel_${tag}.XXXXXX") || exit 1
+a="$dir/a.jpg"
+b="$dir/b.jpg"
 "$here/snap.sh" "$a"
 "$here/snap.sh" "$b"
 stat() {
