@@ -18,6 +18,8 @@ struct control_overlay {
     char font_path[512], bar_shown[128];
     unsigned uploads;
     int64_t painted_at_ms;
+    int prepared;
+    struct cc_model painted;
 };
 
 static GLuint shader(GLenum type, const char *source) {
@@ -106,14 +108,19 @@ struct control_overlay *control_overlay_new(int w, int h, const char *fonts) {
     return o;
 }
 
-static void upload(struct control_overlay *o, GLuint tex, const struct canvas *c) {
-    for (int i = 0; i < c->w * c->h; i++) {
-        uint32_t p = c->px[i];
-        o->rgba[4*i] = p >> 16; o->rgba[4*i+1] = p >> 8;
-        o->rgba[4*i+2] = p; o->rgba[4*i+3] = p >> 24;
+static void upload_region(struct control_overlay *o, GLuint tex, const struct canvas *c,
+                           int x, int y, int w, int h) {
+    for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) {
+        uint32_t p = c->px[(y + j) * c->w + x + i];
+        size_t at = ((size_t)j * w + i) * 4;
+        o->rgba[at] = p >> 16; o->rgba[at+1] = p >> 8;
+        o->rgba[at+2] = p; o->rgba[at+3] = p >> 24;
     }
     glBindTexture(GL_TEXTURE_2D, tex);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, c->w, c->h, GL_RGBA, GL_UNSIGNED_BYTE, o->rgba);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, o->rgba);
+}
+static void upload(struct control_overlay *o, GLuint tex, const struct canvas *c) {
+    upload_region(o, tex, c, 0, 0, c->w, c->h);
 }
 
 static void quad(struct control_overlay *o, GLuint tex, float x, float y, int w, int h, int flipped) {
@@ -128,7 +135,7 @@ static void quad(struct control_overlay *o, GLuint tex, float x, float y, int w,
 }
 
 void control_overlay_draw(struct control_overlay *o, struct cc_model *m,
-                          const struct status *st, int flipped, int64_t now) {
+                          const struct status *st, int flipped, int64_t now, int defer_updates) {
     GLint program, buffer, active, binding, src_rgb, dst_rgb, src_alpha, dst_alpha;
     glGetIntegerv(GL_CURRENT_PROGRAM, &program); glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &buffer);
     glGetIntegerv(GL_ACTIVE_TEXTURE, &active); glActiveTexture(GL_TEXTURE0);
@@ -151,17 +158,28 @@ void control_overlay_draw(struct control_overlay *o, struct cc_model *m,
     glEnableVertexAttribArray(0); glEnableVertexAttribArray(1); glDisableVertexAttribArray(2);
     glDisable(GL_DEPTH_TEST); glDisable(GL_CULL_FACE); glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    /* Prepare the first texture before the initial KMS frame. Later openings
+       only move the quad when its contents have not changed. */
+    if (!o->prepared) {
+        cc_paint(&o->panel, m, &o->fonts); upload(o, o->panel_tex, &o->panel);
+        o->painted = *m; o->prepared = 1; o->uploads++; m->dirty = 0;
+    }
     if (cc_visible(m)) {
-        if (m->dirty && (!m->dragging_brightness || now - o->painted_at_ms >= 33)) {
-            cc_paint(&o->panel, m, &o->fonts); upload(o, o->panel_tex, &o->panel);
-            m->dirty = 0; o->painted_at_ms = now; o->uploads++;
+        if (!defer_updates && m->dirty && (!m->dragging_brightness || now - o->painted_at_ms >= 33)) {
+            struct cc_rect dirty;
+            if (cc_paint_update(&o->panel, m, &o->painted, &o->fonts, &dirty)) {
+                upload_region(o, o->panel_tex, &o->panel, dirty.x - CC_PANEL.x,
+                              dirty.y - CC_PANEL.y, dirty.w, dirty.h);
+                o->uploads++;
+            }
+            o->painted = *m; m->dirty = 0; o->painted_at_ms = now;
         }
         quad(o, o->scrim_tex, 0, 0, o->w, o->h, flipped);
         quad(o, o->panel_tex, CC_PANEL.x, CC_PANEL.y-cc_slide_offset(m), CC_PANEL.w, CC_PANEL.h, flipped);
     }
     char key[128];
     snprintf(key, sizeof key, "%d|%d|%d|%d", st->have_wifi, status_wifi_bars(st), st->cap, st->plugged);
-    if (strcmp(key, o->bar_shown)) {
+    if (strcmp(key, o->bar_shown) && (!defer_updates || !o->bar_shown[0])) {
         const struct statusbar_style style = {0, 0, 0xffffffffu, 0x66ffffffu, 0xffffffffu, o->font_path};
         memset(o->bar.px, 0, (size_t)o->bar.w*o->bar.h*4);
         statusbar_paint(&o->bar, st, &style); upload(o, o->bar_tex, &o->bar);

@@ -395,12 +395,17 @@ int main(void) {
 
         int64_t now_ms = (int64_t)frame_start.tv_sec * 1000 + frame_start.tv_nsec / 1000000;
         double now_seconds = (double)frame_start.tv_sec + frame_start.tv_nsec / 1e9;
+        int64_t previous_read_at_ms = controls.read_at_ms;
+        int previously_armed = controls.panel.armed;
         if (power_key_read(&power_key, pfd) && !first) controls.sleep_requested = 1;
         if (control_input_read(&input, &controls, tfd, now_seconds) < 0) {
             perror("touch read"); return 1;
         }
         if (input.cube_released) touching = 0;
         control_runtime_tick(&controls, now_ms, 0);
+        if (trace && previously_armed && !controls.panel.armed) {
+            printf("control centre: disarmed\n"); fflush(stdout);
+        }
         touch_router_set_panel_open(input.router, cc_visible(&controls.panel));
         if (controls.sleep_requested && !first) {
             control_runtime_sleep(&controls, now_ms);
@@ -558,7 +563,8 @@ int main(void) {
         glUniformMatrix4fv(u_modelview, 1, GL_FALSE, mv);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        control_overlay_draw(overlay, &controls.panel, &controls.status, flipped, now_ms);
+        control_overlay_draw(overlay, &controls.panel, &controls.status, flipped, now_ms,
+                             controls.read_at_ms != previous_read_at_ms);
 
         eglSwapBuffers(dpy, egl_surf);
         if (finish) glFinish();
@@ -611,9 +617,12 @@ int main(void) {
                                  "%d(%.0f,%.0f) ", i, input.cube.slot[i].x, input.cube.slot[i].y);
                     }
                 printf("%.1f FPS | max frame %.2f ms | accel read %ld us | "
-                       "slots %d: %s| cam %.2f pinch_ref %.0f dragging %d | uploads/s %.1f | glGetError 0x%x\n",
+                       "slots %d: %s| cam %.2f pinch_ref %.0f dragging %d | uploads/s %.1f | glGetError 0x%x | "
+                       "panel %d slide %.2f armed %d brightness %d auto %d timer %d\n",
                        frames / el, max_frame_ms, accel_max_read_us, n, which,
-                       cam, pinch_ref, ball.dragging, uploads / el, glGetError());
+                       cam, pinch_ref, ball.dragging, uploads / el, glGetError(),
+                       controls.panel.open, controls.panel.slide, controls.panel.armed,
+                       controls.panel.brightness, controls.panel.auto_on, controls.panel.sleep_minutes);
             } else {
                 printf("%.1f FPS\n", frames / el);
             }
