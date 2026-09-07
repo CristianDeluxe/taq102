@@ -1312,3 +1312,83 @@ other way up it reads upside down. Note that `tools/flash-recovery.sh` also sets
 what it just wrote, which is the right thing when the point is to test the
 rescue and the wrong thing when the point is to keep the appliance running:
 this write used `rkdeveloptool wl 196608` directly and left the BCB zero.
+
+## The control centre, and the tablet minds its own brightness
+
+2026-09-07, the second run of the day. I asked for three things: a
+brightness that adjusts itself, a screen that switches off after a while
+without USB, and a control centre like iOS. And for the look to stop reading
+as MS-DOS. The design is in `docs/2026-09-07-control-centre-design.md`
+and the plan that built it in `docs/2026-09-07-control-centre.md`;
+the reviewer reviewed the first draft (ten blocking issues, all settled in the
+second) and implemented most of the tasks, one bounded run each.
+
+**One typeface.** Inter (SIL OFL, `br2-external/package/taq102-fonts/`) is
+rasterised on the device by `stb_truetype` into the same canvas the bar and
+the rescue screen paint (`src/font.c`), anti-aliased and blended straight
+alpha over what is there (`src/canvas_blend.c`). Digits sit in equal cells,
+so the percentage does not jitter. The 3x5 bitmap font stays only as the
+fallback when the font file is missing.
+
+**The panel.** A swipe down from the bar opens a card over the dimmed cube:
+Wi-Fi (name, address, signal, tap to toggle), a tall brightness column that
+fills with amber as you drag it, Auto, "Screen off now", "Screen off after"
+(1, 5, 15 minutes or never), and Rescue and Loader, which need a second tap
+within three seconds. The footer carries the battery, the build and the
+kernel. `src/control_center.c` is the model and the hit testing,
+`src/control_center_paint.c` the painter, `src/control_center_layout.h` the
+one place every rectangle lives. The panel is a second texture over the
+scene, updated with `glTexSubImage2D` only when something changed, and only
+the rectangles that changed are repainted: a full repaint of the card cost a
+frame or two, measured as 52.8 FPS with the panel open.
+
+**Touch, again.** `src/touch_input.c` decodes protocol B and emits contacts
+only at `SYN_REPORT`, so a tap that begins and ends inside one frame still
+arrives as down then up (the old loop drained events and could lose it);
+silence cancels a contact instead of releasing it, so a finger resting on a
+button cannot press it by going quiet. `src/touch_router.c` owns capture
+from first contact to release: a contact from the bar zone is an opening
+candidate the cube never sees, and while the panel is visible every contact
+is the panel's.
+
+**Brightness that adjusts itself.** There is no light sensor, so "itself"
+means by what the battery does (`src/power_policy.c`, readings every 10 s,
+decisions every 30 s from three valid readings): battery alone 128; plugged
+and Full, maximum; plugged otherwise, start at 40 the first time a source
+is seen, then step down 16 while the battery loses more than 50 mA, step up
+16 while it gains more than 100 mA unless that level failed within the last
+ten minutes, and hold in between. At the floor with the battery still
+draining the footer says "cannot sustain" instead of pretending. A drag on
+the slider switches Auto off; the manual level is separate. Plugged means
+`usb/online` or `ac/online`, never the sign of the current: a full battery
+on a charger reads 0 mA.
+
+**Sleep.** After the chosen minutes with no touch and no supply online the
+screen sleeps the way the power key does (backlight off, fb blank so the
+touch chip suspends, CRTC off). The power key wakes it, and so does picking
+the tablet up: two seconds after sleeping the accelerometer takes a
+baseline and three samples further than 150 mg on any axis wake the screen
+(`src/sleep_state.c`). Touch cannot wake it: the chip is in reset.
+
+**Settings** live in `/data/taq102.conf` (`brightness_auto`, `brightness`,
+`sleep_minutes`), written whole through a temporary file and `rename` on
+release or two seconds after the last change. Rescue writes the BCB at raw
+sector 32800, reads it back and only then reboots (`src/reboot_target.c`);
+Loader execs `reboot-loader`; Wi-Fi runs `taq102-wifi up` or `down` from a
+worker thread with a 45 s limit (`src/action_worker.c`), the name read from
+the `ssid=` line of `/data/wifi.conf` and nothing else.
+
+**Overrides** for tests: `GLCUBE_TOUCH` and `GLCUBE_POWER` (input devices),
+`GLCUBE_SETTINGS` (the conf path), `GLCUBE_FONTS` (the font directory),
+`GLCUBE_TRACE` (the per-second line now carries uploads/s, glGetError and
+the panel state). `touchsim` (in `taq102-diag`) creates uinput touch and
+power devices and plays taps, drags and swipes; `tools/test-control-centre-device.sh`
+drives the whole panel through it from the Mac, reads the scanout after
+every step and holds four 60-second phases at 54.8 FPS.
+`tools/test-control-centre-host.sh` builds and runs the seventeen host tests
+under the sanitizers, fonts included.
+
+`boot` = `recovery-taq102-v46-appliance.img` (kernel v44, ramdisk
+`20260907-200340-d821a6e`), `recovery` the matching stock-kernel rescue,
+whose backlight now boots at 40 so a plain USB port charges it. The rescue
+screen is set in Inter too.
