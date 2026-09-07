@@ -6,8 +6,8 @@
 #include "font.h"
 #include "statusbar.h"
 
-#define GREEN 0xFF30C048u   // iOS charging green
-#define RED   0xFFE03030u   // iOS low-battery red
+#define GREEN 0xFF34C759u   // iOS systemGreen, the charging fill
+#define RED   0xFFFF3B30u   // iOS systemRed, the low-battery fill
 
 // The charging bolt, 5 wide by 7 tall, bit 4 the left column.
 static const unsigned char BOLT[7] = { 0x03, 0x06, 0x0C, 0x1F, 0x06, 0x0C, 0x18 };
@@ -16,11 +16,13 @@ static const unsigned char BOLT[7] = { 0x03, 0x06, 0x0C, 0x1F, 0x06, 0x0C, 0x18 
 // from the apex at (ax, ay). `lit` arcs from the inside out take ink, the
 // rest dim, as iOS greys out the bars it does not have.
 static void wifi_fan(struct canvas *c, int ax, int ay, int size, int lit, const struct statusbar_style *sty) {
-    float unit = size / 4.f, thick = unit * 0.55f;
+    float unit = size / 4.f, thick = unit * 0.45f;
     for (int y = ay - size; y <= ay; y++)
         for (int x = ax - size; x <= ax + size; x++) {
             float dx = x - ax, dy = ay - y;
-            if (dy < 0 || fabsf(dx) > dy) continue;      // 45 degrees each side
+            // 55 degrees each side, not 45: the narrower sector drew a fan
+            // that came to a point, where the iPhone's is wide and shallow.
+            if (dy < 0 || fabsf(dx) > dy * 1.43f) continue;
             float r = sqrtf(dx * dx + dy * dy);
             int ring = -1;
             if (r <= unit * 0.55f) ring = 0;
@@ -34,7 +36,7 @@ static void wifi_fan(struct canvas *c, int ax, int ay, int size, int lit, const 
 // The battery: an outline with a nub, the charge as a fill, and a bolt
 // while current flows in. (x, y) is the top-left of the body.
 static void battery_icon(struct canvas *c, int x, int y, int w, int h, int cap, int charging, const struct statusbar_style *sty) {
-    int r = h / 4, line = h / 9 > 1 ? h / 9 : 1, gap = line;
+    int r = h / 3, line = h / 10 > 1 ? h / 10 : 1, gap = line;
     int inner_r = r - line > 0 ? r - line : 1;
     canvas_round_rect(c, x, y, w, h, r, sty->ink);
     canvas_round_rect(c, x + line, y + line, w - 2 * line, h - 2 * line, inner_r, sty->hollow);
@@ -95,7 +97,12 @@ static void paint_at(struct canvas *c, const struct status *st, const struct sta
     // 2026-09-04, the battery's nub was cut off at a 3-unit margin.
     int margin = 12 * s;
     canvas_fill_rect(c, 0, 0, c->w, bar_h, sty->bar);
-    int icon_h = 7 * s, icon_w = 13 * s;
+    // iOS keeps the battery close to the height of the type beside it and
+    // about 2.15 times as wide as it is tall. At 7 by 13 units against 18-pixel
+    // digits the icons were half again too tall and too stubby, which is what
+    // made them read as someone else's status bar. 5 by 11 is the iPhone's
+    // ratio at this bar's scale.
+    int icon_h = 5 * s, icon_w = 11 * s;
     int y = (bar_h - icon_h) / 2;
     int right = c->w - margin - icon_w - s - 1;
     // iOS: plugged in is the bolt and the green, whatever the current does;
@@ -104,14 +111,14 @@ static void paint_at(struct canvas *c, const struct status *st, const struct sta
     char pct[8];
     snprintf(pct, sizeof pct, "%d%%", st->have_batt ? st->cap : 0);
     struct font *f = get_bar_font(sty->font_path);
-    right -= 3 * s + (f ? font_width(f, pct) : canvas_text7_width(pct, s));
+    right -= 2 * s + (f ? font_width(f, pct) : canvas_text7_width(pct, s));
     if (f) {
         int baseline = (bar_h - font_height(f)) / 2 + font_baseline(f);
         font_draw(f, c, right, baseline, pct, sty->ink);
     } else {
         canvas_text7(c, right, (bar_h - 7 * s) / 2, pct, s, sty->ink);
     }
-    right -= 5 * s + icon_h;
+    right -= 3 * s + icon_h;
     wifi_fan(c, right, y + icon_h, icon_h, status_wifi_bars(st), sty);
 }
 
