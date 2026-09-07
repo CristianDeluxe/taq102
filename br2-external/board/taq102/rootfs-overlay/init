@@ -73,11 +73,18 @@ mkdir -p /sys/kernel/debug && mount -t debugfs none /sys/kernel/debug 2>/dev/nul
 
 # The panel's backlight comes up at the device tree's default of 128 of 255,
 # which reads as a washed-out screen and is not a colour problem. Nothing else
-# raises it, so do it here, before anything draws.
+# raises it, so do it here, before anything draws. The rescue image runs the
+# stock kernel, whose rk816 driver throws the USB detection's 1500 mA away
+# for the DC path's 450 mA (measured again 2026-09-07: the rescue drained at
+# 292 mA on a CDP port at full brightness); at 40 of 255 the same port
+# charges, so the rescue keeps its light low.
+BL_LEVEL=max
+[ "$(cat /etc/taq102-variant 2>/dev/null)" = rescue ] && BL_LEVEL=40
 for BL in /sys/class/backlight/*/brightness; do
     [ -w "$BL" ] || continue
     MAX=$(cat "$(dirname "$BL")/max_brightness" 2>/dev/null) || continue
-    echo "$MAX" > "$BL" 2>/dev/null && echo "$BUILD_ID: backlight $MAX" > /dev/kmsg
+    LEVEL=$MAX; [ "$BL_LEVEL" = max ] || LEVEL=$BL_LEVEL
+    echo "$LEVEL" > "$BL" 2>/dev/null && echo "$BUILD_ID: backlight $LEVEL of $MAX" > /dev/kmsg
 done
 
 # Persistent storage. Everything above this line lives in RAM and dies at
@@ -105,6 +112,10 @@ if [ -n "$DATA" ] && [ -b "$DATA" ]; then
 else
     echo "$BUILD_ID: no partition at LBA 4867072; /data left empty" > /dev/kmsg
 fi
+
+# BusyBox init never runs rcS here, so nothing else sets the hostname; mdnsd
+# announces it as taq102.local and udhcpc sends it to the router.
+hostname "$(cat /etc/hostname 2>/dev/null || echo taq102)"
 
 cat > /etc/inittab <<EOF
 ::sysinit:/bin/mount -a

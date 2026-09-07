@@ -19,20 +19,7 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 
 ## Security
 
-- [!] The Wi-Fi WPA2 passphrase was typed in clear in a 2026-09-02 session
-  transcript (the working session history of `~/p`, around 13:58 UTC) and lives in
-  `/data/wifi.conf` on the tablet. Decide whether to rotate the network key or
-  accept it (home network, private transcript). Never paste it into this file.
-  Blocked: owner decision. Rotate the home Wi-Fi key, or accept the exposure?
-- [!] `tools/panel-camera/tablet.sh` disables host-key checking against a DHCP
-  address. The MAC is pinned in `/data/wifi.mac`, so a DHCP reservation plus a
-  `known_hosts` entry is feasible. Accepted trade-off until then.
-  Blocked: needs a DHCP reservation on the home router for the MAC in `/data/wifi.mac`; then pin the host key.
 ## Bugs
-- [~] `tools/panel-camera/tablet.sh reboot-loader` now detaches the command on
-  the tablet and returns at once (edited 2026-09-07, `sh -n` clean); the hang
-  itself cannot be re-tested until the next trip into loader mode.
-
 - [!] Wi-Fi sometimes fails at boot (`sdio_disable_func` -5, then probe -110),
   and a wedged RTL8723CS recovers only by a full power-off; `taq102-wifi`
   retries once through the BSP power nodes, and escalating further in software
@@ -49,30 +36,17 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   or RWX segments in the link, and the PHY module about macro attributes
   (2026-09-07 build logs). Harmless today; worth a look before a
   warning-clean build is ever wanted.
-- [~] Patch 0007 pulses `SRST_MIPIPHY_P` (reset id 36) in the combo PHY's
-  `power_on` before any register write (the reviewer round 2 had shown the pulse
-  restores the documented defaults and lock still comes). Written and built
-  2026-09-07, not flashed: `log/kernel-v44/` holds `zImage`, the DTB and the
-  PHY module with `SHA256SUMS`. A flash must verify the picture and the
-  336 MHz lock from a cold boot, and that the first modeset paints.
 - [ ] Built-in `CONFIG_PHY_ROCKCHIP_INNO_VIDEO_COMBO_PHY=y` hangs the boot at
   the PHY's first power-on, before any console; loading the module from `/init`
   (`taq102-display`) is the workaround and the cause is open (`README.md`,
   "The display, and what the boot images were really doing wrong"). Patch
   0001's HCLK_VIO_H2P clock did not remove it.
-- [!] The stock-kernel rescue in `recovery` keeps rk816's DC-detect bug: on a
-  CDP port it takes 450 mA instead of 1500 mA and drains at brightness 255
-  (patch 0004 exists only for our kernel). Accept it, lower the rescue
-  backlight, or find the register to poke from user space.
-  Blocked: needs a BCB round trip into the rescue image (a reboot of the appliance) to probe the rk816 sysfs under 4.4.103. Approve the reboot, or accept the drain.
-- [~] Patch 0006 releases every allocated touch slot (0..`MAX_CONTACTS`, the
-  driver registers 11 and reports in 1..10) on suspend and resume; the
-  original loop started at 1 and a contact parked in slot 0 survived (the
-  frozen cube of 2026-09-04). Built into `log/kernel-v44/zImage`, not
-  flashed; glcube's half-second slot expiry stays as the user-space guard. A
-  flash must verify a contact released after a power-key sleep. The fb-blank
-  notifier that resets the chip stays: our power-key sleep relies on it, and
-  `taq102-app` unbinds fbcon so nothing blanks by itself.
+- [~] The stock-kernel rescue drains on a CDP port (probed 2026-09-07 in the
+  v45 rescue: `NONE DC input=450`, battery -292 mA at brightness 255; the
+  stock kernel exposes no writable limit and no `/dev/mem`). `/init` now sets
+  the rescue variant's backlight to 40 of 255, where the same port charged
+  at +170 mA on 2026-09-04. Edited, `sh -n` clean, goes out with the next
+  image.
 - [ ] The device tree names the i2c-2 0x18 sensor `STK8BAxx`; it is a Silan
   SC7A20 (WHO_AM_I 0x11), and the vendor `lis3dh.c` would refuse it too (it
   checks for 0x33), so no DT rename binds a kernel driver. `src/accel.c` drives
@@ -100,18 +74,8 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   Blocked: needs the tablet unplugged and the power button held by hand; RK816 shutdown path in the kernel to read first.
 ## Infrastructure and tooling
 
-- [!] Buildroot in the OrbStack VM was OOM-killed twice (exit 137) even at
-  `-j1` during the 2026-09-04 the reviewer run; the `taq102` VM holds 16 GB with
-  `kbuild` beside it at 5.8 GB. Raise the VM's memory or stop `kbuild` while
-  building.
-  Blocked: owner decision. The VM has 7 GB; raise the OrbStack memory limit (the Mac has swapped under Backblaze before), or stop `kbuild` (5.8 GB, currently stopped) while building?
 ## Pending decisions
 
-- [!] Mainline track or appliance polish next (asked 2026-09-03, not answered).
-  The RK3126 LVDS encoder exists in `jcs/linux-dm250` commit 1d5b0bbb; mainline
-  has no RK816 charger driver and `silead.c` lacks the `gsl3673` compatible;
-  the UART2 pads below would be wanted.
-  Blocked: owner decision.
 - [!] `GLCUBE_FINISH=1` (a `glFinish` between `eglSwapBuffers` and scanout)
   stays a diagnostic; the black flashes were the accelerometer i2c read in the
   render loop, since fixed. Decide after a long run whether to drop the switch.

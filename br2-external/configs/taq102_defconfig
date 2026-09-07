@@ -33,6 +33,11 @@ BR2_TARGET_GENERIC_ISSUE="TAQ-102 rescue image"
 BR2_INIT_BUSYBOX=y
 BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_TAQ102_PATH)/board/taq102/busybox.fragment"
 
+# mDNS: the Mac finds the tablet as taq102.local instead of a moving DHCP address.
+BR2_PACKAGE_MDNSD=y
+BR2_PACKAGE_MDNSD_MQUERY=y
+BR2_PACKAGE_MDNSD_SSH_SERVICE=y
+
 # Our own /init lives here; it raises the USB ACM gadget before anything else.
 BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_TAQ102_PATH)/board/taq102/rootfs-overlay"
 BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_TAQ102_PATH)/board/taq102/post-build.sh"

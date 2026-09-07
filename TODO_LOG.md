@@ -6,6 +6,50 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Kernel:** v44 and v45 flashed and proved: kernel with
+  patches 0006 and 0007, the reset-pulse PHY module, and the new user space in
+  `boot`; the matching stock-kernel rescue in `recovery`; BCB round trip done.
+  - Result: v44 booted first with the old module still in `blobs/` (patch 0007
+    absent), so `blobs/phy-rockchip-inno-video-combo-phy-4.4.167.ko` was
+    replaced by the v44 build (md5 `0739dbab`) and v45 packed and flashed.
+    From a clean v45 boot: build `20260907-162319-23127e9`, `4.4.167`, module
+    md5 on the tablet `0739dbab`, PHY registers `REG03=0x02 REG04=0x1C`
+    (336 MHz), `REG00=0x7D REG01=0xE0 E4=0xAA` (analog on, defaults after the
+    reset pulse), LVDS bound at 4.40 s, glcube 54.8 FPS, `CDP1.5A input=1500`
+    kept; fb blank/unblank cycle drops and restores the GSL3673 reset pin and
+    the chip answers with the IRQ count climbing 6 to 13. Round trip:
+    `boot-recovery` at raw sector 32800, rescue up on 4.4.103 with the screen
+    turned by the sensor (y 943 mg), zeroed, appliance back. Camera:
+    `docs/evidence/2026-09-07/`. Both flashes readback-verified; the `boot`
+    write used `tools/flash-boot.sh`, `recovery` used the new `--no-bcb` mode;
+    `tablet.sh reboot-loader` returned in 0.75 s and the loader appeared 4 s
+    later (the 2026-09-03 hang is gone). Images archived in
+    `/Volumes/Datos4TB2/denver-taq102/gate3-build/recovery-taq102-v4[45]-*.img`.
+  - Files: `blobs/`, `br2-external/`, `log/v44/` (untracked artifacts).
+
+- [x] 2026-09-07 — **Integrations:** The tablet answers to `taq102.local`:
+  hostname set in `/init`, sent to DHCP as option 12, and `mdnsd` (Buildroot
+  package, SSH service) started on `wlan0` once the lease is in.
+  - Evidence: `dns-sd -G v4 taq102.local` on the Mac returns 192.168.1.57
+    within a second on both the appliance and the rescue; ssh by that name
+    used for every check after the flash.
+  - Files: `br2-external/configs/taq102_defconfig`,
+    `br2-external/package/taq102-wifi/taq102-wifi`,
+    `br2-external/board/taq102/rootfs-overlay/init`.
+
+- [-] 2026-09-07 — **Security:** Rotate the Wi-Fi key exposed in a 2026-09-02
+  transcript.
+  - Resolution: owner accepts it (home network, private transcript).
+
+- [-] 2026-09-07 — **Pending decisions:** Mainline track or appliance polish.
+  - Resolution: owner leaves it to the run; the appliance goes first (the
+    control centre, brightness policy, sleep). Mainline stays a future idea.
+
+- [-] 2026-09-07 — **Infrastructure:** Raise the build VM's memory.
+  - Resolution: owner leaves it to the run. OrbStack gives 8 GB overall on a
+    16 GB Mac; a full `make` passed at that size on 2026-09-07 with `kbuild`
+    stopped, so nothing is raised. Keep `kbuild` stopped while building.
+
 - [x] 2026-09-07 — **Bugs:** the reviewer review of the run (session `01a07c22`)
   found two regressions of mine, both fixed: glcube's bar canvas was reused
   without clearing, so the new composite kept old digits (778 stale pixels
