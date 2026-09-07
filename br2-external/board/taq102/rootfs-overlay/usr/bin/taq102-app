@@ -8,15 +8,21 @@
 #   * holding the one button down while it boots. This tablet has exactly two
 #     buttons -- power, and one other -- while the device tree declares two ADC
 #     keys, "Volume Up" at 0 V reporting KEY_BACK (158) and "Volume Down" at
-#     1.65 V reporting KEY_VOLUMEDOWN (114). One of those two does not exist in
-#     the plastic, and which code the real one sends has not been measured, so
-#     accept either.
+#     1.65 V reporting KEY_VOLUMEDOWN (114). Only one exists in the plastic,
+#     and measured 2026-09-03 it sends KEY_BACK; both codes stay accepted in
+#     case the other key ever turns up on a sibling board.
 #
 # The restart limit matters: a crash loop against a KMS surface would otherwise
 # spend the whole uptime taking and dropping DRM master.
 
 APP=${TAQ102_APP:-/usr/bin/glcube}
 LIMIT=5
+
+# The log survives a reboot only on /data; /init mounts it before inittab
+# runs, and when it carries no filesystem the directory is not there.
+LOG=/tmp/taq102-app.log
+[ -d /data/log ] || mkdir -p /data/log 2>/dev/null
+[ -w /data/log ] && LOG=/data/log/taq102-app.log
 
 log() { echo "taq102-app: $1" > /dev/kmsg; }
 
@@ -52,7 +58,7 @@ rescue() {
     if [ -x /usr/bin/rescue-screen ]; then
         [ -e /dev/dri/card0 ] || sleep 3
         release_console
-        exec /usr/bin/rescue-screen >> /tmp/taq102-app.log 2>&1
+        exec /usr/bin/rescue-screen >> "$LOG" 2>&1
     fi
     exit 0
 }
@@ -83,7 +89,7 @@ release_console
 n=0
 while [ $n -lt $LIMIT ]; do
     log "starting $APP (attempt $((n + 1)))"
-    "$APP" >> /tmp/taq102-app.log 2>&1
+    "$APP" >> "$LOG" 2>&1
     n=$((n + 1))
     sleep 1
 done

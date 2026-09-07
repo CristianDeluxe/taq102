@@ -28,7 +28,11 @@
 		backlight = <&backlight>;
 		enable-gpios = <&gpio2 12 GPIO_ACTIVE_HIGH>;
 
-		// 24-bit JEIDA, which is bus format 0x1009.
+		// 0x1009 is MEDIA_BUS_FMT_RGB666_1X18 in this tree, a parallel
+		// format the LVDS switch ignores, so it fell through to VESA-24; the
+		// 24-bit JEIDA the panel wants is 0x1012. This file is the first
+		// attempt and is superseded by rk3126-taq102-hybrid.dts, which
+		// tools/make-hybrid-dts.py generates from the stock tree.
 		bus-format = <0x1009>;
 		rockchip,data-mapping = "jeida";
 		rockchip,data-width = <24>;

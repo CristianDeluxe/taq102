@@ -9,8 +9,8 @@
 # auto-exposure alone once produced motion=4.15 on a blank white panel.
 here="$(dirname "$0")"
 tag="$1"
-a="${TMPDIR:-/tmp}/panel_${tag}_a.jpg"
-b="${TMPDIR:-/tmp}/panel_${tag}_b.jpg"
+a=$(mktemp "${TMPDIR:-/tmp}/panel_${tag}_a.XXXXXX.jpg")
+b=$(mktemp "${TMPDIR:-/tmp}/panel_${tag}_b.XXXXXX.jpg")
 "$here/snap.sh" "$a"
 "$here/snap.sh" "$b"
 stat() {

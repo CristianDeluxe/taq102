@@ -18,8 +18,18 @@ RECOVERY_LBA=196608     # recovery partition start
 RECOVERY_SECTORS=131072 # 64 MB
 BCB_LBA=24608           # misc + 16 KB
 
-RKDEVELOPTOOL=${RKDEVELOPTOOL:?set RKDEVELOPTOOL to the built binary}
-IMG=${1:?usage: flash-recovery.sh <recovery.img>}
+here=$(dirname "$0")
+RKDEVELOPTOOL=${RKDEVELOPTOOL:-$here/vendor/rkdeveloptool/rkdeveloptool}
+
+# --no-bcb writes and verifies `recovery` and leaves the bootloader control
+# block alone, so the appliance in `boot` keeps running: the v43 refresh of
+# 2026-09-05 needed exactly that and had to call rkdeveloptool by hand.
+# Without it the BCB is set and the device reboots into what was written,
+# which is what testing a rescue image wants.
+SET_BCB=yes
+if [ "${1:-}" = "--no-bcb" ]; then SET_BCB=no; shift; fi
+IMG=${1:?usage: flash-recovery.sh [--no-bcb] <recovery.img>}
+[ -x "$RKDEVELOPTOOL" ] || { echo "no rkdeveloptool at $RKDEVELOPTOOL; run tools/get-rkdeveloptool.sh" >&2; exit 1; }
 
 SIZE=$(wc -c < "$IMG")
 if [ "$SIZE" -gt $((RECOVERY_SECTORS * 512)) ]; then
@@ -46,6 +56,11 @@ if [ "$A" != "$B" ]; then
     exit 1
 fi
 echo "recovery verified $A"
+
+if [ "$SET_BCB" = no ]; then
+    echo "BCB left alone; the running system stays in boot"
+    exit 0
+fi
 
 BCB=$(mktemp)
 printf 'boot-recovery' > "$BCB"

@@ -384,10 +384,17 @@ silently.
 
 ## Status
 
-The tablet boots this image, drives the panel through DRM, reads multitouch, and
-now renders with the GPU. `particles` is the CPU application, `glcube` the GPU
-one; `glcube` spins with one finger and zooms with two, tracking multitouch
-slots directly from the GSL3673's protocol-B event stream.
+This section is the state on 2026-09-02, kept because the sections that follow
+build on it. The current state is at the end of this file ("The shimmer was
+the PHY's own PLL") and in `TODO.md`: the appliance runs on our own 4.4.167
+kernel from `boot`, `recovery` holds a stock-kernel rescue, and the panel is
+steady at the vendor's PHY PLL.
+
+On 2026-09-02 the tablet booted this image under the stock kernel, drove the
+panel through DRM, read multitouch, and rendered with the GPU. `particles` is
+the CPU application, `glcube` the GPU one; `glcube` spins with one finger and
+zooms with two, tracking multitouch slots directly from the GSL3673's
+protocol-B event stream.
 
 ## The display, and what the boot images were really doing wrong
 

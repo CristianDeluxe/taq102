@@ -8,7 +8,10 @@
 set -eu
 
 VENDOR=$(dirname "$0")/vendor
-BASE=https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/main
+# Pinned to a commit rather than main: only header_version 0 is used here and
+# the script has no reason to change under us.
+MKBOOTIMG_COMMIT=d2bb0af5ba6d3198a3e99529c97eda1be0b5a093
+BASE=https://android.googlesource.com/platform/system/tools/mkbootimg/+/$MKBOOTIMG_COMMIT
 
 mkdir -p "$VENDOR/gki"
 cd "$VENDOR"
