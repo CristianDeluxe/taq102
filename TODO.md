@@ -26,33 +26,30 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 - [ ] `tools/panel-camera/tablet.sh` disables host-key checking against a DHCP
   address. The MAC is pinned in `/data/wifi.mac`, so a DHCP reservation plus a
   `known_hosts` entry is feasible. Accepted trade-off until then.
-- [ ] `RESCUE_DUMP=<file>` in `src/rescue-screen.c` opens the path with `fopen`
-  and follows symlinks. Root-only, same principal; low.
 ## Bugs
 
+- [ ] The rescue screen is washed out under the stock 4.4.103 kernel: the status
+  bar's `downsample` in `src/statusbar.c` writes every pixel of the canvas it
+  is given, and outside the bar the supersampled source is all alpha 0, so
+  the amber background leaves the canvas with alpha 0 and the stock VOP
+  blends it away. Found by the reviewer 2026-09-07 (503,922 of 614,400 scanout
+  pixels at alpha 0); the v43 round-trip photo
+  (`docs/evidence/2026-09-05/rescue-v43-round-trip.jpg`) shows it, the
+  journal called it amber. Fix: leave destination pixels untouched where the
+  source alpha is 0, and limit the loop to the bar's rows. glcube is
+  unaffected (its bar canvas is bar-sized).
 - [ ] Wi-Fi sometimes fails at boot (`sdio_disable_func` -5, then probe -110),
   and a wedged RTL8723CS recovers only by a full power-off; `taq102-wifi`
   retries once through the BSP power nodes, and escalating further in software
   stopped the SDIO card enumerating at all (2026-09-02). Next: count the failure
   rate over cold boots into `/data`, then try cutting the chip's rail through
   the RK816 instead of the BSP nodes. `br2-external/package/taq102-wifi/taq102-wifi`.
-- [ ] `particles` writes pixels with alpha 0 and the stock VOP blends XRGB as
-  ARGB, so it washes out under the rescue kernel; set `0xFF000000` as
-  `rescue-screen` does (noted 2026-09-03, left on purpose). `src/particles.c:206`.
-- [ ] `glcube` never calls `drmSetMaster`: two instances split the flips
-  (27.4 FPS, 2026-09-02) and two masters give a torn, colour-shifted picture
-  (2026-09-03, restarting by hand under the supervisor). Take master
-  explicitly and exit if refused.
 - [ ] Rare `[drm] flip_done timed out` followed by two `vop_crtc_enable`, a
   250 ms blackout: 1 in 20 slow flips, 0 in 45 min of glcube (2026-09-04).
   Reproduce with `fliptest` pause mode before touching the driver.
 - [ ] `tools/panel-camera/tablet.sh reboot-loader` hung the pipeline over ssh
   (2026-09-03; the connection dies with the reboot) and was bypassed by calling
   `reboot-loader` directly. Make the helper detach from the dropped session.
-- [~] `taq102-app` logs to `/data/log/taq102-app.log` when `/data` is mounted,
-  `/tmp` otherwise (edited 2026-09-07, `sh -n` clean); not yet in a booted
-  ramdisk. `br2-external/board/taq102/rootfs-overlay/usr/bin/taq102-app`.
-
 ## Kernel and drivers
 
 - [ ] The combo-PHY driver acquires `SRST_MIPIPHY_P` (reset id 36) and never
@@ -93,18 +90,12 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 
 ## Appliance
 
-- [ ] `rescue-screen` does not rotate with the accelerometer and reads upside
-  down on a tablet held the other way up; `glcube` already does it through
-  `src/accel.c` and `src/accel_monitor.c` (noted 2026-09-05).
 - [ ] Backlight policy: `/init` forces maximum brightness. On a `NONE USB`
   source (450 mA) the tablet drains at 255 and charges at 40; on CDP it charges
   at 255. Decide a fixed default or a charger-aware one (the RK816 input limit
   is readable). `br2-external/board/taq102/rootfs-overlay/init`.
 - [ ] A power-off that sticks when unplugged: holding power with USB in reboots
   into charger mode instead of switching off (measured 2026-09-03).
-- [ ] Add `timeout` to the BusyBox config; live-test scripts on the tablet keep
-  working around its absence (2026-09-02, 2026-09-04).
-
 ## Infrastructure and tooling
 
 - [ ] Every Mac-to-VM copy has bitten once: `orb cat` truncated a zImage

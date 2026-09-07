@@ -16,6 +16,7 @@
 #include <math.h>
 #include <time.h>
 #include <poll.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -232,6 +233,11 @@ static void idle_spin(struct arcball *b) {
 int main(void) {
     int fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     if (fd < 0) { perror("open card0"); return 1; }
+    if (drmSetMaster(fd) != 0) {
+        fprintf(stderr, "drmSetMaster: %s\n", strerror(errno));
+        close(fd);
+        return 1;
+    }
 
     drmModeRes *res = drmModeGetResources(fd);
     if (!res) { perror("drmModeGetResources"); return 1; }
