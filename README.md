@@ -1378,6 +1378,17 @@ Loader execs `reboot-loader`; Wi-Fi runs `taq102-wifi up` or `down` from a
 worker thread with a 45 s limit (`src/action_worker.c`), the name read from
 the `ssid=` line of `/data/wifi.conf` and nothing else.
 
+The panel offered "Turn on" for a Wi-Fi that was already associated, reported
+2026-09-07. `taq102-wifi up` and the app are both `::once` entries in inittab,
+so they start together and the link is seconds away: the module load alone
+waits up to eight, then association and DHCP. The runtime latched its wanted
+state from that first sample, which was always "no link", and nothing ever
+revised it -- so the status bar drew bars while the panel said off. It now
+adopts an observed link as the wanted state on every read, except while one of
+its own actions is in flight, since a toggle to off owns the state until its
+worker exits and `down` has removed the module by then
+(`src/control_runtime.c`, covered by `runtime_test`).
+
 **Overrides** for tests: `GLCUBE_TOUCH` and `GLCUBE_POWER` (input devices),
 `GLCUBE_SETTINGS` (the conf path), `GLCUBE_FONTS` (the font directory),
 `GLCUBE_TRACE` (the per-second line now carries uploads/s, glGetError and

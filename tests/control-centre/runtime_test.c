@@ -114,6 +114,11 @@ int main(void) {
     assert(input.cube.slot[0].active);
     assert(r.idle.deadline_ms == 298000);
     control_input_reset(&input, &r, 0); assert(!input.cube.slot[0].active);
+    /* Wi-Fi that init raises after the app started must stop reading as off. */
+    assert(!r.wanted_wifi && r.panel.wifi == WIFI_OFF);
+    telemetry.have_wifi = 1; telemetry.level = -47;
+    strcpy(telemetry.addr, "192.168.1.40");
+    tick(&r, 238500, 0); assert(r.wanted_wifi && r.panel.wifi == WIFI_CONNECTED);
     action(&r, CC_WIFI_TOGGLE, 1, 239000); assert(busy && r.panel.wifi == WIFI_STARTING);
     action(&r, CC_WIFI_TOGGLE, 0, 239100); assert(r.wanted_wifi == 1);
     completion=1; worker_exit=-1; tick(&r, 240000, 0); assert(r.panel.wifi == WIFI_FAILED);

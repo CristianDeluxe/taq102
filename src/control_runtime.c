@@ -32,6 +32,14 @@ static void read_status(struct control_runtime *r, int64_t now) {
     if (next.online_valid && !next.plugged &&
         (!r->status.online_valid || r->status.plugged)) sleep_timer_touch(&r->idle, now);
     r->status = next;
+    /* `taq102-wifi up` and the app are both `::once` entries in inittab, so at
+     * init the link is still seconds away: the module load alone waits up to
+     * eight, then association and DHCP. Latching the wanted state from that
+     * first sample left the panel offering "Turn on" for a Wi-Fi that came up
+     * behind it. Adopt an observed link instead, except while an action of our
+     * own is in flight -- a toggle to off owns the state until its worker
+     * exits, by which time `down` has removed the module. */
+    if (r->status.have_wifi && !aw_busy(r->worker)) r->wanted_wifi = 1;
     r->read_at_ms = now + 1000;
 }
 
@@ -65,7 +73,6 @@ int control_runtime_init(struct control_runtime *r, const char *path, int64_t no
     if (!r->policy || !r->worker) { control_runtime_free(r); return -1; }
     sleep_timer_init(&r->idle, r->settings.sleep_minutes, now);
     read_status(r, now);
-    r->wanted_wifi = r->status.have_wifi;
     wifi_read_ssid("/data/wifi.conf", r->panel.ssid, sizeof r->panel.ssid);
     struct utsname u;
     if (uname(&u) == 0) snprintf(r->panel.kernel, sizeof r->panel.kernel, "%.31s", u.release);
