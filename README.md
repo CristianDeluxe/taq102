@@ -1388,7 +1388,8 @@ every step and holds four 60-second phases at 54.8 FPS.
 `tools/test-control-centre-host.sh` builds and runs the seventeen host tests
 under the sanitizers, fonts included.
 
-`boot` = `recovery-taq102-v46-appliance.img` (kernel v44, ramdisk
-`20260907-200340-d821a6e`), `recovery` the matching stock-kernel rescue,
+`boot` = `recovery-taq102-v47-appliance.img` (kernel v44, ramdisk
+`20260907-202158-bb04db0`, v46 plus three review fixes), `recovery` the
+matching stock-kernel rescue,
 whose backlight now boots at 40 so a plain USB port charges it. The rescue
 screen is set in Inter too.

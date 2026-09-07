@@ -6,6 +6,20 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Bugs:** the reviewer's review of the whole control-centre change
+  (session `01a07d7f`) found three defects, fixed and shipped as v47: the
+  rescue reboot skipped `sync()` (pending `/data` writes could be lost);
+  the brightness sample was judged with the frame's timestamp, older than
+  the sample's own, so the policy reset its window every time and Auto
+  could stay at 255; and the touch decoder reset its slot to 0 on a flip or
+  a cancel while the kernel kept slot 1, which could lose the first finger
+  of a pinch.
+  - Evidence: `test_slot_selection_survives_flip_and_cancel` in
+    `tests/control-centre/touch_test.c`; 17 host tests pass; v47 (build
+    `20260907-202158-bb04db0`) flashed to `boot` and `recovery`,
+    readback-verified, 54.8 FPS from the clean boot, BCB zero.
+  - Files: `src/reboot_target.c`, `src/control_runtime.c`, `src/touch_input.c`.
+
 - [x] 2026-09-07 — **Appliance:** The control centre, the brightness policy,
   idle sleep with pick-up wake, and Inter on every screen (v46 in `boot` and
   `recovery`).
