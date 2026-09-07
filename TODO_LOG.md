@@ -6,6 +6,19 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Bugs:** the reviewer review of the run (session `01a07c22`)
+  found two regressions of mine, both fixed: glcube's bar canvas was reused
+  without clearing, so the new composite kept old digits (778 stale pixels
+  on a repaint from 87% charging to 12%); it is now cleared before each
+  paint. `measure.sh` used an `mktemp` template with a suffix, which macOS
+  takes literally, so a second run with the same tag failed; it now makes a
+  unique directory.
+  - Evidence: host test linking `src/statusbar.c` and `src/canvas.c`: repaint
+    versus fresh 0 differing pixels, rescue bar rows 0 alpha-0 pixels; glcube
+    rebuilt after `tools/vm-hash-check.sh` caught a stale mount once, deployed,
+    54.8 FPS; `mktemp -d` twice with the same template gave two directories.
+  - Files: `src/glcube.c`, `tools/panel-camera/measure.sh`.
+
 - [x] 2026-09-07 — **Kernel:** Patch series reconciled: `0001` had absorbed
   `0002`'s two analog-power hunks, so a fresh checkout could not take the
   series in order. `0001` regenerated as the tree minus `0007` minus `0002`.

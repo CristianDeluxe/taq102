@@ -791,6 +791,9 @@ int main(void) {
             status_read(&st);
             snprintf(bar_key, sizeof bar_key, "%d|%d|%d|%d", st.have_wifi, status_wifi_bars(&st), st.cap, st.ma > 0);
             if (strcmp(bar_key, bar_shown)) {
+                // The bar composites over what the canvas holds, so a repaint
+                // starts from transparent or the old digits show through.
+                memset(bar.px, 0, (size_t)W * bar_h * 4);
                 statusbar_paint(&bar, &st, &OVERLAY_STYLE);
                 glBindTexture(GL_TEXTURE_2D, bar_tex);
                 upload_canvas(&bar, bar_rgba);
