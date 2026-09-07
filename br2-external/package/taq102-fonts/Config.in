@@ -1,0 +1,6 @@
+config BR2_PACKAGE_TAQ102_FONTS
+	bool "taq102-fonts (Inter, for every text the appliance draws)"
+	help
+	  Inter Regular and SemiBold (SIL Open Font License 1.1), the one
+	  typeface glcube, the control centre and the rescue screen render
+	  through stb_truetype. Installed under /usr/share/fonts/taq102/.
