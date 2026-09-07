@@ -6,6 +6,19 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Kernel:** Backlog run, wave 3 (the reviewer, session
+  `01a07c17`): patches 0006 (GSL3673 releases slots 0..10 on suspend and
+  resume) and 0007 (combo PHY pulses its reset at power-on) written, applied
+  to the VM tree, built and staged; NOT flashed.
+  - Evidence: `tools/build-kernel.sh` from `/work/kernel-v40.config` with the
+    hybrid DTS ended with `zImage is ready`, no `error:`; the PHY module
+    relinked with vermagic `4.4.167 SMP preempt mod_unload modversions ARMv7
+    p2v8`; both patches apply in reverse with zero fuzz; `log/kernel-v44/`
+    holds the three artifacts, `shasum -a 256 -c SHA256SUMS` OK on the Mac.
+    the reviewer's brief had the slot bound wrong (0..9); corrected to 0..10 after
+    reading `input_mt_init_slots(MAX_CONTACTS + 1)`, rebuilt.
+  - Files: `kernel/patches/0006-*.patch`, `kernel/patches/0007-*.patch`.
+
 - [x] 2026-09-07 — **Infrastructure:** `tools/vm-hash-check.sh` compares the
   tracked sources on the Mac and through the VM's mount before a build; the
   README build notes name `<pkg>-dirclean` as the resync.
