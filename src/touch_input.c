@@ -231,7 +231,9 @@ void touch_input_set_flipped(struct touch_input *ti, int flipped) {
         if (ti->slot[i].last_spoke > t) t = ti->slot[i].last_spoke;
     if (cancel_active_to_ready(ti, t) < 0) return;
     ti->discarding = 0;
-    ti->current_slot = 0;
+    /* The kernel's slot selection survives our logical cancel: ABS_MT_SLOT
+     * is only sent when it changes, so forgetting it here would put the
+     * next contact in slot 0 while the driver keeps reporting slot 1. */
     ti->flipped = flipped;
 }
 
@@ -362,7 +364,6 @@ int touch_input_cancel_all(struct touch_input *ti, struct touch_event *out,
         if (ti->slot[i].last_spoke > t) t = ti->slot[i].last_spoke;
     if (cancel_active_to_ready(ti, t) < 0) return -1;
     ti->discarding = 0;
-    ti->current_slot = 0;
     return drain_ready(ti, out, max);
 }
 
