@@ -6,6 +6,18 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Infrastructure:** `tools/vm-hash-check.sh` compares the
+  tracked sources on the Mac and through the VM's mount before a build; the
+  README build notes name `<pkg>-dirclean` as the resync.
+  - Evidence: `tools/vm-hash-check.sh` run against `src` and `br2-external`
+    (result in the run report).
+
+- [-] 2026-09-07 — **Kernel:** Put the touch panel's `screen_max_x/y` in the
+  hybrid device tree.
+  - Resolution: the GSL3673 driver never reads them (only compile-time
+    `SCREEN_MAX_*` variants in `gsl3673.h`); the 2048x1536 range is the
+    driver's, and `src/touch_flip.c` mapping by the KMS mode is the fix.
+
 - [x] 2026-09-07 — **Bugs:** The rescue screen was washed out under the
   stock kernel: the status bar's downsample rewrote every pixel of the canvas
   it was given, and outside the bar the source is all alpha 0, so the amber
