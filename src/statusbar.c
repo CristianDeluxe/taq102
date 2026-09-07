@@ -79,9 +79,15 @@ static void paint_at(struct canvas *c, const struct status *st, const struct sta
     wifi_fan(c, right, y + icon_h, icon_h, status_wifi_bars(st), sty);
 }
 
-// Average SS*SS supersampled pixels into one, alpha-weighted.
-static void downsample(struct canvas *dst, const struct canvas *src) {
-    for (int y = 0; y < dst->h; y++)
+// Average SS*SS supersampled pixels into one, alpha-weighted, and lay the
+// result over what the destination already holds. Only the bar's rows are
+// touched: the rescue screen hands over its whole amber canvas, and until
+// 2026-09-07 every pixel outside the bar came back as 0 -- black with alpha
+// 0, which the stock VOP blends away into a washed-out panel (the v43
+// round-trip photograph). glcube's bar canvas is bar-sized and starts at 0,
+// so for it "over" is the plain copy it always was.
+static void downsample(struct canvas *dst, const struct canvas *src, int rows) {
+    for (int y = 0; y < rows; y++)
         for (int x = 0; x < dst->w; x++) {
             unsigned a = 0, r = 0, g = 0, b = 0;
             for (int j = 0; j < SS; j++)
@@ -93,16 +99,28 @@ static void downsample(struct canvas *dst, const struct canvas *src) {
                     g += ((p >> 8) & 0xff) * pa;
                     b += (p & 0xff) * pa;
                 }
-            uint32_t out = 0;
-            if (a) out = ((a / (SS * SS)) << 24) | ((r / a) << 16) | ((g / a) << 8) | (b / a);
-            dst->px[y * dst->w + x] = out;
+            if (!a) continue;
+            unsigned sa = a / (SS * SS), sr = r / a, sg = g / a, sb = b / a;
+            uint32_t *d = &dst->px[y * dst->w + x];
+            if (sa >= 255) { *d = 0xFF000000u | (sr << 16) | (sg << 8) | sb; continue; }
+            // Straight-alpha "over": on a transparent destination (glcube's
+            // bar canvas) the source passes through untouched.
+            unsigned da = *d >> 24, dr = (*d >> 16) & 0xff, dg = (*d >> 8) & 0xff, db = *d & 0xff;
+            unsigned wd = da * (255 - sa) / 255;       // what shows through of dst
+            unsigned oa = sa + wd;
+            *d = (oa << 24) |
+                 (((sr * sa + dr * wd) / oa) << 16) |
+                 (((sg * sa + dg * wd) / oa) << 8) |
+                 ((sb * sa + db * wd) / oa);
         }
 }
 
 void statusbar_paint(struct canvas *c, const struct status *st, const struct statusbar_style *sty) {
-    struct canvas big = { calloc((size_t)c->w * SS * c->h * SS, 4), c->w * SS, c->h * SS };
+    int rows = statusbar_height(c->w);
+    if (rows > c->h) rows = c->h;
+    struct canvas big = { calloc((size_t)c->w * SS * rows * SS, 4), c->w * SS, rows * SS };
     if (!big.px) return;
     paint_at(&big, st, sty, UNIT(c->w) * SS);
-    downsample(c, &big);
+    downsample(c, &big, rows);
     free(big.px);
 }

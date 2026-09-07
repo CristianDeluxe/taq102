@@ -6,6 +6,19 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Bugs:** The rescue screen was washed out under the
+  stock kernel: the status bar's downsample rewrote every pixel of the canvas
+  it was given, and outside the bar the source is all alpha 0, so the amber
+  background came back as transparent black (since the supersampling of
+  2026-09-04; the v43 round-trip photo shows it). `statusbar_paint` now
+  composites only the bar's rows over the canvas with straight-alpha "over",
+  which leaves glcube's transparent bar canvas exactly as before.
+  - Evidence: rescue-screen deployed live on the tablet, `/dev/mem` scanout
+    read: 614,400 of 614,400 pixels at alpha 255, 504,273 amber, 47 distinct
+    colours in the bar rows; glcube redeployed, 54.8 FPS. Found by the reviewer in
+    the wave-2 run.
+  - Files: `src/statusbar.c`.
+
 - [x] 2026-09-07 — **Appliance:** Backlog run, wave 2 (the reviewer, session
   `01a07c06`): rescue screen rotates with the accelerometer (`RESCUE_FLIP=0|1`
   override), `RESCUE_DUMP` refuses symlinks, `glcube` and `rescue-screen` take
