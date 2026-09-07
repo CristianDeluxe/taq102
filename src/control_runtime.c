@@ -90,7 +90,12 @@ void control_runtime_tick(struct control_runtime *r, int64_t now, int asleep) {
         if (r->settings.brightness_auto) {
             /* Take this sample at the policy cadence, never reuse bar telemetry. */
             read_status(r, now);
-            int level = power_policy_step(r->policy, &r->status, now, 0);
+            /* status_read stamps the sample with its own clock, a little after
+             * this frame's `now`; judged against `now` the sample would look
+             * like it came from the future and the policy would reset its
+             * window every time. */
+            int64_t at = r->status.read_ms > now ? r->status.read_ms : now;
+            int level = power_policy_step(r->policy, &r->status, at, 0);
             if (level >= 8) apply(r, level);
         }
         r->policy_at_ms = now + 10000;

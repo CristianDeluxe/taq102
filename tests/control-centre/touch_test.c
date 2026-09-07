@@ -422,6 +422,31 @@ static void test_router_opens_within_batch(void) {
     touch_router_free(r);
 }
 
+static void test_slot_selection_survives_flip_and_cancel(void) {
+    /* ABS_MT_SLOT is only sent when the kernel's selection changes, so a
+     * flip or a logical cancel must not forget it: the next contact reported
+     * without a slot still belongs to slot 1. */
+    struct touch_flip flip;
+    assert(touch_flip_configure(&flip, 1024, 600, "xy") == 0);
+    struct touch_input *ti = touch_input_new(&flip);
+    assert(ti != NULL);
+    struct touch_event ev[32];
+    struct touch_raw select_one[] = {
+        R(EV_ABS, ABS_MT_SLOT, 1, 20.f), R(EV_ABS, ABS_MT_TRACKING_ID, 30, 20.f),
+        R(EV_ABS, ABS_MT_POSITION_X, 100, 20.f), R(EV_ABS, ABS_MT_POSITION_Y, 100, 20.f),
+        R(EV_SYN, SYN_REPORT, 0, 20.f) };
+    int n = touch_input_feed(ti, select_one, 5, ev, 32);
+    assert(n == 1 && ev[0].slot == 1);
+    touch_input_set_flipped(ti, 1);
+    touch_input_cancel_all(ti, ev, 32);
+    struct touch_raw again[] = {
+        R(EV_ABS, ABS_MT_TRACKING_ID, 31, 21.f), R(EV_ABS, ABS_MT_POSITION_X, 120, 21.f),
+        R(EV_ABS, ABS_MT_POSITION_Y, 120, 21.f), R(EV_SYN, SYN_REPORT, 0, 21.f) };
+    n = touch_input_feed(ti, again, 4, ev, 32);
+    assert(n == 1 && ev[0].kind == TOUCH_DOWN && ev[0].slot == 1);
+    touch_input_free(ti);
+}
+
 int main(void) {
     test_input_frames();
     test_input_loss_and_capacity();
@@ -433,6 +458,7 @@ int main(void) {
     test_router_capture();
     test_router_panel_queue();
     test_router_opens_within_batch();
+    test_slot_selection_survives_flip_and_cancel();
     puts("touch ok");
     return 0;
 }

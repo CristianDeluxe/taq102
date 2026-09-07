@@ -123,6 +123,7 @@ int reboot_target_rescue(char *err, size_t errn) {
     if (emmc_device(dev, sizeof dev) != 0)
         return failure(err, errn, "Cannot resolve one eMMC rescue target");
     if (bcb_write_verify(dev, 32800, err, errn) != 0) return -1;
+    sync();   /* the BCB descriptor was fsynced; the mounted /data was not */
     if (reboot(RB_AUTOBOOT) != 0) return failure(err, errn, "Reboot failed after verified BCB write");
     return failure(err, errn, "Reboot unexpectedly returned");
 #else
