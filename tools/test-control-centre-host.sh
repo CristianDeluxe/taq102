@@ -18,7 +18,7 @@ for t in "$here"/tests/control-centre/*_test.c; do
     for s in $srcs; do set -- "$@" "$here/src/$s"; done
     if "$CC" -std=gnu99 -Wall -Wextra -Werror -fsanitize=address,undefined \
         -I "$here/src" -I "$here/tests/control-centre" -I "$out/include" \
-        -o "$out/$name" "$t" "$@" -lm && "$out/$name"; then
+        -o "$out/$name" "$t" "$@" -lm -pthread && "$out/$name"; then
         echo "PASS $name"
     else
         echo "FAIL $name"
