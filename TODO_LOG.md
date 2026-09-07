@@ -6,6 +6,26 @@
 
 ### 2026-09
 
+- [x] 2026-09-07 — **Infrastructure:** Backlog run, wave 1: repo-only items.
+  - Result: `get-rkdeveloptool.sh` pinned to `304f073` and `get-mkbootimg.sh`
+    to `d2bb0af`; `flash-recovery.sh` gained `--no-bcb` and both flash scripts
+    default to `tools/vendor/rkdeveloptool`; `measure.sh` uses `mktemp`;
+    the shimmer instruments (`zigzag.py`, `shift.py`, `sweep.sh`, `wobble.sh`,
+    `src/bartest.c`) moved out of the session scratchpad into
+    `tools/panel-camera/` with portable paths, `sweep.sh` recording the iPhone
+    device and crop; `taq102-app` comment names the measured `KEY_BACK`.
+  - Evidence: `sh -n` clean on every script; `tools/flash-recovery.sh --no-bcb`
+    prints usage and finds the vendor binary (`rkdeveloptool ld` ran).
+  - Files: `tools/get-rkdeveloptool.sh`, `tools/get-mkbootimg.sh`,
+    `tools/flash-recovery.sh`, `tools/panel-camera/*`, `src/bartest.c`.
+
+- [x] 2026-09-07 — **Documentation:** README "Status" points at the current
+  state; the first DTS's bus-format comment corrected and the file marked
+  superseded; the 2026-09-01 the reviewer research archived in `docs/research/`;
+  the brain page's "Still open" list drops the two settled questions.
+  - Evidence: `docs/research/2026-09-01-review-route-findings.md` (607 lines,
+    from the archive disk); brain commit `e79d20d9`, pushed.
+
 - [x] 2026-09-06 — **Documentation:** The two 2026-09-04 the reviewer runs' findings
   archived with the evidence.
   - Evidence: commit `52de391`; `docs/evidence/2026-09-05/review-findings-1-blackframes-touch.md`,

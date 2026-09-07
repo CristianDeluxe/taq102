@@ -23,18 +23,11 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   transcript (the working session history of `~/p`, around 13:58 UTC) and lives in
   `/data/wifi.conf` on the tablet. Decide whether to rotate the network key or
   accept it (home network, private transcript). Never paste it into this file.
-- [ ] Pin the upstream fetches in `tools/get-rkdeveloptool.sh` (rockchip-linux
-  `master`) and `tools/get-mkbootimg.sh` (AOSP `main`) to a commit; both build
-  whatever HEAD is on the day. (Security review, 2026-09-02.)
 - [ ] `tools/panel-camera/tablet.sh` disables host-key checking against a DHCP
   address. The MAC is pinned in `/data/wifi.mac`, so a DHCP reservation plus a
   `known_hosts` entry is feasible. Accepted trade-off until then.
 - [ ] `RESCUE_DUMP=<file>` in `src/rescue-screen.c` opens the path with `fopen`
   and follows symlinks. Root-only, same principal; low.
-- [ ] `tools/panel-camera/measure.sh` and `snap.sh` use predictable
-  `${TMPDIR:-/tmp}/panel_<tag>_*.jpg` names with `ffmpeg -y`. Per-user
-  `TMPDIR` on macOS; low.
-
 ## Bugs
 
 - [ ] Wi-Fi sometimes fails at boot (`sdio_disable_func` -5, then probe -110),
@@ -56,9 +49,9 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 - [ ] `tools/panel-camera/tablet.sh reboot-loader` hung the pipeline over ssh
   (2026-09-03; the connection dies with the reboot) and was bypassed by calling
   `reboot-loader` directly. Make the helper detach from the dropped session.
-- [ ] `taq102-app` logs to `/tmp/taq102-app.log`, which dies with the reboot;
-  write to `/data` when it is mounted (deferred since 2026-09-02).
-  `br2-external/board/taq102/rootfs-overlay/usr/bin/taq102-app`.
+- [~] `taq102-app` logs to `/data/log/taq102-app.log` when `/data` is mounted,
+  `/tmp` otherwise (edited 2026-09-07, `sh -n` clean); not yet in a booted
+  ramdisk. `br2-external/board/taq102/rootfs-overlay/usr/bin/taq102-app`.
 
 ## Kernel and drivers
 
@@ -109,23 +102,11 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   is readable). `br2-external/board/taq102/rootfs-overlay/init`.
 - [ ] A power-off that sticks when unplugged: holding power with USB in reboots
   into charger mode instead of switching off (measured 2026-09-03).
-- [ ] `taq102-app`'s comment says the real button's key code "has not been
-  measured"; it was, on 2026-09-03: the plastic button sends `KEY_BACK`.
-  Update the comment and keep accepting both codes.
 - [ ] Add `timeout` to the BusyBox config; live-test scripts on the tablet keep
   working around its absence (2026-09-02, 2026-09-04).
 
 ## Infrastructure and tooling
 
-- [ ] Rescue the shimmer instruments from the session scratchpad before macOS
-  clears it: `zigzag.py` (row-by-row horizontal phase of the vertical-line
-  pattern), `shift.py`, `sweep.sh`, `wobble.sh` and `bartest.c` in
-  `/opt/scratch`,
-  into `tools/panel-camera/`. The 336 MHz table in `README.md` cannot be
-  re-measured without them.
-- [ ] `tools/flash-recovery.sh` always writes the BCB and reboots into what it
-  wrote; the v43 refresh used `rkdeveloptool wl 196608` by hand to keep the
-  appliance running. Add a no-BCB mode with the same readback check.
 - [ ] Every Mac-to-VM copy has bitten once: `orb cat` truncated a zImage
   silently (2026-09-03) and the shared mount served a short `glcube.c`
   (2026-09-04). `tools/pull-kernel.sh` hashes the kernel; add the same
@@ -135,25 +116,7 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   `-j1` during the 2026-09-04 the reviewer run; the `taq102` VM holds 16 GB with
   `kbuild` beside it at 5.8 GB. Raise the VM's memory or stop `kbuild` while
   building.
-- [ ] `rkdeveloptool` is never on PATH: every session rediscovers
-  `tools/vendor/rkdeveloptool/rkdeveloptool` and the scripts want
-  `RKDEVELOPTOOL` set. Default the scripts to the vendor path.
-- [ ] The iPhone over Continuity Camera (1920x1440 through avfoundation) is a
-  far better instrument than the fixed webcam for the phase measurement and
-  needs a stand; record its device name and crop in `tools/panel-camera/`.
-
 ## Documentation
-
-- [ ] `README.md` "Status" (line 385) still describes the 2026-09-02 state under
-  the stock kernel; the current state sits at the end of the file. Move it or
-  make it a pointer.
-- [ ] `kernel/rk3126-taq102.dts:31` says bus-format 0x1009 is 24-bit JEIDA; in
-  this tree it is `RGB666_1X18`, the starting error of the display chase
-  (0x1012 is JEIDA-24). Fix the comment or mark the file superseded by
-  `kernel/rk3126-taq102-hybrid.dts`.
-- [ ] The 2026-09-01 the reviewer research report (route, boot chain, device traps)
-  lives only at `/Volumes/Datos4TB2/denver-taq102/research/FINDINGS.md`;
-  `docs/evidence/` starts at round 1 of 2026-09-03. Copy or link it.
 
 ## Pending decisions
 
@@ -185,10 +148,3 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   nothing has tried BT.
 - [ ] `/dev/rga` (2D accelerator) is available and unused; `particles` could
   blit through it instead of the CPU.
-
-## Cross-project
-
-- [ ] `~/p/brain/personal/denver-taq102-tablet.md` "Still open" (2026-09-01)
-  still lists two settled questions: stock U-Boot accepts an unsigned recovery
-  image (proved 2026-09-02) and RK3126C shares the RK3128 combo-PHY behaviour
-  (proved 2026-09-03). Trim it in the `brain` repo.

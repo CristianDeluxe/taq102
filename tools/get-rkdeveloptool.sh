@@ -15,10 +15,15 @@ VENDOR=$(cd "$(dirname "$0")/vendor" 2>/dev/null && pwd || {
 })
 
 cd "$VENDOR"
+# Pinned to the commit that was built and used against this tablet
+# (master of 2025-03-07); a moving master is a build that may stop working
+# the day it is needed most.
+RKDEVELOPTOOL_COMMIT=304f073752fd25c854e1bcf05d8e7f925b1f4e14
 [ -d rkdeveloptool ] ||
-	git clone --depth 1 https://github.com/rockchip-linux/rkdeveloptool.git
+	git clone https://github.com/rockchip-linux/rkdeveloptool.git
 
 cd rkdeveloptool
+git checkout -q "$RKDEVELOPTOOL_COMMIT"
 autoreconf -i
 ./configure
 make CXXFLAGS="-g -O2 -Wno-vla-cxx-extension -Wno-error"
