@@ -83,6 +83,7 @@ static const struct statusbar_style OVERLAY_STYLE = {
     0xFFFFFFFFu,   // ink
     0x66FFFFFFu,   // unlit arcs, faint
     0xFFFFFFFFu,   // bolt
+    "/usr/share/fonts/taq102/Inter-SemiBold.ttf",
 };
 
 // 0xAARRGGBB in memory is B,G,R,A on this little-endian machine; GL wants
