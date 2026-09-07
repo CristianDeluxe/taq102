@@ -88,7 +88,15 @@ static void read_wifi(struct status *st) {
         char *w = strstr(line, "wlan0:");
         if (!w) continue;
         int q = 0, l = 0;
-        if (sscanf(w + 6, " %*x %d. %d.", &q, &l) == 2) { st->quality = q; st->level = l; st->have_wifi = 1; }
+        /* The interface is listed here from the moment the driver registers
+         * it, associated or not, and an unassociated one reads `0 0. -256.
+         * -256.` -- measured on the tablet 2026-09-07 with wlan0 UP and
+         * NO-CARRIER. Taking that as a link lit one bar on a radio that was
+         * connected to nothing, so a level is only a level if it could have
+         * come from a radio. */
+        if (sscanf(w + 6, " %*x %d. %d.", &q, &l) == 2 && l > -100) {
+            st->quality = q; st->level = l; st->have_wifi = 1;
+        }
     }
     fclose(f);
 }
