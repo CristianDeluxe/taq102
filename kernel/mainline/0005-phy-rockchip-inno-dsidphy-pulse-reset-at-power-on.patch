@@ -1,0 +1,23 @@
+phy: rockchip: inno-dsidphy: pulse the APB reset before programming
+
+The driver takes the "apb" reset control in probe and never uses it. Start
+from reset defaults after enabling the clocks and runtime power, rather than
+inheriting whatever register state the bootloader left in the PHY. On the
+RK3126C tablet this project works on, U-Boot has already driven this same PHY
+in LVDS mode before the kernel touches it.
+
+--- a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
+@@ -655,6 +655,12 @@ static int inno_dsidphy_power_on(struct phy *phy)
+ 	clk_prepare_enable(inno->ref_clk);
+ 	pm_runtime_get_sync(inno->dev);
+ 
++	/* Discard the register state the bootloader left behind */
++	reset_control_assert(inno->rst);
++	udelay(20);
++	reset_control_deassert(inno->rst);
++	udelay(20);
++
+ 	/* Bandgap power on */
+ 	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x00,
+ 			BANDGAP_POWER_MASK, BANDGAP_POWER_ON);
