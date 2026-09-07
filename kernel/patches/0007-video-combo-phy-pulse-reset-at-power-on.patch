@@ -1,0 +1,24 @@
+video-combo-phy: pulse the hardware reset before programming
+
+Start from reset defaults after enabling clocks and runtime power, rather
+than inheriting the register state left by U-Boot.
+
+--- a/drivers/phy/rockchip/phy-rockchip-inno-video-combo-phy.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-video-combo-phy.c
+@@ -566,6 +566,16 @@
+ 	clk_prepare_enable(inno->h2p_clk);
+ 	pm_runtime_get_sync(inno->dev);
+ 
++	/*
++	 * Reset before programming to discard the state U-Boot left behind.
++	 */
++	if (inno->rst) {
++		reset_control_assert(inno->rst);
++		udelay(20);
++		reset_control_deassert(inno->rst);
++		udelay(20);
++	}
++
+ 	/* Bandgap power on */
+ 	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x00,
+ 			BANDGAP_POWER_MASK, BANDGAP_POWER_ON);
