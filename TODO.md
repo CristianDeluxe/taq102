@@ -41,12 +41,6 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   (`taq102-display`) is the workaround and the cause is open (`README.md`,
   "The display, and what the boot images were really doing wrong"). Patch
   0001's HCLK_VIO_H2P clock did not remove it.
-- [~] The stock-kernel rescue drains on a CDP port (probed 2026-09-07 in the
-  v45 rescue: `NONE DC input=450`, battery -292 mA at brightness 255; the
-  stock kernel exposes no writable limit and no `/dev/mem`). `/init` now sets
-  the rescue variant's backlight to 40 of 255, where the same port charged
-  at +170 mA on 2026-09-04. Edited, `sh -n` clean, goes out with the next
-  image.
 - [ ] The device tree names the i2c-2 0x18 sensor `STK8BAxx`; it is a Silan
   SC7A20 (WHO_AM_I 0x11), and the vendor `lis3dh.c` would refuse it too (it
   checks for 0x33), so no DT rename binds a kernel driver. `src/accel.c` drives
@@ -64,11 +58,17 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 
 ## Appliance
 
-- [!] Backlight policy: `/init` forces maximum brightness. On a `NONE USB`
-  source (450 mA) the tablet drains at 255 and charges at 40; on CDP it charges
-  at 255. Decide a fixed default or a charger-aware one (the RK816 input limit
-  is readable). `br2-external/board/taq102/rootfs-overlay/init`.
-  Blocked: owner decision. Fixed default (which value?), or charger-aware (max on CDP, 40 on a plain USB port)?
+- [!] Hands-on checks on v46 (2026-09-07): open the panel with a swipe down from
+  the bar and judge the look; drag brightness; leave it unplugged for the
+  chosen minutes and see it sleep, then pick it up and see it wake; tap Wi-Fi
+  off and on. Blocked: needs hands and eyes on the tablet.
+- [ ] Joining a different Wi-Fi network from the panel needs an on-screen
+  keyboard (deferred in the spec); today the network is set in
+  `/data/wifi.conf` over ssh.
+- [ ] The brightness controller's failed-probe memory and the 30 s cadence
+  are tested on the host with traces; a real weak-source run (a plain USB
+  port for an hour) has not been recorded yet. Record the level trace from
+  the log and check it settles.
 - [!] A power-off that sticks when unplugged: holding power with USB in reboots
   into charger mode instead of switching off (measured 2026-09-03).
   Blocked: needs the tablet unplugged and the power button held by hand; RK816 shutdown path in the kernel to read first.

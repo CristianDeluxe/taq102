@@ -1,0 +1,23 @@
+PASS 01 uinput and KMS ready: TOUCH=/dev/input/event3 POWER=/dev/input/event4, event_bytes=16, flipped=1, native_coordinates=1
+PASS 02 Inter faces loaded: panel_faces=5, bar_faces=1
+PASS 03 closed 60-second FPS/GL: seconds=61.50, samples=61, FPS=54.8..54.8, uploads/s=0.0..0.0, GL_errors=0
+PASS 04 hidden panel uploads: samples=61, uploads=0.0
+PASS 05 panel scanout: changed=1, glass_pixels=2240
+PASS 06 open 60-second FPS/GL: seconds=62.93, samples=62, FPS=54.8..54.8, uploads/s=0.0..1.0, GL_errors=0
+PASS 07 brightness follows drag: low=28, mid=138, high=223
+PASS 08 slider saves manual brightness: auto=0, saved=223, sysfs=223
+PASS 09 Auto on: brightness_auto=1
+PASS 10 Auto off: brightness_auto=0
+PASS 11 15-minute segment: sleep_minutes=15
+PASS 12 Rescue arms and expires: armed_pixels=4238, disarmed_pixels=0, disarm_log=1
+PASS 13 dragging 60-second FPS/GL: seconds=61.11, samples=61, FPS=54.8..54.8, uploads/s=13.0..23.9, GL_errors=0
+PASS 14 drag upload rate: max_uploads/s=23.9
+PASS 15 sliding 60-second FPS/GL: seconds=63.12, samples=62, FPS=54.8..54.8, uploads/s=0.0..0.0, GL_errors=0
+PASS 16 outside tap closes panel: glass_pixels=0
+PASS 17 two-finger cube zoom: two_slot_trace=1
+PASS 18 power sleeps display: bl_power=4, fb_blank_readback=unavailable, VOP_disabled=1
+PASS 19 power wakes display: bl_power=0, fb_blank_readback=unavailable
+PASS 20 post-wake FPS/GL: FPS=54.8, glGetError=0x0
+PASS 21 supervisor restored: stable_FPS_intervals=7
+PASS 22 production preferences preserved: exists=0, before/after_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+Evidence: /tmp/taq102-audit/device/20260907T200453Z
