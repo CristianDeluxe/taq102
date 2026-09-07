@@ -1,0 +1,244 @@
+From: Cristian Deluxe <info@busirocket.com>
+Date: Mon, 8 Sep 2026 00:00:00 +0200
+Subject: [PATCH] Input: silead - drive the GSL3673 on the Denver TAQ-102
+
+Route: mainline silead.c, not a port of the vendor driver. This patch adds
+identifiers and a board node. It changes no driver logic, because none is
+needed: silead.c and the vendor's gsl3673.c speak the same chip.
+
+Proved by reading both, not by the part number:
+
+  - Register map. The vendor writes 0xE0 = 0x88 to reset, 0xE4 = 0x04 for the
+    clock, powers through 0xBC, starts with 0xE0 = 0x00, polls 0xB0 for
+    0x5A5A5A5A and reads the id at 0xFC. Every one of those is a SILEAD_REG_*
+    in silead.c with the same value.
+
+  - Frame layout. The vendor's data_size is MAX_FINGERS * touch_bytes +
+    touch_meta_data = 10 * 4 + 4 = 44, read from 0x80: SILEAD_TS_DATA_LEN. Its
+    x_index = 6 / y_index = 4 / touch_bytes = 4 put point i at bytes
+    4 + 4i .. 7 + 4i with y at +0, x at +2 and the hardware id in the high
+    nibble of x's MSB -- byte for byte silead's SILEAD_POINT_Y_OFF 0,
+    SILEAD_POINT_X_OFF 2, SILEAD_POINT_X_MSB_OFF >> 4.
+
+  - Firmware format. The vendor record is
+
+	struct fw_data { u32 offset : 8; u32 : 0; u32 val; };
+
+    where the anonymous zero-width bitfield closes the storage unit, so the
+    record is eight bytes with the offset in the low byte of word 0 and the
+    value in word 1. Compiled with arm-buildroot-linux-gnueabihf-gcc: sizeof
+    == 8, offsetof(val) == 4. That is struct silead_fw_data. So the blob
+    silead_ts_load_fw() wants is the vendor's GSL3673_FW array dumped
+    little-endian in source order, and kernel/mainline/taq102-gsl3673-firmware.py
+    dumps it: 4719 records, 37752 bytes, every offset one of 0x00, 0x04 ...
+    0x7c or 0xf0, so no record needs a special case. The only difference in
+    the upload is batching -- silead writes one word per transfer where the
+    vendor packed up to 32 -- which the chip cannot see.
+
+What is deliberately not carried across: gsl_config_data_id_3673[]. It is not
+firmware and is never written to i2c. Its one non-debug consumer is
+startup_chip() -> gsl_DataInit(), inside the closed-source host-side algorithm
+in gsl_point_id.c. silead.c has no such layer and needs none, but it also does
+without what that layer did: gsl_alg_id_main() rewrote coordinates and the
+finger count before they were reported, and gsl_mask_tiaoping() wrote a
+noise-hopping mask back to the chip at 0xf0/0x08 on every frame. silead
+reports the chip's own output and never writes back.
+
+Not proved, because it cannot be proved without the tablet:
+
+  - The chip's unaided output has never been seen on this board. The vendor
+    defines GSL_NOID_VERSION in gsl3673.h, so every touch this tablet has ever
+    reported went through gsl_alg_id_main() first. The vendor's own
+    #ifndef GSL_NOID_VERSION path reads x, y and id straight out of the same
+    44-byte frame, which proves the frame carries them; it does not prove they
+    are steady enough to use. Watch for jitter, wandering contacts and
+    drop-outs with the charger plugged in, which is where a missing frequency
+    hop shows first.
+
+  - touchscreen-size-x/y are inferred. The vendor driver's ABS range is not
+    evidence: with CONFIG_TOUCHSCREEN_GSL3673 no TP_SIZE_* macro is defined,
+    so it falls through to 2048x1536. The 1024x600 here is the resolution word
+    of the stock configuration array (0x02580400 = 600 << 16 | 1024) and the
+    screen_max_x/y of the reconstructed vendor node. Correcting it is two DTS
+    numbers, but a wrong range looks skewed rather than broken.
+
+  - silead masks x and y to 12 bits and reads a non-zero high nibble of the y
+    MSB as a soft button: the contact is dropped and KEY_LEFTMETA is emitted.
+    The vendor code uses the full 16-bit y and interprets nothing. Harmless
+    while y < 0x258, as it must be on a 600-line panel, but if the stock
+    firmware puts anything in those bits the touch vanishes silently.
+
+  - The DTS compiles but has never been booted. cpp resolves it and the
+    in-tree scripts/dtc turns it into a DTB with no warnings, in which
+    touchscreen@40 sits under i2c@2005a000 with interrupts <15 1> and
+    touchscreen-size 0x400 x 0x258. Nothing about that says the node is right,
+    only that it is well formed.
+
+  - The two regulators are fictions of convenience. Nothing on this board
+    switches those rails; they exist because silead_ts_probe() takes "vddio"
+    and "avdd" with devm_regulator_bulk_get(), not the _optional form, and
+    returns the error. Replace them with the real RK816 outputs when a PMIC
+    node lands in this DTS.
+
+One correction to the earlier investigation of this subsystem, which said
+i2c0: the touchscreen is on i2c2. In the device tree the tablet actually runs
+(kernel/rk3126-taq102-hybrid.dts, decompiled from the live DTB) ts@40 is a
+child of i2c@2005a000, next to the RK816 at 0x1a and the accelerometer at
+0x18, while i2c@20072000 is enabled with no children. Both rk3128.dtsi and the
+vendor rk312x.dtsi label 0x2005a000 as i2c2. The live node also carries no
+clock-frequency, so the bus runs at the 100 kHz default; the 400 kHz quoted
+from rk3126-bnd-d708.dtsi is a different bus on a different board. This patch
+follows the live DTB.
+
+No ACPI id is added: this board has no ACPI, and there is no Silead ACPI HID
+for the GSL3673 that anyone here has observed.
+
+This supersedes 0006-input-silead-add-gsl3673.patch and
+0007-arm-dts-rk3126-taq102-gsl3673-touch.patch in the same directory, which
+were written against i2c0 at 400 kHz. Apply this one or those, never both.
+
+Kernel side needs CONFIG_TOUCHSCREEN_SILEAD, CONFIG_I2C_RK3X and
+CONFIG_REGULATOR_FIXED_VOLTAGE; the rootfs needs the blob at
+/lib/firmware/silead/gsl3673.fw.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+--- a/Documentation/devicetree/bindings/input/touchscreen/silead,gsl1680.yaml
++++ b/Documentation/devicetree/bindings/input/touchscreen/silead,gsl1680.yaml
+@@ -18,6 +18,7 @@
+       - silead,gsl1680
+       - silead,gsl1688
+       - silead,gsl3670
++      - silead,gsl3673
+       - silead,gsl3675
+       - silead,gsl3692
+ 
+--- a/drivers/input/touchscreen/silead.c
++++ b/drivers/input/touchscreen/silead.c
+@@ -779,6 +779,7 @@
+ 	{ .name = "gsl1680" },
+ 	{ .name = "gsl1688" },
+ 	{ .name = "gsl3670" },
++	{ .name = "gsl3673" },
+ 	{ .name = "gsl3675" },
+ 	{ .name = "gsl3692" },
+ 	{ .name = "mssl1680" },
+@@ -807,6 +808,7 @@
+ 	{ .compatible = "silead,gsl1680" },
+ 	{ .compatible = "silead,gsl1688" },
+ 	{ .compatible = "silead,gsl3670" },
++	{ .compatible = "silead,gsl3673" },
+ 	{ .compatible = "silead,gsl3675" },
+ 	{ .compatible = "silead,gsl3692" },
+ 	{ },
+--- a/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
++++ b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
+@@ -17,6 +17,7 @@
+ 
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/input/input.h>
++#include <dt-bindings/interrupt-controller/irq.h>
+ #include "rk3128.dtsi"
+ 
+ / {
+@@ -28,6 +29,33 @@
+ 		reg = <0x60000000 0x40000000>;
+ 	};
+ 
++	/*
++	 * The touch controller's two rails. Nothing on this board switches
++	 * them: they are up before the kernel starts, the vendor node
++	 * describes no supply at all, and the RK816 that really feeds them
++	 * has no node in this file yet. They exist because silead.c takes
++	 * both with a plain devm_regulator_bulk_get() and refuses to probe
++	 * without them. Replace them with the real RK816 outputs when a PMIC
++	 * node lands here.
++	 */
++	vcc_io: regulator-vcc-io {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_io";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	vcc_tp: regulator-vcc-tp {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_tp";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
+ 	backlight: backlight {
+ 		compatible = "pwm-backlight";
+ 		pwms = <&pwm0 0 25000 0>;
+@@ -82,6 +110,66 @@
+ 	};
+ };
+ 
++/*
++ * GSL3673 capacitive touch, 0x40 on i2c2.
++ *
++ * i2c2, not i2c0: in the device tree the tablet actually runs
++ * (kernel/rk3126-taq102-hybrid.dts, decompiled from the live DTB) ts@40 is a
++ * child of i2c@2005a000, beside the RK816 at 0x1a and the accelerometer at
++ * 0x18, and i2c@20072000 is enabled with no children at all. rk3128.dtsi
++ * labels 0x2005a000 as i2c2, and so does the vendor rk312x.dtsi. The
++ * hand-written kernel/rk3126-taq102.dts in this repository puts the node
++ * under &i2c0; that file is a reconstruction and it is wrong on this point.
++ *
++ * No clock-frequency: the live node has none either, so the bus runs at the
++ * 100 kHz default i2c_parse_fw_timings() supplies. The 400 kHz in the sibling
++ * board's rk3126-bnd-d708.dtsi belongs to a different bus on a different
++ * board. At 100 kHz the firmware upload -- 4719 single-word SMBus writes
++ * where the vendor batched 32 words per transfer -- costs a few seconds once,
++ * at probe.
++ *
++ *  - interrupts is EDGE_RISING, not the LEVEL_LOW the vendor node prints.
++ *    gsl3673_init() reads irq_gpio_number only for the GPIO number and throws
++ *    the flags away; probe then calls devm_request_irq() with
++ *    IRQF_TRIGGER_RISING. Rising is the trigger this hardware was proved on.
++ *
++ *  - power-gpios is the vendor's rst_gpio_number, gpio2 14 active high.
++ *    silead.c has no separate reset: silead_ts_set_power() drives this pin
++ *    low to stop the chip and high to run it, then sleeps 20 ms, which is
++ *    exactly gsl3673_shutdown_low()/_high() and their msleep(20).
++ *
++ *  - firmware-name resolves to /lib/firmware/silead/gsl3673.fw, produced by
++ *    kernel/mainline/taq102-gsl3673-firmware.py from the GSL3673_FW array of
++ *    the vendor header after kernel/patches/0005-* has replaced it with the
++ *    tablet's own stock blob. The array the vendor tree ships untouched is
++ *    another panel's.
++ *
++ *  - touchscreen-size-x/y are unmeasured. They are the resolution word of the
++ *    stock configuration array, 0x02580400 = 600 << 16 | 1024, and the
++ *    screen_max_x/y of the reconstructed vendor node. The vendor driver's own
++ *    ABS range is no evidence: with CONFIG_TOUCHSCREEN_GSL3673 no TP_SIZE_*
++ *    macro is defined, so it falls through to 2048x1536.
++ */
++&i2c2 {
++	status = "okay";
++
++	touchscreen@40 {
++		compatible = "silead,gsl3673";
++		reg = <0x40>;
++
++		interrupt-parent = <&gpio2>;
++		interrupts = <15 IRQ_TYPE_EDGE_RISING>;
++		power-gpios = <&gpio2 14 GPIO_ACTIVE_HIGH>;
++
++		vddio-supply = <&vcc_io>;
++		avdd-supply = <&vcc_tp>;
++
++		firmware-name = "gsl3673.fw";
++		touchscreen-size-x = <1024>;
++		touchscreen-size-y = <600>;
++	};
++};
++
+ &pwm0 {
+ 	status = "okay";
+ };

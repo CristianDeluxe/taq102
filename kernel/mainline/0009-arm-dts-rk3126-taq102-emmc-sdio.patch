@@ -1,0 +1,96 @@
+ARM: dts: rk3126-taq102: the eMMC, the SDIO and the block-device numbering
+
+The board built without these and would have booted to a tablet with no
+storage and no Wi-Fi: rk3128.dtsi leaves all three dw_mmc controllers
+disabled, and nothing in the series so far enabled them. Without the eMMC
+there is no /data, so no settings and no wifi.conf; without the SDIO there is
+no wlan0 whatever rtw88 is built with.
+
+Every capability here is the one the tablet's own stock tree sets for this
+board: the eMMC is 8-bit, non-removable and high-speed with write protect
+disabled; the SDIO is 4-bit, high-speed, non-removable and keeps power in
+suspend. The RTL8723CS needs its 32 kHz clock and its reset released before
+its SDIO function can be probed, so the power sequence takes the PMIC's
+clkout2 and GPIO2_B5, which is why the PMIC node gains a label.
+
+The aliases are not cosmetic. They fix the eMMC at mmcblk1, which is what the
+vendor kernel called it, what the blkdevparts= on the command line names, and
+what the initramfs looks for when it hunts for the partition at LBA 4867072.
+Mainline has no Rockchip partition parser, so that command line is the only
+thing that makes /data findable at all.
+
+The SD slot is left disabled deliberately. Nothing here uses it, and enabling
+it only adds a controller that can fail to probe.
+
+Verified by decompiling the built DTB: both controllers status okay with the
+capabilities above, mmc0/mmc1/mmc2 pointing at sdmmc/emmc/sdio.
+
+--- a/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
++++ b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
+@@ -24,6 +24,24 @@
+ 	model = "Denver TAQ-102 (RK3126C, LVDS)";
+ 	compatible = "rockchip,rk3126-taq102", "rockchip,rk3126";
+ 
++	aliases {
++		mmc0 = &sdmmc;
++		mmc1 = &emmc;
++		mmc2 = &sdio;
++	};
++
++	/*
++	 * The RTL8723CS needs its 32 kHz clock and its reset released before
++	 * the SDIO function can be probed at all. Values from the tablet own
++	 * stock tree: the clock is the PMIC clkout2, the reset is GPIO2_B5.
++	 */
++	sdio_pwrseq: sdio-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		clocks = <&rk816 1>;
++		clock-names = "ext_clock";
++		reset-gpios = <&gpio2 RK_PB5 GPIO_ACTIVE_LOW>;
++	};
++
+ 	memory@60000000 {
+ 		device_type = "memory";
+ 		reg = <0x60000000 0x40000000>;
+@@ -211,7 +229,7 @@
+ &i2c2 {
+ 	status = "okay";
+ 
+-	pmic@1a {
++	rk816: pmic@1a {
+ 		compatible = "rockchip,rk816";
+ 		reg = <0x1a>;
+ 		interrupt-parent = <&gpio0>;
+@@ -296,3 +314,32 @@
+ 				       <3450000 0>;
+ 	};
+ };
++
++/*
++ * Storage and SDIO. Without the eMMC there is no /data, so no settings and no
++ * wifi.conf; without the SDIO there is no wlan0 whatever rtw88 is built with.
++ * Every capability below is the one the stock tree sets for this board.
++ * The SD slot is left disabled on purpose: nothing here uses it, and it would
++ * only add a controller that can fail to probe.
++ */
++&emmc {
++	bus-width = <8>;
++	cap-mmc-highspeed;
++	disable-wp;
++	non-removable;
++	pinctrl-names = "default";
++	pinctrl-0 = <&emmc_clk &emmc_cmd &emmc_bus8>;
++	status = "okay";
++};
++
++&sdio {
++	bus-width = <4>;
++	cap-sd-highspeed;
++	keep-power-in-suspend;
++	max-frequency = <50000000>;
++	mmc-pwrseq = <&sdio_pwrseq>;
++	non-removable;
++	pinctrl-names = "default";
++	pinctrl-0 = <&sdio_clk &sdio_cmd &sdio_bus4>;
++	status = "okay";
++};

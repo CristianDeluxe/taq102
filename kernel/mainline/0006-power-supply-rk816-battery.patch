@@ -1,0 +1,1536 @@
+From: Cristian Deluxe <info@busirocket.com>
+Subject: [PATCH] power: supply: RK816 battery and charger, and the board that
+ needs it
+
+/sys/class/power_supply/battery does not exist on an RK816 board under
+mainline: the rk816s[] cell list in drivers/mfd/rk8xx-core.c has a pinctrl, a
+clkout, a regulator, a pwrkey and an rtc cell, and no charger, so nothing ever
+claims the fuel gauge. This adds the cell and the driver behind it, together
+with the binding and the board device tree the TAQ-102 needs to use them.
+
+The RK816 has a real coulomb counter, a battery voltage and current ADC, a
+charge state machine and a VBUS presence bit. What it does not have is a state
+of charge register. RK816_SOC_REG at 0xe0 is the first of the battery-backed
+general purpose data registers - mainline's own rk808.h already names the block
+RK816_DATA_REG(x) - and in five thousand lines of vendor driver it is written
+in exactly one place, rk816_bat_save_dsoc() at rk816_battery.c:1438, with the
+driver's own computed percentage, and read in exactly one, at :1445, on the
+next boot. It is a scratch byte.
+
+So the percentage here is the integral, not a lookup. The 32 bit coulomb
+counter is preloaded once at probe from the relaxed open circuit voltage
+through the battery's ocv-capacity table, divided by the full charge capacity
+on every poll, and re-anchored in exactly one place: when the charger reports
+termination, which is the only moment the true charge is known. Nothing is ever
+derived from the loaded terminal voltage, which is what stops the percentage
+swinging when a GPU load steps - the appliance on this board is a single GL
+application, and a battery indicator that moves with the frame rate is worse
+than none.
+
+The vendor's software layer on top of the counter is not reproduced, and each
+omission is marked at its site in the driver: the zero algorithm that bends the
+last few percent onto the power-off voltage, FCC relearning, the current ADC
+offset self-calibration, and the sleep discharge estimate. The consequence
+worth stating up front is that this driver's 0 % is not the vendor's 0 %: the
+system should shut down on voltage, not on capacity.
+
+Three other things fall out of the hardware and are worth naming:
+
+  - The volatile register range for the RK816 began at RK816_GASCNT_REG(0),
+    which is 0xbb - 0, the *low* byte of the coulomb counter. Under
+    REGCACHE_MAPLE that froze the counter's three high bytes, the relax
+    voltages and currents, the ADC offset calibration and the power off minute
+    counter at their first post-boot value. A gauge reading a 32 bit
+    accumulator through that cache reads the same number for ever, silently.
+    The range now covers the whole hardware updated block, 0xb8..0xdf.
+
+  - The part cannot tell a wall adapter from a USB port. USB_EXIST and USB_EFF
+    exist in the vendor header but are never read for presence; their only
+    occurrences are two case labels in a switch on SUP_STS bits 6:4, which
+    those bits cannot match. Presence is PLUG_IN_STS in RK808_VB_MON_REG, and
+    the SDP/CDP/DCP split comes from the SoC USB PHY through extcon, exactly as
+    the vendor's usb_in/ac_in do. Without extcon every charger is a 450 mA
+    port and "ac" stays offline: slow, but honest.
+
+  - The three supplies are named "battery", "usb" and "ac" rather than
+    rk817-charger's "rk817-battery" and "rk817-charger". Those three names
+    under /sys/class/power_supply are the userspace ABI on this class of board.
+
+Every register offset, bit position, scaling constant, table and default was
+read out of the Rockchip 4.4 vendor tree, and every number in the board's
+battery node was converted from the vendor board file's own hexadecimal. None
+of it has been run on hardware yet.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+--- a/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
++++ b/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
+@@ -78,6 +78,14 @@
+     description:
+       The input supply for otg-switch.
+ 
++  extcon:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description:
++      Phandle to an extcon device, usually the SoC USB PHY, that performs
++      BC1.2 charger detection. The RK816 can tell that VBUS is present but
++      not what is supplying it, so without this every charger is treated as
++      a 450 mA USB port.
++
+   regulators:
+     type: object
+     patternProperties:
+@@ -87,6 +95,52 @@
+         unevaluatedProperties: false
+     additionalProperties: false
+ 
++  charger:
++    type: object
++    $ref: /schemas/power/supply/power-supply.yaml
++
++    properties:
++      monitored-battery:
++        description: |
++          A phandle to a monitored battery node that carries a valid value
++          for charge-full-design-microamp-hours,
++          charge-term-current-microamp,
++          constant-charge-current-max-microamp,
++          constant-charge-voltage-max-microvolt,
++          voltage-max-design-microvolt, voltage-min-design-microvolt,
++          and a valid ocv-capacity table.
++
++      rockchip,resistor-sense-micro-ohms:
++        description:
++          Value in microohms of the battery sense resistor. The gauge's ADC
++          scaling constants are defined for 20 mOhm; the driver corrects for
++          the other supported value.
++        enum: [10000, 20000]
++
++      rockchip,sleep-enter-current-microamp:
++        description:
++          Value in microamps of the sleep enter current, which sets the
++          relax mode entry and exit thresholds.
++
++      rockchip,sleep-filter-current-microamp:
++        description:
++          Value in microamps of the sleep filter current, which sets the
++          sleep sample current.
++
++      input-current-limit-microamp:
++        description:
++          Maximum current the board may draw from a dedicated charging
++          port. Standard and charging downstream ports are held to their
++          BC1.2 values instead.
++
++    required:
++      - monitored-battery
++      - rockchip,resistor-sense-micro-ohms
++      - rockchip,sleep-enter-current-microamp
++      - rockchip,sleep-filter-current-microamp
++
++    additionalProperties: false
++
+ patternProperties:
+   '-pins$':
+     type: object
+--- a/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
++++ b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
+@@ -96,3 +96,115 @@
+ 	dr_mode = "peripheral";
+ 	status = "okay";
+ };
++
++/*
++ * The RK816 PMIC and the battery behind it.
++ *
++ * These two headers are re-included here rather than at the top of the file
++ * so that this is one self-contained block; both carry include guards, so a
++ * second include costs nothing.
++ */
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/rockchip.h>
++
++/*
++ * The PMIC sits on i2c2 at 0x1a, beside the GSL3673 touch controller at 0x40
++ * on the same bus; i2c0 is enabled with no children at all on this board.
++ * Its interrupt is GPIO0_A2, active low.
++ * Checked against the decompiled vendor DTB, where the same node reads
++ * interrupts = <0x02 0x08>.
++ *
++ * The regulators are deliberately not described. Nothing here needs them,
++ * and transcribing a rail constraint wrong is how a board stops booting;
++ * the vendor's DCDC and LDO constraints are a separate change with its own
++ * risk. "rockchip,system-power-controller" is left off for the same reason:
++ * it changes what happens on poweroff.
++ */
++&i2c2 {
++	status = "okay";
++
++	pmic@1a {
++		compatible = "rockchip,rk816";
++		reg = <0x1a>;
++		interrupt-parent = <&gpio0>;
++		interrupts = <RK_PA2 IRQ_TYPE_LEVEL_LOW>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&pmic_int_l>;
++		#clock-cells = <1>;
++		clock-output-names = "xin32k", "rk816-clkout2";
++		gpio-controller;
++		#gpio-cells = <2>;
++		extcon = <&usb2phy>;
++		wakeup-source;
++
++		charger {
++			monitored-battery = <&battery>;
++			rockchip,resistor-sense-micro-ohms = <20000>;
++			rockchip,sleep-enter-current-microamp = <300000>;
++			rockchip,sleep-filter-current-microamp = <100000>;
++			input-current-limit-microamp = <1600000>;
++		};
++	};
++};
++
++&pinctrl {
++	pmic {
++		pmic_int_l: pmic-int-l {
++			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_default>;
++		};
++	};
++};
++
++/*
++ * The OTG PHY is disabled in rk3128.dtsi, so the ACM gadget above cannot
++ * probe without this either. It is also what performs BC1.2 detection,
++ * which is the only way the charger can tell a wall adapter from a 450 mA
++ * port.
++ */
++&usb2phy {
++	status = "okay";
++};
++
++&usb2phy_otg {
++	status = "okay";
++};
++
++/ {
++	/*
++	 * Every number here comes from the battery node of the vendor board
++	 * file, converted out of its hexadecimal millivolts and milliamp
++	 * hours: design_capacity 0x10af, max_chrg_current 0x578,
++	 * max_chrg_voltage 0x1068, max_input_current 0x640, bat_res 0x64,
++	 * power_off_thresd 0xd7a, sleep_enter_current 0x12c,
++	 * sleep_filter_current 0x64. The termination current is not in the
++	 * vendor DTS at all: rk816_bat_finish_ma() derives 200 mA from a pack
++	 * of 4000 mAh or more.
++	 *
++	 * The OCV table is the vendor's ocv_table read backwards, because the
++	 * vendor lists 0 % first and the power supply core wants the highest
++	 * voltage first. There is no thermistor on this board, so one table
++	 * at 20 C is all there is.
++	 */
++	battery: battery {
++		compatible = "simple-battery";
++		charge-full-design-microamp-hours = <4271000>;
++		charge-term-current-microamp = <200000>;
++		constant-charge-current-max-microamp = <1400000>;
++		constant-charge-voltage-max-microvolt = <4200000>;
++		voltage-max-design-microvolt = <4200000>;
++		voltage-min-design-microvolt = <3450000>;
++		factory-internal-resistance-micro-ohms = <100000>;
++		ocv-capacity-celsius = <20>;
++		ocv-capacity-table-0 = <4200000 100>, <4139000 95>,
++				       <4093000 90>, <4056000 85>,
++				       <4005000 80>, <3975000 75>,
++				       <3943000 70>, <3897000 65>,
++				       <3858000 60>, <3836000 55>,
++				       <3817000 50>, <3802000 45>,
++				       <3789000 40>, <3777000 35>,
++				       <3762000 30>, <3746000 25>,
++				       <3731000 20>, <3706000 15>,
++				       <3686000 10>, <3671000 5>,
++				       <3450000 0>;
++	};
++};
+--- a/drivers/mfd/rk8xx-core.c
++++ b/drivers/mfd/rk8xx-core.c
+@@ -57,6 +57,11 @@
+ 	DEFINE_RES_IRQ(RK817_IRQ_PWRON_RISE),
+ };
+ 
++static const struct resource rk816_charger_resources[] = {
++	DEFINE_RES_IRQ(RK816_IRQ_PLUG_IN),
++	DEFINE_RES_IRQ(RK816_IRQ_PLUG_OUT),
++};
++
+ static const struct resource rk817_charger_resources[] = {
+ 	DEFINE_RES_IRQ(RK817_IRQ_PLUG_IN),
+ 	DEFINE_RES_IRQ(RK817_IRQ_PLUG_OUT),
+@@ -119,6 +124,11 @@
+ 		.num_resources = ARRAY_SIZE(rk816_rtc_resources),
+ 		.resources = rk816_rtc_resources,
+ 	},
++	{
++		.name = "rk816-charger",
++		.num_resources = ARRAY_SIZE(rk816_charger_resources),
++		.resources = rk816_charger_resources,
++	},
+ };
+ 
+ static const struct mfd_cell rk817s[] = {
+--- a/drivers/mfd/rk8xx-i2c.c
++++ b/drivers/mfd/rk8xx-i2c.c
+@@ -99,7 +99,16 @@
+ 	case RK816_GGSTS_REG:
+ 	case RK816_ZERO_CUR_ADC_REGH:
+ 	case RK816_ZERO_CUR_ADC_REGL:
+-	case RK816_GASCNT_REG(0) ... RK816_BAT_VOL_REGL:
++	/*
++	 * RK816_GASCNT_REG(0) is the *low* byte of the coulomb counter, so a
++	 * range starting there left the counter's three high bytes cached
++	 * along with the relax voltages and currents, the current ADC offset
++	 * calibration and the power off minute counter: under REGCACHE_MAPLE
++	 * a fuel gauge driver would read each of them once and never again.
++	 * The whole hardware updated block runs from the counter's high byte
++	 * to the sleep sample current.
++	 */
++	case RK816_GASCNT_REG(3) ... RK816_SLEEP_CON_SAMP_CUR_REG:
+ 		return true;
+ 	}
+ 
+--- a/drivers/power/supply/Kconfig
++++ b/drivers/power/supply/Kconfig
+@@ -857,6 +857,15 @@
+ 	  charge management and system power path management devices for single
+ 	  cell Li-ion and Li-polymer batteries.
+ 
++config CHARGER_RK816
++	tristate "Rockchip RK816 PMIC Battery Charger"
++	depends on MFD_RK8XX
++	help
++	  Say Y to include support for the Rockchip RK816 battery charger and
++	  fuel gauge. The RK816 has no hardware state of charge register, so
++	  the driver derives one from the coulomb counter and needs a
++	  monitored-battery node carrying an ocv-capacity table.
++
+ config CHARGER_RK817
+ 	tristate "Rockchip RK817 PMIC Battery Charger"
+ 	depends on MFD_RK8XX
+--- a/drivers/power/supply/Makefile
++++ b/drivers/power/supply/Makefile
+@@ -107,6 +107,7 @@
+ obj-$(CONFIG_CHARGER_BQ25980)	+= bq25980_charger.o
+ obj-$(CONFIG_CHARGER_BQ25630)	+= bq25630_charger.o
+ obj-$(CONFIG_CHARGER_BQ256XX)	+= bq256xx_charger.o
++obj-$(CONFIG_CHARGER_RK816)	+= rk816_charger.o
+ obj-$(CONFIG_CHARGER_RK817)	+= rk817_charger.o
+ obj-$(CONFIG_CHARGER_S2M)	+= s2m-charger.o
+ obj-$(CONFIG_CHARGER_SGM41542)	+= sgm41542_charger.o
+--- /dev/null
++++ b/drivers/power/supply/rk816_charger.c
+@@ -0,0 +1,1206 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Battery and charger driver for the Rockchip RK816 PMIC.
++ *
++ * Copyright (c) 2026 Cristian Deluxe <info@busirocket.com>
++ *
++ * Shaped after drivers/power/supply/rk817_charger.c. Every register offset,
++ * bit position, scaling constant and default in this file was taken from the
++ * Rockchip 4.4 vendor driver (drivers/power/rk816_battery.c and
++ * rk816_battery.h) rather than from a datasheet, because that driver is what
++ * runs on the hardware this was written for.
++ *
++ * The RK816 has no hardware state-of-charge register. RK816_SOC_REG (0xe0) is
++ * the first of the battery-backed general purpose data registers - mainline
++ * already names the block RK816_DATA_REG(x) - and the vendor driver only ever
++ * writes its own computed percentage into it (rk816_bat_save_dsoc()) and reads
++ * it back on the next boot (rk816_bat_get_prev_dsoc()). It is a scratch byte,
++ * not a gauge.
++ *
++ * The real gauge is the 32 bit coulomb counter at RK816_GASCNT_REG. The vendor
++ * driver's reported percentage ("dsoc") is about 1500 lines of smoothing,
++ * zero-point bending and relearning laid over that counter's raw quotient
++ * ("rsoc"). This driver reports the quotient:
++ *
++ *   - the counter is preloaded once at probe from the relaxed open circuit
++ *     voltage looked up in the battery's ocv-capacity table, or from the
++ *     percentage the previous boot saved,
++ *   - every poll divides it by the full charge capacity,
++ *   - it is re-anchored in exactly one place, when the charger reports
++ *     termination, which is the only moment the true charge is known.
++ *
++ * Nothing is ever derived from the loaded terminal voltage, which is what
++ * keeps the percentage from swinging when a GPU load steps.
++ *
++ * What the vendor does and this driver deliberately does not do is called out
++ * at each site below: the zero algorithm, FCC relearning, current ADC offset
++ * self-calibration, and sleep discharge estimation.
++ */
++
++#include <linux/bitfield.h>
++#include <linux/bits.h>
++#include <linux/devm-helpers.h>
++#include <linux/extcon.h>
++#include <linux/interrupt.h>
++#include <linux/mfd/rk808.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/of.h>
++#include <linux/platform_device.h>
++#include <linux/power_supply.h>
++#include <linux/regmap.h>
++#include <linux/unaligned.h>
++#include <linux/workqueue.h>
++
++/* RK816_SUP_STS_REG (0xa0) */
++#define RK816_BAT_EXS			BIT(7)
++#define RK816_CHRG_STATUS_MSK		GENMASK(6, 4)
++#define RK816_USB_VLIMIT_EN		BIT(3)
++#define RK816_USB_CLIMIT_EN		BIT(2)
++
++/* RK808_VB_MON_REG (0x21), shared with the RK808 */
++#define RK816_PLUG_IN_STS		BIT(6)
++
++/* RK816_USB_CTRL_REG (0xa1) */
++#define RK816_USB_CHRG_CT_EN		BIT(7)
++#define RK816_USB_INPUT_CUR_MSK		GENMASK(3, 0)
++
++/* RK816_CHRG_CTRL(0) (0xa3) */
++#define RK816_CHRG_EN			BIT(7)
++#define RK816_CHRG_VOL_SEL_MSK		GENMASK(6, 4)
++#define RK816_CHRG_CUR_SEL_MSK		GENMASK(3, 0)
++
++/* RK816_CHRG_CTRL(1) (0xa4) */
++#define RK816_CHRG_FINISH_CUR_MSK	GENMASK(7, 6)
++
++/* RK816_CHRG_CTRL(2) (0xa5) */
++#define RK816_CHRG_TERM_DIG_SIGNAL	BIT(5)
++#define RK816_CHRG_TIMER_CCCV_EN	BIT(2)
++
++/* RK816_BAT_CTRL_REG (0xa6) */
++#define RK816_USB_SYS_EN		BIT(6)
++
++/* RK816_TS_CTRL_REG (0xac) */
++#define RK816_GG_EN			BIT(7)
++#define RK816_ADC_CUR_EN		BIT(6)
++
++/* RK816_GGCON_REG (0xb0) */
++#define RK816_ADC_CAL_MIN_MSK		GENMASK(5, 4)
++#define RK816_ADC_CAL_8MIN		0
++#define RK816_OCV_SAMP_MIN_MSK		GENMASK(3, 2)
++#define RK816_OCV_SAMP_8MIN		0
++#define RK816_ADC_CUR_MODE		BIT(1)
++
++/* RK816_GGSTS_REG (0xb1) */
++#define RK816_BAT_CON			BIT(4)
++#define RK816_RELAX_VOL12_UPD_MSK	GENMASK(3, 2)
++
++/*
++ * Battery-backed scratch registers. The PMIC is powered from the pack, so
++ * these survive a reboot and a power off but not a pack change. Software is
++ * the only thing that ever writes them; the names are the vendor's.
++ */
++#define RK816_SOC_REG			RK816_DATA_REG(0)	/* 0xe0 */
++#define RK816_REMAIN_CAP_REG(x)		RK816_DATA_REG(4 - (x))	/* 0xe1..0xe4 */
++#define RK816_NEW_FCC_REG(x)		RK816_DATA_REG(9 - (x))	/* 0xe6..0xe9 */
++#define RK816_OFF_CNT_SAVE_REG		RK816_DATA_REG(10)	/* 0xea */
++
++/* Charge state machine, RK816_SUP_STS_REG bits 6:4. */
++enum rk816_charge_status {
++	CHRG_OFF,
++	DEAD_CHRG,
++	TRICKLE_CHRG,
++	CC_OR_CV_CHRG,
++	CHARGE_FINISH,
++	USB_OVER_VOL,
++	BAT_TMP_ERR,
++	BAT_TIM_ERR,
++};
++
++/*
++ * Charge voltage, charge current and input current limit tables indexed by the
++ * register field value, copied from the vendor's CHRG_VOL_SEL[],
++ * CHRG_CUR_SEL[] and CHRG_CUR_INPUT[]. The 2250 mA step and the 80 mA input
++ * limit at index 1 are the vendor's values, not typos. The current tables hold
++ * for a 20 mOhm sense resistor.
++ */
++static const u16 rk816_chrg_vol_mv[] = {
++	4050, 4100, 4150, 4200, 4250, 4300, 4350,
++};
++
++static const u16 rk816_chrg_cur_ma[] = {
++	1000, 1200, 1400, 1600, 1800, 2000, 2250, 2400,
++};
++
++static const u16 rk816_input_cur_ma[] = {
++	450, 80, 850, 1000, 1250, 1500, 1750, 2000,
++};
++
++/*
++ * The ADC scaling constants hold for a 20 mOhm sense resistor: one current LSB
++ * is 1506 uA and one coulomb count is 1/2390 mAh. res_div is 2 for 20 mOhm and
++ * 1 for 10 mOhm, so halving the resistor doubles what each LSB is worth. That
++ * reproduces the vendor's res_fac arithmetic exactly for both values it
++ * supports on this part.
++ */
++#define RK816_ADC_TO_CURRENT(adc, res_div)	((adc) * 1506 * 2 / (res_div))
++#define RK816_UA_PER_LSB(res_div)		RK816_ADC_TO_CURRENT(1, res_div)
++#define RK816_ADC_TO_CHARGE_UAH(adc, res_div)	\
++	div_s64((s64)(adc) * 200, 239 * (res_div))
++#define RK816_CHARGE_TO_ADC(uah, res_div)	\
++	div_s64((s64)(uah) * 239 * (res_div), 200)
++
++/* rk817-charger polls every 8 s; the vendor's monitor_sec default is 5. */
++#define RK816_MONITOR_MS		8000
++
++/*
++ * The vendor treats a saved charge as worthless once the PMIC has been off for
++ * half an hour (is_rk816_bat_ocv_valid()): the counter does not run while the
++ * gauge is unpowered, and a pack left alone that long has relaxed enough for
++ * the OCV to be honest instead.
++ */
++#define RK816_OFF_MIN_OCV_VALID		30
++
++/* The vendor's own lower sanity bound on a stored FCC, in mAh (MIN_FCC). */
++#define RK816_MIN_FCC_MAH		500
++
++struct rk816_charger {
++	struct device *dev;
++	struct regmap *regmap;
++	struct power_supply *bat_ps;
++	struct power_supply *usb_ps;
++	struct power_supply *ac_ps;
++	struct extcon_dev *edev;
++	struct notifier_block cable_nb;
++	struct delayed_work work;
++	struct delayed_work cable_work;
++	struct mutex lock;	/* serialises the register state below */
++
++	/* Board description, from the device tree. */
++	int res_div;
++	u32 sleep_enter_current_ua;
++	u32 sleep_filter_current_ua;
++	u32 input_current_limit_ua;
++	u32 charge_full_design_uah;
++	int voltage_min_design_uv;
++	int voltage_max_design_uv;
++	struct power_supply_battery_info *bat_info;
++
++	/* Voltage ADC calibration: millivolts = k * adc / 1000 + b. */
++	int voltage_k;
++	int voltage_b;
++
++	/* Live state. */
++	int fcc_uah;
++	int charge_now_uah;
++	int volt_avg_uv;
++	int cur_avg_ua;
++	int soc;
++	int charge_status;
++	bool battery_present;
++	bool plugged_in;
++	bool usb_online;
++	bool ac_online;
++};
++
++static int rk816_bat_read16be(struct rk816_charger *cg, unsigned int reg)
++{
++	u8 buf[2];
++	int ret;
++
++	ret = regmap_bulk_read(cg->regmap, reg, buf, sizeof(buf));
++	if (ret)
++		return ret;
++
++	return get_unaligned_be16(buf);
++}
++
++/*
++ * The voltage ADC is calibrated in the factory at 3.0 V and 4.2 V, and the two
++ * points are burned into VCALIB0 and VCALIB1. The vendor turns them into a
++ * straight line in millivolts and then applies a fixed 1.1 divider correction
++ * on the way out; both are reproduced here exactly.
++ */
++static int rk816_bat_calib_vol(struct rk816_charger *cg)
++{
++	int vcalib0, vcalib1;
++
++	vcalib0 = rk816_bat_read16be(cg, RK816_VCALIB0_REGH);
++	if (vcalib0 < 0)
++		return vcalib0;
++
++	vcalib1 = rk816_bat_read16be(cg, RK816_VCALIB1_REGH);
++	if (vcalib1 < 0)
++		return vcalib1;
++
++	if (vcalib1 == vcalib0)
++		return dev_err_probe(cg->dev, -EINVAL,
++				     "bad voltage calibration: vcalib0 == vcalib1 == %d\n",
++				     vcalib0);
++
++	cg->voltage_k = (4200 - 3000) * 1000 / (vcalib1 - vcalib0);
++	cg->voltage_b = 4200 - (cg->voltage_k * vcalib1) / 1000;
++
++	return 0;
++}
++
++static int rk816_bat_get_vol_uv(struct rk816_charger *cg, unsigned int reg)
++{
++	int adc = rk816_bat_read16be(cg, reg);
++
++	if (adc < 0)
++		return adc;
++
++	return (cg->voltage_k * adc / 1000 + cg->voltage_b) * 1100;
++}
++
++static int rk816_bat_get_cur_ua(struct rk816_charger *cg, int *cur_ua)
++{
++	int adc = rk816_bat_read16be(cg, RK816_BAT_CUR_AVG_REGH);
++
++	if (adc < 0)
++		return adc;
++
++	/*
++	 * The average current ADC is 12 bit two's complement, positive while
++	 * charging. The vendor open codes the sign extension on the unmasked
++	 * 16 bit value ("if (val & 0x800) val -= 4096"), which is identical
++	 * for every legal reading and differs only if the high byte ever
++	 * carries something above bit 11.
++	 */
++	*cur_ua = RK816_ADC_TO_CURRENT(sign_extend32(adc, 11), cg->res_div);
++
++	return 0;
++}
++
++static int rk816_bat_get_charge_uah(struct rk816_charger *cg, int *uah)
++{
++	u8 buf[4];
++	int ret;
++
++	/* RK816_GASCNT_REG(3) is 0xb8, the most significant byte. */
++	ret = regmap_bulk_read(cg->regmap, RK816_GASCNT_REG(3), buf,
++			       sizeof(buf));
++	if (ret)
++		return ret;
++
++	*uah = RK816_ADC_TO_CHARGE_UAH((s32)get_unaligned_be32(buf),
++				       cg->res_div);
++
++	return 0;
++}
++
++/* Preload the coulomb counter through its calibration register. */
++static int rk816_bat_set_charge_uah(struct rk816_charger *cg, int uah)
++{
++	u8 buf[4];
++
++	put_unaligned_be32(RK816_CHARGE_TO_ADC(uah, cg->res_div), buf);
++
++	return regmap_bulk_write(cg->regmap, RK816_GASCNT_CAL_REG(3), buf,
++				 sizeof(buf));
++}
++
++/*
++ * Mirror the percentage, the remaining capacity and the full charge capacity
++ * into the battery-backed scratch registers, in the vendor's layout and byte
++ * order, so the next boot of either kernel starts from something sane.
++ */
++static int rk816_bat_save_nvram(struct rk816_charger *cg)
++{
++	u8 buf[4];
++	int ret;
++
++	ret = regmap_write(cg->regmap, RK816_SOC_REG, cg->soc);
++	if (ret)
++		return ret;
++
++	put_unaligned_be32(cg->charge_now_uah / 1000, buf);
++	ret = regmap_bulk_write(cg->regmap, RK816_REMAIN_CAP_REG(3), buf,
++				sizeof(buf));
++	if (ret)
++		return ret;
++
++	put_unaligned_be32(cg->fcc_uah / 1000, buf);
++
++	return regmap_bulk_write(cg->regmap, RK816_NEW_FCC_REG(3), buf,
++				 sizeof(buf));
++}
++
++/* Called with cg->lock held. */
++static void rk816_bat_read_props(struct rk816_charger *cg)
++{
++	unsigned int reg;
++	int ret, val;
++
++	ret = rk816_bat_get_vol_uv(cg, RK816_BAT_VOL_REGH);
++	if (ret >= 0)
++		cg->volt_avg_uv = ret;
++
++	if (!rk816_bat_get_cur_ua(cg, &val))
++		cg->cur_avg_ua = val;
++
++	if (!regmap_read(cg->regmap, RK816_SUP_STS_REG, &reg)) {
++		cg->battery_present = reg & RK816_BAT_EXS;
++		cg->charge_status = FIELD_GET(RK816_CHRG_STATUS_MSK, reg);
++	}
++
++	if (!regmap_read(cg->regmap, RK808_VB_MON_REG, &reg))
++		cg->plugged_in = reg & RK816_PLUG_IN_STS;
++
++	/*
++	 * The PMIC knows VBUS is there but not what is supplying it, and the
++	 * USB_EXIST/USB_EFF bits in SUP_STS are dead code in the vendor driver
++	 * (their only uses are unreachable case labels in a switch on bits
++	 * 6:4). So presence is PLUG_IN_STS, and BC1.2 through extcon only ever
++	 * refines it. This is the vendor's rk816_bat_check_charger(), which
++	 * overrides extcon in both directions for the same reason.
++	 */
++	if (cg->plugged_in && !cg->usb_online && !cg->ac_online)
++		cg->usb_online = true;
++	else if (!cg->plugged_in)
++		cg->usb_online = cg->ac_online = false;
++
++	if (rk816_bat_get_charge_uah(cg, &val))
++		return;
++
++	/*
++	 * Charge termination is the one moment the true charge is known, so
++	 * the counter is re-anchored here and nowhere else. The correction is
++	 * always upward and always at 100 %, but it is a visible step if the
++	 * counter had drifted low.
++	 *
++	 * The vendor additionally relearns the full charge capacity from the
++	 * charge accumulated between a low starting point and this moment
++	 * (rk816_bat_update_age_algorithm()). That is not done here: an aged
++	 * pack will read optimistically, and it will do so silently.
++	 */
++	if (cg->charge_status == CHARGE_FINISH && val < cg->fcc_uah) {
++		rk816_bat_set_charge_uah(cg, cg->fcc_uah);
++		val = cg->fcc_uah;
++	}
++
++	/*
++	 * The percentage is the raw quotient, the vendor's "rsoc". There is
++	 * deliberately no zero algorithm: the vendor bends the last few
++	 * percent so that 0 % lands on the power-off voltage under real load
++	 * (rk816_bat_zero_algorithm()), which means this driver can report a
++	 * few percent left when the pack hits its cut-off, and can report 0 %
++	 * with charge to spare. Shut the system down on voltage, not on this.
++	 */
++	cg->charge_now_uah = clamp(val, 0, cg->fcc_uah);
++	cg->soc = clamp(cg->charge_now_uah / (cg->fcc_uah / 100), 0, 100);
++
++	rk816_bat_save_nvram(cg);
++}
++
++static void rk816_charging_monitor(struct work_struct *work)
++{
++	struct rk816_charger *cg = container_of(work, struct rk816_charger,
++						work.work);
++	int old_soc, old_status;
++	bool old_usb, old_ac;
++
++	mutex_lock(&cg->lock);
++	old_soc = cg->soc;
++	old_status = cg->charge_status;
++	old_usb = cg->usb_online;
++	old_ac = cg->ac_online;
++	rk816_bat_read_props(cg);
++	mutex_unlock(&cg->lock);
++
++	if (cg->soc != old_soc || cg->charge_status != old_status)
++		power_supply_changed(cg->bat_ps);
++	if (cg->usb_online != old_usb)
++		power_supply_changed(cg->usb_ps);
++	if (cg->ac_online != old_ac)
++		power_supply_changed(cg->ac_ps);
++
++	queue_delayed_work(system_percpu_wq, &cg->work,
++			   msecs_to_jiffies(RK816_MONITOR_MS));
++}
++
++static int rk816_bat_get_prop(struct power_supply *ps,
++			      enum power_supply_property prop,
++			      union power_supply_propval *val)
++{
++	struct rk816_charger *cg = power_supply_get_drvdata(ps);
++
++	switch (prop) {
++	case POWER_SUPPLY_PROP_PRESENT:
++		val->intval = cg->battery_present;
++		break;
++	case POWER_SUPPLY_PROP_STATUS:
++		if (!cg->usb_online && !cg->ac_online) {
++			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
++			break;
++		}
++		switch (cg->charge_status) {
++		case CHRG_OFF:
++		case USB_OVER_VOL:
++		case BAT_TMP_ERR:
++		case BAT_TIM_ERR:
++			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
++			break;
++		case CHARGE_FINISH:
++			val->intval = POWER_SUPPLY_STATUS_FULL;
++			break;
++		default:
++			val->intval = POWER_SUPPLY_STATUS_CHARGING;
++			break;
++		}
++		break;
++	case POWER_SUPPLY_PROP_CHARGE_TYPE:
++		switch (cg->charge_status) {
++		case DEAD_CHRG:
++		case TRICKLE_CHRG:
++			val->intval = POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
++			break;
++		case CC_OR_CV_CHRG:
++			val->intval = POWER_SUPPLY_CHARGE_TYPE_STANDARD;
++			break;
++		default:
++			val->intval = POWER_SUPPLY_CHARGE_TYPE_NONE;
++			break;
++		}
++		break;
++	case POWER_SUPPLY_PROP_HEALTH:
++		switch (cg->charge_status) {
++		case BAT_TMP_ERR:
++			val->intval = POWER_SUPPLY_HEALTH_OVERHEAT;
++			break;
++		case USB_OVER_VOL:
++			val->intval = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
++			break;
++		case BAT_TIM_ERR:
++			val->intval = POWER_SUPPLY_HEALTH_SAFETY_TIMER_EXPIRE;
++			break;
++		default:
++			val->intval = POWER_SUPPLY_HEALTH_GOOD;
++			break;
++		}
++		break;
++	case POWER_SUPPLY_PROP_CAPACITY:
++		val->intval = cg->soc;
++		break;
++	case POWER_SUPPLY_PROP_CHARGE_NOW:
++		val->intval = cg->charge_now_uah;
++		break;
++	case POWER_SUPPLY_PROP_CHARGE_FULL:
++		val->intval = cg->fcc_uah;
++		break;
++	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
++		val->intval = cg->charge_full_design_uah;
++		break;
++	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
++	case POWER_SUPPLY_PROP_VOLTAGE_AVG:
++		val->intval = cg->volt_avg_uv;
++		break;
++	case POWER_SUPPLY_PROP_CURRENT_NOW:
++	case POWER_SUPPLY_PROP_CURRENT_AVG:
++		val->intval = cg->cur_avg_ua;
++		break;
++	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
++		val->intval = cg->voltage_min_design_uv;
++		break;
++	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
++		val->intval = cg->voltage_max_design_uv;
++		break;
++	case POWER_SUPPLY_PROP_TECHNOLOGY:
++		val->intval = cg->bat_info->technology;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int rk816_usb_get_prop(struct power_supply *ps,
++			      enum power_supply_property prop,
++			      union power_supply_propval *val)
++{
++	struct rk816_charger *cg = power_supply_get_drvdata(ps);
++
++	switch (prop) {
++	case POWER_SUPPLY_PROP_ONLINE:
++		val->intval = cg->usb_online;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int rk816_ac_get_prop(struct power_supply *ps,
++			     enum power_supply_property prop,
++			     union power_supply_propval *val)
++{
++	struct rk816_charger *cg = power_supply_get_drvdata(ps);
++
++	switch (prop) {
++	case POWER_SUPPLY_PROP_ONLINE:
++		val->intval = cg->ac_online;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static const enum power_supply_property rk816_bat_props[] = {
++	POWER_SUPPLY_PROP_PRESENT,
++	POWER_SUPPLY_PROP_STATUS,
++	POWER_SUPPLY_PROP_CHARGE_TYPE,
++	POWER_SUPPLY_PROP_HEALTH,
++	POWER_SUPPLY_PROP_CAPACITY,
++	POWER_SUPPLY_PROP_CHARGE_NOW,
++	POWER_SUPPLY_PROP_CHARGE_FULL,
++	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
++	POWER_SUPPLY_PROP_VOLTAGE_NOW,
++	POWER_SUPPLY_PROP_VOLTAGE_AVG,
++	POWER_SUPPLY_PROP_CURRENT_NOW,
++	POWER_SUPPLY_PROP_CURRENT_AVG,
++	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
++	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
++	POWER_SUPPLY_PROP_TECHNOLOGY,
++};
++
++static const enum power_supply_property rk816_online_props[] = {
++	POWER_SUPPLY_PROP_ONLINE,
++};
++
++/*
++ * "battery", "usb" and "ac" rather than rk817-charger's "rk817-battery" and
++ * "rk817-charger": on this class of board those three names under
++ * /sys/class/power_supply are the userspace ABI.
++ */
++static const struct power_supply_desc rk816_bat_desc = {
++	.name = "battery",
++	.type = POWER_SUPPLY_TYPE_BATTERY,
++	.properties = rk816_bat_props,
++	.num_properties = ARRAY_SIZE(rk816_bat_props),
++	.get_property = rk816_bat_get_prop,
++};
++
++static const struct power_supply_desc rk816_usb_desc = {
++	.name = "usb",
++	.type = POWER_SUPPLY_TYPE_USB,
++	.properties = rk816_online_props,
++	.num_properties = ARRAY_SIZE(rk816_online_props),
++	.get_property = rk816_usb_get_prop,
++};
++
++static const struct power_supply_desc rk816_ac_desc = {
++	.name = "ac",
++	.type = POWER_SUPPLY_TYPE_MAINS,
++	.properties = rk816_online_props,
++	.num_properties = ARRAY_SIZE(rk816_online_props),
++	.get_property = rk816_ac_get_prop,
++};
++
++static irqreturn_t rk816_plug_isr(int irq, void *data)
++{
++	struct rk816_charger *cg = data;
++
++	mod_delayed_work(system_percpu_wq, &cg->work, 0);
++
++	return IRQ_HANDLED;
++}
++
++/*
++ * Program the input current limit. The selection walk is the vendor's
++ * rk816_bat_select_chrg_cv(): index 1 is 80 mA and is only ever chosen for a
++ * request of 80 mA or less, anything below 850 mA takes index 0 (450 mA), and
++ * everything above that walks the table from index 2 downwards to the largest
++ * entry that does not exceed the request.
++ */
++static int rk816_bat_set_input_current(struct rk816_charger *cg, u32 limit_ua)
++{
++	unsigned int limit_ma = limit_ua / 1000;
++	unsigned int i, sel;
++
++	if (limit_ma <= 80) {
++		sel = 1;
++	} else if (limit_ma < 850) {
++		sel = 0;
++	} else {
++		sel = 2;
++		for (i = 2; i < ARRAY_SIZE(rk816_input_cur_ma); i++) {
++			if (limit_ma < rk816_input_cur_ma[i])
++				break;
++			sel = i;
++		}
++	}
++
++	return regmap_update_bits(cg->regmap, RK816_USB_CTRL_REG,
++				  RK816_USB_INPUT_CUR_MSK,
++				  FIELD_PREP(RK816_USB_INPUT_CUR_MSK, sel));
++}
++
++static void rk816_bat_update_cables(struct rk816_charger *cg)
++{
++	bool sdp, dcp, cdp;
++	u32 limit_ua;
++
++	sdp = extcon_get_state(cg->edev, EXTCON_CHG_USB_SDP) > 0;
++	dcp = extcon_get_state(cg->edev, EXTCON_CHG_USB_DCP) > 0;
++	cdp = extcon_get_state(cg->edev, EXTCON_CHG_USB_CDP) > 0;
++
++	mutex_lock(&cg->lock);
++	cg->ac_online = dcp;
++	cg->usb_online = sdp || cdp;
++
++	if (dcp)
++		limit_ua = cg->input_current_limit_ua;
++	else if (cdp)
++		limit_ua = 1500000;
++	else
++		limit_ua = 450000;
++
++	rk816_bat_set_input_current(cg, limit_ua);
++	mutex_unlock(&cg->lock);
++
++	power_supply_changed(cg->usb_ps);
++	power_supply_changed(cg->ac_ps);
++}
++
++static void rk816_extcon_work(struct work_struct *work)
++{
++	struct rk816_charger *cg = container_of(work, struct rk816_charger,
++						cable_work.work);
++
++	rk816_bat_update_cables(cg);
++}
++
++/*
++ * The extcon notifier chain can run in a context that must not sleep, and
++ * every reaction to it is an i2c transfer, so push the work out to a
++ * workqueue. The vendor driver does the same for the same reason.
++ */
++static int rk816_cable_notifier(struct notifier_block *nb,
++				unsigned long event, void *ptr)
++{
++	struct rk816_charger *cg = container_of(nb, struct rk816_charger,
++						cable_nb);
++
++	mod_delayed_work(system_percpu_wq, &cg->cable_work, 0);
++
++	return NOTIFY_DONE;
++}
++
++static int rk816_bat_init_charger(struct rk816_charger *cg)
++{
++	struct power_supply_battery_info *info = cg->bat_info;
++	unsigned int chrg_vol_mv, chrg_cur_ma, finish_ma, i;
++	unsigned int vol_sel = 0, cur_sel = 0, finish_sel;
++	int ret;
++
++	chrg_vol_mv = info->constant_charge_voltage_max_uv / 1000;
++	chrg_cur_ma = info->constant_charge_current_max_ua / 1000;
++	finish_ma = info->charge_term_current_ua / 1000;
++
++	if (chrg_vol_mv < rk816_chrg_vol_mv[0])
++		return dev_err_probe(cg->dev, -EINVAL,
++				     "constant-charge-voltage-max %u mV below the lowest the RK816 can select\n",
++				     chrg_vol_mv);
++
++	for (i = 0; i < ARRAY_SIZE(rk816_chrg_vol_mv); i++) {
++		if (chrg_vol_mv < rk816_chrg_vol_mv[i])
++			break;
++		vol_sel = i;
++	}
++
++	/*
++	 * The charge current table holds for 20 mOhm. With 10 mOhm the same
++	 * register value delivers twice the current, so halve the request
++	 * before the lookup, which is what the vendor's res_fac division does.
++	 */
++	if (cg->res_div == 1)
++		chrg_cur_ma /= 2;
++
++	if (chrg_cur_ma < rk816_chrg_cur_ma[0])
++		return dev_err_probe(cg->dev, -EINVAL,
++				     "constant-charge-current-max %u mA below the lowest the RK816 can select\n",
++				     chrg_cur_ma);
++
++	for (i = 0; i < ARRAY_SIZE(rk816_chrg_cur_ma); i++) {
++		if (chrg_cur_ma < rk816_chrg_cur_ma[i])
++			break;
++		cur_sel = i;
++	}
++
++	/*
++	 * Termination current: 100, 150, 200 or 250 mA at 20 mOhm, halved
++	 * again for 10 mOhm. The vendor never reads this from the device tree
++	 * at all; rk816_bat_finish_ma() picks 200 mA for any pack of 4000 mAh
++	 * or more, which is what charge-term-current-microamp carries here.
++	 */
++	if (cg->res_div == 1)
++		finish_ma /= 2;
++	finish_sel = clamp(finish_ma / 50, 2U, 5U) - 2;
++
++	ret = regmap_update_bits(cg->regmap, RK816_CHRG_CTRL(0),
++				 RK816_CHRG_EN | RK816_CHRG_VOL_SEL_MSK |
++				 RK816_CHRG_CUR_SEL_MSK,
++				 RK816_CHRG_EN |
++				 FIELD_PREP(RK816_CHRG_VOL_SEL_MSK, vol_sel) |
++				 FIELD_PREP(RK816_CHRG_CUR_SEL_MSK, cur_sel));
++	if (ret)
++		return ret;
++
++	ret = regmap_update_bits(cg->regmap, RK816_CHRG_CTRL(1),
++				 RK816_CHRG_FINISH_CUR_MSK,
++				 FIELD_PREP(RK816_CHRG_FINISH_CUR_MSK,
++					    finish_sel));
++	if (ret)
++		return ret;
++
++	/*
++	 * Digital termination, and the CC/CV safety timer off: the vendor
++	 * clears CHRG_TIMER_CCCV_EN because on a large pack the timer expires
++	 * mid charge, reports TIMER_ERR and stops charging a healthy battery.
++	 */
++	ret = regmap_update_bits(cg->regmap, RK816_CHRG_CTRL(2),
++				 RK816_CHRG_TERM_DIG_SIGNAL |
++				 RK816_CHRG_TIMER_CCCV_EN,
++				 RK816_CHRG_TERM_DIG_SIGNAL);
++	if (ret)
++		return ret;
++
++	/* Input voltage and input current limiters on. */
++	ret = regmap_update_bits(cg->regmap, RK816_SUP_STS_REG,
++				 RK816_USB_VLIMIT_EN | RK816_USB_CLIMIT_EN,
++				 RK816_USB_VLIMIT_EN | RK816_USB_CLIMIT_EN);
++	if (ret)
++		return ret;
++
++	/* Route the charger input to the system rail. */
++	ret = regmap_update_bits(cg->regmap, RK816_BAT_CTRL_REG,
++				 RK816_USB_SYS_EN, RK816_USB_SYS_EN);
++	if (ret)
++		return ret;
++
++	/*
++	 * Charge current thermal feedback off: it is the vendor's fb_temp
++	 * option, which defaults off, and there is no thermistor here.
++	 */
++	ret = regmap_update_bits(cg->regmap, RK816_USB_CTRL_REG,
++				 RK816_USB_CHRG_CT_EN, 0);
++	if (ret)
++		return ret;
++
++	/* Until something says otherwise, assume a 450 mA port. */
++	return rk816_bat_set_input_current(cg, 450000);
++}
++
++static int rk816_bat_init_gauge(struct rk816_charger *cg)
++{
++	u8 buf[2];
++	int ret, thres;
++
++	/* Gauge and current ADC on. */
++	ret = regmap_update_bits(cg->regmap, RK816_TS_CTRL_REG,
++				 RK816_GG_EN | RK816_ADC_CUR_EN,
++				 RK816_GG_EN | RK816_ADC_CUR_EN);
++	if (ret)
++		return ret;
++
++	/*
++	 * Average current mode, ADC offset calibration every 8 minutes, OCV
++	 * sampled every 8 minutes. These are the vendor's
++	 * rk816_bat_init_chrg_config() values.
++	 *
++	 * The vendor additionally re-zeroes the current ADC in software when
++	 * it sees a relaxed pack (rk816_bat_init_coffset()). That is not done
++	 * here, so a small systematic current error accumulates into the
++	 * counter between full charges.
++	 */
++	ret = regmap_update_bits(cg->regmap, RK816_GGCON_REG,
++				 RK816_ADC_CAL_MIN_MSK |
++				 RK816_OCV_SAMP_MIN_MSK |
++				 RK816_ADC_CUR_MODE,
++				 RK816_ADC_CAL_8MIN | RK816_OCV_SAMP_8MIN |
++				 RK816_ADC_CUR_MODE);
++	if (ret)
++		return ret;
++
++	/*
++	 * Relax entry and exit thresholds, in current ADC counts. The vendor
++	 * uses sleep_enter_current for the entry and sleep_exit_current for
++	 * the exit; every board it ships sets them to the same value, and this
++	 * board's device tree does too, so one property covers both.
++	 */
++	thres = cg->sleep_enter_current_ua / RK816_UA_PER_LSB(cg->res_div);
++	put_unaligned_be16(thres, buf);
++	ret = regmap_bulk_write(cg->regmap, RK816_RELAX_ENTRY_THRES_REGH,
++				buf, sizeof(buf));
++	if (ret)
++		return ret;
++
++	ret = regmap_bulk_write(cg->regmap, RK816_RELAX_EXIT_THRES_REGH,
++				buf, sizeof(buf));
++	if (ret)
++		return ret;
++
++	/*
++	 * The sleep sample current threshold is scaled for 20 mOhm whatever
++	 * the sense resistor is; the vendor does not correct this one either.
++	 */
++	ret = regmap_write(cg->regmap, RK816_SLEEP_CON_SAMP_CUR_REG,
++			   cg->sleep_filter_current_ua / 1506);
++	if (ret)
++		return ret;
++
++	/* Restart relax voltage sampling so the next OCV is fresh. */
++	return regmap_update_bits(cg->regmap, RK816_GGSTS_REG,
++				  RK816_RELAX_VOL12_UPD_MSK, 0);
++}
++
++/*
++ * Minutes the PMIC spent powered off, the vendor's
++ * rk816_bat_get_pwroff_min(): the hardware counts in
++ * RK816_NON_ACT_TIMER_CNT_REG and software keeps the previous reading in a
++ * scratch byte, so a count that has not moved means we did not go through a
++ * power off at all.
++ */
++static int rk816_bat_off_minutes(struct rk816_charger *cg)
++{
++	unsigned int now_min, last_min;
++	int ret;
++
++	ret = regmap_read(cg->regmap, RK816_NON_ACT_TIMER_CNT_REG, &now_min);
++	if (ret)
++		return ret;
++
++	ret = regmap_read(cg->regmap, RK816_OFF_CNT_SAVE_REG, &last_min);
++	if (ret)
++		return ret;
++
++	ret = regmap_write(cg->regmap, RK816_OFF_CNT_SAVE_REG, now_min);
++	if (ret)
++		return ret;
++
++	return (now_min != last_min) ? now_min : 0;
++}
++
++/*
++ * Decide what the charge is at probe and preload the coulomb counter with it.
++ * The three cases are the vendor's three cases:
++ *
++ *  - BAT_CON set: the pack was just connected and nothing carried over, so
++ *    look the relaxed OCV up in the ocv-capacity table,
++ *  - the PMIC was off for RK816_OFF_MIN_OCV_VALID minutes or more: the counter
++ *    did not run while it was unpowered, so throw the saved value away and use
++ *    the OCV, which that long a rest has made honest,
++ *  - anything else: trust the percentage the last boot saved.
++ */
++static int rk816_bat_init_soc(struct rk816_charger *cg)
++{
++	unsigned int reg, saved_soc;
++	bool first_boot;
++	u8 buf[4];
++	u32 fcc_mah;
++	int ret, off_min, ocv_uv, ocv_soc;
++
++	ret = regmap_bulk_read(cg->regmap, RK816_NEW_FCC_REG(3), buf,
++			       sizeof(buf));
++	if (ret)
++		return ret;
++	fcc_mah = get_unaligned_be32(buf);
++
++	/*
++	 * The vendor's sanity window on a stored FCC, except that the upper
++	 * bound is the design capacity rather than design_qmax: nothing here
++	 * relearns the capacity, so a stored value above the design capacity
++	 * can only be garbage or a vendor kernel's relearned value, and taking
++	 * the conservative one of the two is the safe way to be wrong.
++	 */
++	if (fcc_mah < RK816_MIN_FCC_MAH ||
++	    fcc_mah > cg->charge_full_design_uah / 1000)
++		fcc_mah = cg->charge_full_design_uah / 1000;
++	cg->fcc_uah = fcc_mah * 1000;
++
++	ret = regmap_read(cg->regmap, RK816_GGSTS_REG, &reg);
++	if (ret)
++		return ret;
++	first_boot = reg & RK816_BAT_CON;
++
++	off_min = rk816_bat_off_minutes(cg);
++	if (off_min < 0)
++		return off_min;
++
++	ret = regmap_read(cg->regmap, RK816_SOC_REG, &saved_soc);
++	if (ret)
++		return ret;
++
++	if (first_boot || off_min >= RK816_OFF_MIN_OCV_VALID ||
++	    saved_soc > 100) {
++		ocv_uv = rk816_bat_get_vol_uv(cg, RK816_BAT_OCV_REGH);
++		if (ocv_uv < 0)
++			return ocv_uv;
++
++		/*
++		 * No thermistor is fitted on this board, so ask the table for
++		 * 20 degrees, the same assumption rk817-charger makes.
++		 */
++		ocv_soc = power_supply_batinfo_ocv2cap(cg->bat_info, ocv_uv,
++						       20);
++		if (ocv_soc < 0)
++			return dev_err_probe(cg->dev, ocv_soc,
++					     "no usable ocv-capacity table\n");
++
++		cg->soc = clamp(ocv_soc, 0, 100);
++		dev_info(cg->dev,
++			 "seeded %d%% from ocv %d uV (first boot %d, off %d min)\n",
++			 cg->soc, ocv_uv, first_boot, off_min);
++
++		if (first_boot) {
++			ret = regmap_update_bits(cg->regmap, RK816_GGSTS_REG,
++						 RK816_BAT_CON, 0);
++			if (ret)
++				return ret;
++		}
++	} else {
++		cg->soc = saved_soc;
++		dev_info(cg->dev, "restored %d%% from the last boot\n",
++			 cg->soc);
++	}
++
++	/*
++	 * There is also no correction for what the pack lost in suspend: the
++	 * counter keeps counting while the SoC is down, but the vendor's sleep
++	 * discharge estimate (rk816_bat_calc_sleep_dischrg()) that catches
++	 * what the gauge misses is not reproduced here.
++	 */
++	cg->charge_now_uah = cg->soc * (cg->fcc_uah / 100);
++
++	ret = rk816_bat_set_charge_uah(cg, cg->charge_now_uah);
++	if (ret)
++		return ret;
++
++	return rk816_bat_save_nvram(cg);
++}
++
++static void rk816_bat_put_info(void *data)
++{
++	struct rk816_charger *cg = data;
++
++	power_supply_put_battery_info(cg->bat_ps, cg->bat_info);
++}
++
++static void rk816_cleanup_node(void *data)
++{
++	of_node_put(data);
++}
++
++static int rk816_charger_probe(struct platform_device *pdev)
++{
++	struct rk808 *rk808 = dev_get_drvdata(pdev->dev.parent);
++	struct device *dev = &pdev->dev;
++	struct power_supply_config pscfg = {};
++	struct rk816_charger *cg;
++	struct device_node *node;
++	int ret, irq;
++	u32 of_value;
++
++	node = of_get_child_by_name(dev->parent->of_node, "charger");
++	if (!node)
++		return -ENODEV;
++
++	ret = devm_add_action_or_reset(dev, rk816_cleanup_node, node);
++	if (ret)
++		return ret;
++
++	cg = devm_kzalloc(dev, sizeof(*cg), GFP_KERNEL);
++	if (!cg)
++		return -ENOMEM;
++
++	cg->dev = dev;
++	cg->regmap = rk808->regmap;
++	platform_set_drvdata(pdev, cg);
++
++	ret = devm_mutex_init(dev, &cg->lock);
++	if (ret)
++		return ret;
++
++	ret = of_property_read_u32(node, "rockchip,resistor-sense-micro-ohms",
++				   &of_value);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "missing rockchip,resistor-sense-micro-ohms\n");
++	if (of_value != 10000 && of_value != 20000)
++		return dev_err_probe(dev, -EINVAL,
++				     "unsupported sense resistor %u uOhm\n",
++				     of_value);
++	cg->res_div = (of_value == 20000) ? 2 : 1;
++
++	ret = of_property_read_u32(node,
++				   "rockchip,sleep-enter-current-microamp",
++				   &cg->sleep_enter_current_ua);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "missing rockchip,sleep-enter-current-microamp\n");
++
++	ret = of_property_read_u32(node,
++				   "rockchip,sleep-filter-current-microamp",
++				   &cg->sleep_filter_current_ua);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "missing rockchip,sleep-filter-current-microamp\n");
++
++	cg->input_current_limit_ua = 450000;
++	of_property_read_u32(node, "input-current-limit-microamp",
++			     &cg->input_current_limit_ua);
++
++	ret = rk816_bat_calib_vol(cg);
++	if (ret)
++		return ret;
++
++	pscfg.drv_data = cg;
++	pscfg.fwnode = &node->fwnode;
++
++	cg->bat_ps = devm_power_supply_register(dev, &rk816_bat_desc, &pscfg);
++	if (IS_ERR(cg->bat_ps))
++		return dev_err_probe(dev, PTR_ERR(cg->bat_ps),
++				     "failed to register battery\n");
++
++	cg->usb_ps = devm_power_supply_register(dev, &rk816_usb_desc, &pscfg);
++	if (IS_ERR(cg->usb_ps))
++		return dev_err_probe(dev, PTR_ERR(cg->usb_ps),
++				     "failed to register usb supply\n");
++
++	cg->ac_ps = devm_power_supply_register(dev, &rk816_ac_desc, &pscfg);
++	if (IS_ERR(cg->ac_ps))
++		return dev_err_probe(dev, PTR_ERR(cg->ac_ps),
++				     "failed to register ac supply\n");
++
++	ret = power_supply_get_battery_info(cg->bat_ps, &cg->bat_info);
++	if (ret)
++		return dev_err_probe(dev, ret, "unable to get battery info\n");
++
++	ret = devm_add_action_or_reset(dev, rk816_bat_put_info, cg);
++	if (ret)
++		return ret;
++
++	if (cg->bat_info->charge_full_design_uah <= 0 ||
++	    cg->bat_info->constant_charge_current_max_ua <= 0 ||
++	    cg->bat_info->constant_charge_voltage_max_uv <= 0 ||
++	    cg->bat_info->charge_term_current_ua <= 0)
++		return dev_err_probe(dev, -EINVAL,
++				     "monitored-battery is missing a required value\n");
++
++	cg->charge_full_design_uah = cg->bat_info->charge_full_design_uah;
++	cg->voltage_min_design_uv = cg->bat_info->voltage_min_design_uv;
++	cg->voltage_max_design_uv = cg->bat_info->voltage_max_design_uv;
++
++	ret = rk816_bat_init_gauge(cg);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to init the fuel gauge\n");
++
++	ret = rk816_bat_init_charger(cg);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to init the charger\n");
++
++	ret = rk816_bat_init_soc(cg);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "failed to init the state of charge\n");
++
++	ret = devm_delayed_work_autocancel(dev, &cg->work,
++					   rk816_charging_monitor);
++	if (ret)
++		return ret;
++
++	/* Resource 0 is PLUG_IN and resource 1 PLUG_OUT, per the MFD cell. */
++	irq = platform_get_irq(pdev, 0);
++	if (irq < 0)
++		return irq;
++	ret = devm_request_threaded_irq(dev, irq, NULL, rk816_plug_isr,
++					IRQF_ONESHOT, "rk816-plug-in", cg);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "failed to request the plug in irq\n");
++
++	irq = platform_get_irq(pdev, 1);
++	if (irq < 0)
++		return irq;
++	ret = devm_request_threaded_irq(dev, irq, NULL, rk816_plug_isr,
++					IRQF_ONESHOT, "rk816-plug-out", cg);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "failed to request the plug out irq\n");
++
++	/*
++	 * The PMIC can tell that VBUS is present but not what is on the other
++	 * end of it, so when the SoC's USB PHY does BC1.2 detection take SDP,
++	 * CDP and DCP from there. Without it every charger is a 450 mA port
++	 * and "ac" is permanently offline: slow, but not a lie.
++	 */
++	if (of_property_present(dev->parent->of_node, "extcon")) {
++		ret = devm_delayed_work_autocancel(dev, &cg->cable_work,
++						   rk816_extcon_work);
++		if (ret)
++			return ret;
++
++		cg->edev = extcon_get_edev_by_phandle(dev->parent, 0);
++		if (IS_ERR(cg->edev))
++			return dev_err_probe(dev, PTR_ERR(cg->edev),
++					     "invalid extcon\n");
++
++		cg->cable_nb.notifier_call = rk816_cable_notifier;
++		ret = devm_extcon_register_notifier_all(dev, cg->edev,
++							&cg->cable_nb);
++		if (ret)
++			return dev_err_probe(dev, ret,
++					     "failed to register the extcon notifier\n");
++
++		rk816_bat_update_cables(cg);
++	}
++
++	queue_delayed_work(system_percpu_wq, &cg->work, 0);
++
++	return 0;
++}
++
++static int rk816_charger_suspend(struct device *dev)
++{
++	struct rk816_charger *cg = dev_get_drvdata(dev);
++
++	cancel_delayed_work_sync(&cg->work);
++
++	return 0;
++}
++
++static int rk816_charger_resume(struct device *dev)
++{
++	struct rk816_charger *cg = dev_get_drvdata(dev);
++
++	/*
++	 * Poll immediately: the counter kept counting through suspend but
++	 * nothing was published, so the first value userspace reads after a
++	 * resume should be a fresh one.
++	 */
++	queue_delayed_work(system_percpu_wq, &cg->work, 0);
++
++	return 0;
++}
++
++static DEFINE_SIMPLE_DEV_PM_OPS(rk816_charger_pm, rk816_charger_suspend,
++				rk816_charger_resume);
++
++static struct platform_driver rk816_charger_driver = {
++	.probe = rk816_charger_probe,
++	.driver = {
++		.name = "rk816-charger",
++		.pm = pm_sleep_ptr(&rk816_charger_pm),
++	},
++};
++module_platform_driver(rk816_charger_driver);
++
++MODULE_DESCRIPTION("Battery and charger driver for the Rockchip RK816 PMIC");
++MODULE_AUTHOR("Cristian Deluxe <info@busirocket.com>");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:rk816-charger");
