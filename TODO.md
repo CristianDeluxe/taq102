@@ -28,16 +28,6 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   `known_hosts` entry is feasible. Accepted trade-off until then.
 ## Bugs
 
-- [ ] The rescue screen is washed out under the stock 4.4.103 kernel: the status
-  bar's `downsample` in `src/statusbar.c` writes every pixel of the canvas it
-  is given, and outside the bar the supersampled source is all alpha 0, so
-  the amber background leaves the canvas with alpha 0 and the stock VOP
-  blends it away. Found by the reviewer 2026-09-07 (503,922 of 614,400 scanout
-  pixels at alpha 0); the v43 round-trip photo
-  (`docs/evidence/2026-09-05/rescue-v43-round-trip.jpg`) shows it, the
-  journal called it amber. Fix: leave destination pixels untouched where the
-  source alpha is 0, and limit the loop to the bar's rows. glcube is
-  unaffected (its bar canvas is bar-sized).
 - [ ] Wi-Fi sometimes fails at boot (`sdio_disable_func` -5, then probe -110),
   and a wedged RTL8723CS recovers only by a full power-off; `taq102-wifi`
   retries once through the BSP power nodes, and escalating further in software
