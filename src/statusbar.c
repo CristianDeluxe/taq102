@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
+#include "canvas_blend.h"
+#include "font.h"
 #include "statusbar.h"
 
 #define GREEN 0xFF30C048u   // iOS charging green
@@ -59,6 +62,32 @@ static void battery_icon(struct canvas *c, int x, int y, int w, int h, int cap, 
 
 int statusbar_height(int w) { return 12 * UNIT(w); }
 
+static struct font *bar_font;
+static char *bar_font_path;
+
+static void close_bar_font(void) {
+    font_close(bar_font);
+    free(bar_font_path);
+    bar_font = NULL;
+    bar_font_path = NULL;
+}
+
+static struct font *get_bar_font(const char *path) {
+    if (!path) return NULL;
+    if (bar_font_path && strcmp(path, bar_font_path) == 0) return bar_font;
+    static int cleanup_registered;
+    if (!cleanup_registered) {
+        if (atexit(close_bar_font) != 0) return NULL;
+        cleanup_registered = 1;
+    }
+    close_bar_font();
+    bar_font_path = strdup(path);
+    if (!bar_font_path) return NULL;
+    // Match the canvas supersampling; cache failed paths as well as open faces.
+    bar_font = font_open(path, 18 * SS);
+    return bar_font;
+}
+
 static void paint_at(struct canvas *c, const struct status *st, const struct statusbar_style *sty, int s) {
     int bar_h = 12 * s;
     // The panel's edge sits under the bezel by a few millimetres: measured
@@ -73,8 +102,14 @@ static void paint_at(struct canvas *c, const struct status *st, const struct sta
     battery_icon(c, right, y, icon_w, icon_h, st->have_batt ? st->cap : 0, st->plugged, sty);
     char pct[8];
     snprintf(pct, sizeof pct, "%d%%", st->have_batt ? st->cap : 0);
-    right -= 3 * s + canvas_text7_width(pct, s);
-    canvas_text7(c, right, (bar_h - 7 * s) / 2, pct, s, sty->ink);
+    struct font *f = get_bar_font(sty->font_path);
+    right -= 3 * s + (f ? font_width(f, pct) : canvas_text7_width(pct, s));
+    if (f) {
+        int baseline = (bar_h - font_height(f)) / 2 + font_baseline(f);
+        font_draw(f, c, right, baseline, pct, sty->ink);
+    } else {
+        canvas_text7(c, right, (bar_h - 7 * s) / 2, pct, s, sty->ink);
+    }
     right -= 5 * s + icon_h;
     wifi_fan(c, right, y + icon_h, icon_h, status_wifi_bars(st), sty);
 }
@@ -101,17 +136,7 @@ static void downsample(struct canvas *dst, const struct canvas *src, int rows) {
                 }
             if (!a) continue;
             unsigned sa = a / (SS * SS), sr = r / a, sg = g / a, sb = b / a;
-            uint32_t *d = &dst->px[y * dst->w + x];
-            if (sa >= 255) { *d = 0xFF000000u | (sr << 16) | (sg << 8) | sb; continue; }
-            // Straight-alpha "over": on a transparent destination (glcube's
-            // bar canvas) the source passes through untouched.
-            unsigned da = *d >> 24, dr = (*d >> 16) & 0xff, dg = (*d >> 8) & 0xff, db = *d & 0xff;
-            unsigned wd = da * (255 - sa) / 255;       // what shows through of dst
-            unsigned oa = sa + wd;
-            *d = (oa << 24) |
-                 (((sr * sa + dr * wd) / oa) << 16) |
-                 (((sg * sa + dg * wd) / oa) << 8) |
-                 ((sb * sa + db * wd) / oa);
+            canvas_blend(dst, x, y, (sa << 24) | (sr << 16) | (sg << 8) | sb);
         }
 }
 

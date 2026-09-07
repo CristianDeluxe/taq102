@@ -1,7 +1,7 @@
 // An iOS-style status bar across the top of a canvas: a three-arc Wi-Fi fan
 // lit by signal level, the battery percentage, and a battery with its charge
 // as a fill, a bolt while current flows in. Every shape is a pixel test, so
-// there is no font or image file to ship. The colours are the caller's: the
+// icons stay independent of the optional Inter face. The colours are the caller's: the
 // rescue screen paints it amber on amber, glcube white over its own picture.
 #ifndef STATUSBAR_H
 #define STATUSBAR_H
@@ -15,6 +15,7 @@ struct statusbar_style {
     uint32_t ink;     // lit shapes and text
     uint32_t dim;     // unlit Wi-Fi arcs
     uint32_t pale;    // the charging bolt
+    const char *font_path; // SemiBold TTF; NULL or unreadable keeps bitmap text
 };
 
 // The bar's height for a canvas w pixels wide; the caller sizes its canvas by it.

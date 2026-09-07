@@ -1,6 +1,8 @@
 config BR2_PACKAGE_RESCUE_SCREEN
 	bool "rescue-screen (the rescue image's amber status screen)"
 	select BR2_PACKAGE_LIBDRM
+	select BR2_PACKAGE_STB
+	select BR2_PACKAGE_TAQ102_FONTS
 	help
 	  Draws RESCUE MODE, the kernel, the build id and the Wi-Fi address on
 	  the panel through a DRM dumb buffer, so a rescue boot cannot be

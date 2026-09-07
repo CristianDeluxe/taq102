@@ -33,19 +33,8 @@
 #include "accel.h"
 #include "canvas.h"
 #include "status.h"
-#include "statusbar.h"
-
-// Alpha 0xFF on purpose. The framebuffer is added as XRGB8888, but the stock
-// 4.4.103 VOP driver blends it as ARGB: with 0x00 in the top byte the whole
-// window is transparent and the panel shows a washed-out white with a ghost
-// of the picture. Measured 2026-09-03; glcube never hit it because GBM
-// buffers carry 0xFF. The own 4.4.167 kernel does not care either way.
-#define AMBER 0xFFE08A00u
-#define INK   0xFF201000u
-#define PALE  0xFFFFF3D0u
-#define DIM   0xFFB8741Cu   // unlit arcs and the status bar: amber, darkened
-#define GREEN 0xFF30C048u   // iOS charging green
-#define RED   0xFFE03030u   // iOS low-battery red
+#include "font.h"
+#include "rescue_paint.h"
 
 static void read_line(const char *path, char *out, size_t n) {
     out[0] = 0;
@@ -53,27 +42,6 @@ static void read_line(const char *path, char *out, size_t n) {
     if (!f) return;
     if (fgets(out, (int)n, f)) out[strcspn(out, "\n")] = 0;
     fclose(f);
-}
-
-static const struct statusbar_style BAR = { DIM, AMBER, INK, DIM, PALE };
-
-static void paint(struct canvas *c, const char *kernel, const char *build, const struct status *st) {
-    for (int i = 0; i < c->w * c->h; i++) c->px[i] = AMBER;
-    statusbar_paint(c, st, &BAR);
-    int big = c->w / 60;                    // "RESCUE MODE" is 11 glyphs, 4 units each
-    canvas_text(c, (c->w - 11 * 4 * big + big) / 2, c->h / 5, "RESCUE MODE", big, INK);
-    int s = c->w / 200;
-    int y = c->h / 2, dy = 7 * s, x = c->w / 12;
-    char line[96];
-    snprintf(line, sizeof line, "KERNEL %s", kernel); canvas_text(c, x, y, line, s, INK); y += dy;
-    snprintf(line, sizeof line, "BUILD %s", build);   canvas_text(c, x, y, line, s, INK); y += dy;
-    if (st->have_wifi) snprintf(line, sizeof line, "WIFI %s %dDBM Q%d", st->addr, st->level, st->quality);
-    else snprintf(line, sizeof line, "WIFI %s", st->addr);
-    canvas_text(c, x, y, line, s, PALE); y += dy;
-    if (st->have_batt) snprintf(line, sizeof line, "BATTERY %d%% %d.%02dV %s %dMA", st->cap, st->mv / 1000, (st->mv / 10) % 100, st->word, st->ma);
-    else snprintf(line, sizeof line, "BATTERY UNKNOWN");
-    canvas_text(c, x, y, line, s, PALE); y += dy;
-    canvas_text(c, x, y, "SSH ROOT - TTYGS0 - KILLALL RESCUE-SCREEN TO DRAW", s, INK);
 }
 
 static void dump_ppm(const struct canvas *c, const char *path) {
@@ -146,6 +114,10 @@ int main(void) {
     signal(SIGTERM, on_signal);
     signal(SIGINT, on_signal);
 
+    const char *bar_font_path = "/usr/share/fonts/taq102/Inter-SemiBold.ttf";
+    struct font *title = font_open(bar_font_path, 56);
+    struct font *body = font_open("/usr/share/fonts/taq102/Inter-Regular.ttf", 20);
+    printf("rescue-screen text: %s\n", title && body ? "Inter" : "bitmap fallback");
     int first = 1;
     while (!stop) {
         int orientation_changed = 0;
@@ -170,7 +142,7 @@ int main(void) {
         status_read(&st);
         snprintf(key, sizeof key, "%s|%d|%d|%d|%d|%d|%s", st.addr, st.have_wifi, st.level, st.quality, st.cap, st.ma > 0, st.word);
         if (first || orientation_changed || strcmp(key, shown)) {
-            paint(&canvas, u.release, build, &st);
+            rescue_paint(&canvas, u.release, build, &st, title, body, bar_font_path);
             if (flipped) {
                 size_t count = (size_t)W * H;
                 for (size_t i = 0; i < count / 2; i++) {
@@ -205,6 +177,8 @@ int main(void) {
         }
         sleep(2);
     }
+    font_close(title);
+    font_close(body);
     if (accel_fd >= 0) close(accel_fd);
     return 0;
 }
