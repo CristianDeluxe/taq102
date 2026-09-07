@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Denver TAQ-102 on mainline: RK3126C, 1 GB, LVDS 1024x600, GSL3673 touch.
+ *
+ * The vendor 4.4 board file is kernel/rk3126-taq102.dts and the tree the
+ * tablet actually shipped with is kernel/rk3126-taq102-hybrid.dts. Every
+ * number below was taken from one of those two, not from a sibling board:
+ * the panel timing is the one modetest reports on the hardware, 1024x600 at
+ * 56.14 Hz, and the backlight is the vendor's pwm0 at 25 us.
+ *
+ * rk3128.dtsi is the right base even though this is an RK3126C: its VOP is
+ * already "rockchip,rk3126-vop" upstream. The LVDS node it gains here needs
+ * the two patches in this directory.
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include "rk3128.dtsi"
+
+/ {
+	model = "Denver TAQ-102 (RK3126C, LVDS)";
+	compatible = "rockchip,rk3126-taq102", "rockchip,rk3126";
+
+	memory@60000000 {
+		device_type = "memory";
+		reg = <0x60000000 0x40000000>;
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm0 0 25000 0>;
+		brightness-levels = <0 255>;
+		num-interpolated-steps = <255>;
+		default-brightness-level = <128>;
+	};
+
+	panel: panel {
+		compatible = "panel-lvds";
+		backlight = <&backlight>;
+		enable-gpios = <&gpio2 12 GPIO_ACTIVE_HIGH>;
+		data-mapping = "jeida-24";
+		width-mm = <125>;
+		height-mm = <223>;
+
+		panel-timing {
+			clock-frequency = <51200000>;
+			hactive = <1024>;
+			vactive = <600>;
+			hback-porch = <160>;
+			hfront-porch = <160>;
+			hsync-len = <70>;
+			vback-porch = <23>;
+			vfront-porch = <12>;
+			vsync-len = <10>;
+			hsync-active = <0>;
+			vsync-active = <0>;
+			de-active = <0>;
+			pixelclk-active = <0>;
+		};
+
+		port {
+			panel_in_lvds: endpoint {
+				remote-endpoint = <&lvds_out_panel>;
+			};
+		};
+	};
+};
+
+&dphy {
+	status = "okay";
+};
+
+&lvds {
+	status = "okay";
+};
+
+&lvds_out {
+	lvds_out_panel: endpoint {
+		remote-endpoint = <&panel_in_lvds>;
+	};
+};
+
+&pwm0 {
+	status = "okay";
+};
+
+&vop {
+	status = "okay";
+};
+
+/* The ACM gadget is the only console this board has: no CONFIG_VT on the
+ * stock kernel, and the UART2 pads have never been located. */
+&usb_otg {
+	dr_mode = "peripheral";
+	status = "okay";
+};
