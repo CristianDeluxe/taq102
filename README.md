@@ -1417,6 +1417,30 @@ unassociated one reads `0 0. -256. -256.`. `status_wifi_bars` took -256 dBm as
 a level and lit one bar on a radio connected to nothing, so `read_wifi` now
 only counts a level that could have come from a radio (`src/status.c`).
 
+### The status bar was not the iPhone's
+
+v48 fixed the state and my next words were that the icons were big
+and ugly and looked nothing like iOS. Reading the panel's own scanout settled
+it -- `/sys/kernel/debug/dri/0/summary` gives the framebuffer address and
+`dd if=/dev/mem` the pixels, which is how
+`docs/evidence/2026-09-07-control-centre/statusbar-icons-before-after.png` was
+made, and the same read shows the panel open with `TestNet`, the address
+and -35 dBm, which is the state fix proved on glass.
+
+The battery was 13 by 7 units beside 18-pixel digits: half again taller than
+the type next to it, too stubby at 1.86 wide to tall, and outlined at h/9,
+which at that size is a chunky capsule rather than a hairline. The Wi-Fi fan
+came to a point because its sector was 45 degrees each side. The iPhone keeps
+its battery near the height of its type, about 2.15 times as wide as tall,
+with a hairline outline and a fan that is wide and shallow. So the icons are
+now 5 by 11 units, radius h/3, outline h/10, the arcs 55 degrees each side and
+thinner, and the three gaps tightened to match; the greens and reds are the
+real systemGreen and systemRed rather than approximations.
+
+The loop that made this quick is worth keeping: `statusbar_test` already
+writes a PPM of the bar, so each attempt was rendered and looked at on the Mac
+in a second, and only the last one was built into an image and flashed.
+
 **Overrides** for tests: `GLCUBE_TOUCH` and `GLCUBE_POWER` (input devices),
 `GLCUBE_SETTINGS` (the conf path), `GLCUBE_FONTS` (the font directory),
 `GLCUBE_TRACE` (the per-second line now carries uploads/s, glGetError and

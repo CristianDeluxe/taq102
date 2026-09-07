@@ -27,14 +27,9 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   rate over cold boots into `/data`, then try cutting the chip's rail through
   the RK816 instead of the BSP nodes. `br2-external/package/taq102-wifi/taq102-wifi`.
   Blocked: needs repeated cold power-offs of the tablet by hand to measure the rate; the running appliance has been up for days.
-- [!] Unseen on the panel: v48 carries the Wi-Fi state fix and the tablet
-  boots with a real link, but nobody has looked at the control centre's Wi-Fi
-  tile since. The inputs are right (-35 dBm and an address at boot, from the
-  device) and `runtime_test` covers the transition; the pixels are not
-  evidence yet. Blocked: needs eyes on the tablet, or a glcube restart under
-  `tools/test-control-centre-device.sh`, which wants `GLCUBE_TOUCH` pointed at
-  touchsim -- a plain `touchsim create` against the running appliance gets
-  "no evdev reader".
+- [ ] The charging bolt is a 5-by-7 bitmap scaled up, so it is the one blocky
+  shape left in a bar that is otherwise smooth. Only visible while charging
+  and only at close range; a small vector path would settle it.
 - [ ] The -256 dBm gate in `read_wifi` is untested against a live
   unassociated interface: it went in after the link had already been
   recovered. Check it the next time the chip comes up without associating.
