@@ -1,0 +1,48 @@
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+index 0090d8ff0..d7a792cba 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+@@ -1407,9 +1407,14 @@ static void vop_crtc_atomic_enable(struct drm_crtc *crtc,
+ 
+ 	switch (s->output_type) {
+ 	case DRM_MODE_CONNECTOR_LVDS:
+-		VOP_REG_SET(vop, output, rgb_dclk_pol, 1);
+-		VOP_REG_SET(vop, output, rgb_pin_pol, pin_pol);
+-		VOP_REG_SET(vop, output, rgb_en, 1);
++		if (VOP_HAS_REG(vop, output, lvds_en)) {
++			VOP_REG_SET(vop, output, lvds_dclk_pol, 1);
++			VOP_REG_SET(vop, output, lvds_en, 1);
++		} else {
++			VOP_REG_SET(vop, output, rgb_dclk_pol, 1);
++			VOP_REG_SET(vop, output, rgb_pin_pol, pin_pol);
++			VOP_REG_SET(vop, output, rgb_en, 1);
++		}
+ 		break;
+ 	case DRM_MODE_CONNECTOR_eDP:
+ 		VOP_REG_SET(vop, output, edp_dclk_pol, 1);
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.h b/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
+index f04c9731a..c5330d18a 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.h
+@@ -106,6 +106,8 @@ struct vop_output {
+ 	struct vop_reg mipi_en;
+ 	struct vop_reg mipi_dual_channel_en;
+ 	struct vop_reg rgb_en;
++	struct vop_reg lvds_dclk_pol;
++	struct vop_reg lvds_en;
+ };
+ 
+ struct vop_common {
+diff --git a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
+index 72301e0a3..07f46ecec 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
++++ b/drivers/gpu/drm/rockchip/rockchip_vop_reg.c
+@@ -233,6 +233,8 @@ static const struct vop_output rk3126_output = {
+ 	.hdmi_dclk_pol = VOP_REG(RK3036_AXI_BUS_CTRL, 0x1, 23),
+ 	.rgb_en = VOP_REG(RK3036_AXI_BUS_CTRL, 0x1, 24),
+ 	.rgb_dclk_pol = VOP_REG(RK3036_AXI_BUS_CTRL, 0x1, 25),
++	.lvds_en = VOP_REG(RK3036_AXI_BUS_CTRL, 0x1, 26),
++	.lvds_dclk_pol = VOP_REG(RK3036_AXI_BUS_CTRL, 0x1, 27),
+ 	.mipi_en = VOP_REG(RK3036_AXI_BUS_CTRL, 0x1, 28),
+ 	.mipi_dclk_pol = VOP_REG(RK3036_AXI_BUS_CTRL, 0x1, 29),
+ };
