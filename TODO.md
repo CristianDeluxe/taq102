@@ -45,11 +45,6 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   Reproduce with `fliptest` pause mode before touching the driver.
 ## Kernel and drivers
 
-- [ ] Reconcile the patch series before any clean-tree rebuild: `0001` already
-  carries the analog-power and lane hunks that `0002` adds again (the reviewer,
-  2026-09-07), so applying every patch to a fresh checkout would fail on
-  `0002`. The VM tree at `/work/kernel` has them applied as working-tree
-  changes and is the only tree that builds today.
 - [ ] The vendor build warns about DT interrupt properties and executable-stack
   or RWX segments in the link, and the PHY module about macro attributes
   (2026-09-07 build logs). Harmless today; worth a look before a
