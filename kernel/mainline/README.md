@@ -45,6 +45,17 @@ here -- its VOP compatible is already the rk3126 one.
   regulator, pwrkey and rtc; there is no charger cell as there is for RK817,
   so `/sys/class/power_supply/battery` does not exist and the control centre's
   battery readout and the whole brightness policy have nothing to read.
+  Scoped 2026-09-07: the register map is complete in the vendor
+  `include/linux/mfd/rk808.h`, RK816 block -- charge state in `SUP_STS_REG`
+  0xA0, current in `BAT_CUR_AVG` 0xBC, voltage in `BAT_VOL` 0xC4, the coulomb
+  counter in `GASCNT` 0xB8..0xBB, full-charge count in `FCC_GASCNT` 0xD9, and
+  the calibration pairs from 0xD2. The catch is that **0xE0 `SOC_REG` is a
+  data register, not a hardware gauge**: the vendor computes the percentage in
+  software and parks it there across reboots. So a faithful port means the
+  coulomb counter, the OCV table and the calibration, which is the substance of
+  the vendor's 5,000-line `drivers/power/rk816_battery.c`; a voltage-only
+  driver would be a visible regression, since the percentage would move with
+  load.
 - The touch. `silead.c` knows gsl1680, 1688, 3670, 3675 and 3692, not the
   gsl3673 config array of `../patches/0005`.
 - Whether mainline's PHY PLL picks the same divider pair that patch
