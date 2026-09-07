@@ -23,7 +23,11 @@
     `docs/evidence/2026-09-07/`. Both flashes readback-verified; the `boot`
     write used `tools/flash-boot.sh`, `recovery` used the new `--no-bcb` mode;
     `tablet.sh reboot-loader` returned in 0.75 s and the loader appeared 4 s
-    later (the 2026-09-03 hang is gone). Images archived in
+    later (the 2026-09-03 hang is gone). The webcam renders the rescue
+    screen as a green-to-pink gradient under BOTH kernels while the scanout
+    buffer under ours measures amber and opaque, so the gradient is panel
+    angle plus camera, not the VOP; my eyes are the final word.
+    Images archived in
     `/Volumes/Datos4TB2/denver-taq102/gate3-build/recovery-taq102-v4[45]-*.img`.
   - Files: `blobs/`, `br2-external/`, `log/v44/` (untracked artifacts).
 
