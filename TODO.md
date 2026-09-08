@@ -86,11 +86,13 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   the vendor kernel, which had already put modetest and libevdev there by the
   time it was read three minutes in. The rootfs `/init` now copies that region
   to /tmp before /data is even mounted, and parks it under /data afterwards.
-- [ ] Fly the backlight beacon (`br2-external/board/taq102/taq102-usb-beacon`)
-  on the next diagnostic image: it blinks the panel 1-4 times to say whether a
-  UDC exists, whether anything bound to it, and whether the host configured it.
-  Needs wiring into the diagnostic initramfs, which the image build does not
-  do yet.
+- [ ] Flash `recovery-taq102-v55-mainline-beacon.img` and read the panel. Built
+  and verified 2026-09-08: same kernel and resource image as v54, ramdisk
+  carrying the backlight beacon, the ramoops rescue and the userspace marker.
+  Unlike v50-v54 this one reports something whatever happens -- count the
+  flashes (1 no UDC, 2 UDC unbound, 3 bound but unconfigured, 4 configured),
+  and if it dies earlier, v49's own /init rescues the log on the way back.
+  Costs I one button dance; arm `tools/recover-from-mainline.sh` first.
 - [-] **Owner's task: recover the tablet.** It currently boots the mainline
   diagnostic image (v54) from `recovery` and stops with a white screen,
   enumerating nothing on USB, so there is no software way back in. The BCB
