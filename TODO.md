@@ -90,11 +90,25 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   with the RK816 battery driver reporting real values, eMMC and /data, rtw88
   associated with a DHCP lease, and the USB ACM console working. Evidence:
   `docs/evidence/2026-09-08-mainline/`.
-- [ ] Put the display back: v59 has `DRM_ROCKCHIP` disabled on purpose so
-  `simple-framebuffer` could own the panel, so glcube has no /dev/dri/card0.
-  Next build re-enables the Rockchip DRM with the LVDS patches, and the open
-  question is whether the panel comes up on our LVDS path -- the part nobody
-  has been able to test until now.
+- [x] **The panel works on mainline.** 2026-09-08: the kernel console is
+  visible on the tablet's own screen at the panel's real 1024x600, the LVDS
+  connector reports connected with the right 125x223 mm physical size, and the
+  VOP, our LVDS encoder patch and the PHY are all proved on hardware. It took
+  finding two mainline bugs; both are written up in
+  `kernel/mainline/ISOLATING-THE-DISPLAY-HANG.md` with before/after evidence.
+- [ ] Replace the `fw_devlink=off` workaround with the narrow fix. That boot
+  argument disables device links machine-wide; the real change is
+  `GENPD_FLAG_NO_SYNC_STATE` on the Rockchip power domains, which today set
+  only `GENPD_FLAG_PM_CLK | GENPD_FLAG_NO_STAY_ON`. One line, and it needs the
+  same A/B the workaround got.
+- [ ] Send both patches upstream: the genpd deadlock (with the stack trace in
+  `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`) and
+  `0010-drm-rockchip-lvds-do-not-hijack-the-panel-bridge.patch`. Neither is
+  board-specific.
+- [ ] glcube still has no GPU: lima needs `gpu-sched`, which was left out of
+  the initramfs (`lima: Unknown symbol drm_sched_init`). Packaging, not a
+  defect. Also `modetest` fails to create a dumb buffer with -EINVAL, which is
+  worth understanding before blaming Mesa for anything.
 - [ ] Touch is untested: `silead` did not appear in the boot log, only the
   rk805 pwrkey. Check whether the controller probed at all.
 - [-] Flash `recovery-taq102-v55-mainline-beacon.img` and read the panel. Built
