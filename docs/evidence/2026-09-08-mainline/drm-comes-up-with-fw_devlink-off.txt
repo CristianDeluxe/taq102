@@ -1,0 +1,12 @@
+[   80.866953] phy-ab: LOADED OK
+[   80.898670] rockchip-drm display-subsystem: bound 1010e000.vop (ops 0xc11df848)
+[   80.899109] rockchip-drm display-subsystem: bound lvds (ops 0xc11e37e4)
+[   80.901675] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+[   81.011234] Console: switching to colour frame buffer device 128x48
+[   81.067114] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+[   80.901675] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+[   81.011234] Console: switching to colour frame buffer device 128x48
+[   81.067114] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+connected
+[   80.899109] rockchip-drm display-subsystem: bound lvds (ops 0xc11e37e4)
+41	40	connected	LVDS-1         	0x0		5	40
