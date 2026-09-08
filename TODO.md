@@ -86,7 +86,18 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   the vendor kernel, which had already put modetest and libevdev there by the
   time it was read three minutes in. The rootfs `/init` now copies that region
   to /tmp before /data is even mounted, and parks it under /data afterwards.
-- [ ] Flash `recovery-taq102-v55-mainline-beacon.img` and read the panel. Built
+- [x] **Mainline boots.** 2026-09-08, v59: Linux 7.3.0-rc2 runs on the tablet
+  with the RK816 battery driver reporting real values, eMMC and /data, rtw88
+  associated with a DHCP lease, and the USB ACM console working. Evidence:
+  `docs/evidence/2026-09-08-mainline/`.
+- [ ] Put the display back: v59 has `DRM_ROCKCHIP` disabled on purpose so
+  `simple-framebuffer` could own the panel, so glcube has no /dev/dri/card0.
+  Next build re-enables the Rockchip DRM with the LVDS patches, and the open
+  question is whether the panel comes up on our LVDS path -- the part nobody
+  has been able to test until now.
+- [ ] Touch is untested: `silead` did not appear in the boot log, only the
+  rk805 pwrkey. Check whether the controller probed at all.
+- [-] Flash `recovery-taq102-v55-mainline-beacon.img` and read the panel. Built
   and verified 2026-09-08: same kernel and resource image as v54, ramdisk
   carrying the backlight beacon, the ramoops rescue and the userspace marker.
   Unlike v50-v54 this one reports something whatever happens -- count the
