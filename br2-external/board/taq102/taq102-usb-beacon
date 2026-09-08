@@ -1,0 +1,65 @@
+#!/bin/sh
+#
+# Report USB gadget progress by blinking the panel backlight.
+#
+# Why this exists: on a failed mainline boot this board has no console at all.
+# The USB gadget IS the console, so when USB is what failed there is no way to
+# ask. But the panel lights -- a white screen is what a failed mainline boot
+# looks like -- and the backlight is a sysfs file. So the backlight becomes a
+# one-bit output channel, and a count of flashes carries the answer.
+#
+#   1 flash   userspace runs, no UDC registered at all
+#             -> the controller never probed; look at supplier/clock/reset
+#   2 flashes a UDC exists but nothing is bound to it
+#             -> the gadget driver failed to bind or start
+#   3 flashes a gadget is bound, but the host has not configured it
+#             -> the link: PHY session, VBUS/bvalid, cable, or control transfers
+#   4 flashes the UDC reports "configured"
+#             -> USB is up; the problem is on the host side or in the console
+#
+# A steady panel with no flashing is inconclusive: init may not have reached
+# here, or the backlight may not be writable, or something may be blocking.
+#
+# Runs in the background and gives up after a bounded time; it is a diagnostic,
+# not something to leave burning the panel forever.
+
+BL=
+i=0
+while [ $i -lt 30 ]; do
+    for d in /sys/class/backlight/*; do
+        [ -w "$d/brightness" ] && [ -r "$d/max_brightness" ] && { BL=$d; break; }
+    done
+    [ -n "$BL" ] && break
+    sleep 1
+    i=$((i + 1))
+done
+[ -n "$BL" ] || exit 0
+
+MAX=$(cat "$BL/max_brightness")
+LOW=$((MAX / 8)); [ "$LOW" -gt 0 ] || LOW=1
+
+state() {
+    udc=$(ls /sys/class/udc 2>/dev/null | head -1)
+    [ -n "$udc" ] || { echo 1; return; }
+    fn=$(cat "/sys/class/udc/$udc/function" 2>/dev/null)
+    [ -n "$fn" ] || { echo 2; return; }
+    st=$(cat "/sys/class/udc/$udc/state" 2>/dev/null)
+    [ "$st" = configured ] && echo 4 || echo 3
+}
+
+round=0
+while [ $round -lt 20 ]; do
+    n=$(state)
+    # Say it on the kernel log too, for whoever can read that later.
+    echo "taq102-usb-beacon: code $n" > /dev/kmsg 2>/dev/null
+    k=0
+    while [ $k -lt "$n" ]; do
+        echo "$LOW" > "$BL/brightness" 2>/dev/null
+        sleep 1
+        echo "$MAX" > "$BL/brightness" 2>/dev/null
+        sleep 1
+        k=$((k + 1))
+    done
+    sleep 4
+    round=$((round + 1))
+done

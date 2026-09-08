@@ -76,7 +76,22 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   with Mesa/Lima instead of the Utgard blob, and both firmware blobs are in the
   image. What blocks the port is no longer userspace but the kernel not
   reaching it; see `kernel/mainline/README.md`, "Four boots, no output".
-- [!] **Owner's task: recover the tablet.** It currently boots the mainline
+- [x] Recovered 2026-09-08: the button dance landed, the BCB was zeroed and the
+  tablet is back on v49 with glcube running. The crash log was NOT recovered --
+  see the next item.
+- [ ] The next mainline attempt must not lose its crash log again. Two causes,
+  both now fixed but neither yet exercised: `tools/recover-from-mainline.sh`
+  used the default known_hosts, where an older key for 192.168.1.51 fails
+  verification, so its ssh dump never ran; and 0x68100000 is ordinary RAM to
+  the vendor kernel, which had already put modetest and libevdev there by the
+  time it was read three minutes in. The rootfs `/init` now copies that region
+  to /tmp before /data is even mounted, and parks it under /data afterwards.
+- [ ] Fly the backlight beacon (`br2-external/board/taq102/taq102-usb-beacon`)
+  on the next diagnostic image: it blinks the panel 1-4 times to say whether a
+  UDC exists, whether anything bound to it, and whether the host configured it.
+  Needs wiring into the diagnostic initramfs, which the image build does not
+  do yet.
+- [-] **Owner's task: recover the tablet.** It currently boots the mainline
   diagnostic image (v54) from `recovery` and stops with a white screen,
   enumerating nothing on USB, so there is no software way back in. The BCB
   still says `boot-recovery`, which is why every power-on returns to it.
