@@ -72,6 +72,27 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   it, plus `silead/gsl3673.fw` and `rtw88/rtw8703b_fw.bin` in the initramfs --
   both are requested asynchronously, so missing they give a silently absent
   touchscreen and a silently absent wlan0.
+  2026-09-08: the userspace exists now -- `taq102_mainline_defconfig` builds it
+  with Mesa/Lima instead of the Utgard blob, and both firmware blobs are in the
+  image. What blocks the port is no longer userspace but the kernel not
+  reaching it; see `kernel/mainline/README.md`, "Four boots, no output".
+- [!] **Owner's task: recover the tablet.** It currently boots the mainline
+  diagnostic image (v54) from `recovery` and stops with a white screen,
+  enumerating nothing on USB, so there is no software way back in. The BCB
+  still says `boot-recovery`, which is why every power-on returns to it.
+  The sequence, from I, 2026-09-08: unplug USB, hold power ~10 s until
+  the panel goes dark, then hold both buttons and plug USB in while holding,
+  keeping them down 10-15 s. A white screen means that pass already failed.
+  Measured unreliable on this board and it took several tries once before.
+  When it lands, two waiters do the rest automatically: one zeroes the BCB at
+  LBA 24608 (`scratchpad/rescue-bcb.sh`) and `boot` = v49 comes back; the other
+  dumps ramoops at 0x68100000 over ssh (`scratchpad/grab-ramoops.sh`). Re-arm
+  them before the attempt -- they expire on a deadline.
+- [ ] Read the mainline crash log out of ramoops at 0x68100000 and act on it.
+  It is a race: that address is ordinary RAM to the vendor kernel, so the dump
+  must happen in the first seconds after recovery. The log should name the
+  driver that failed, which is now believed to be DWC2 or the Rockchip USB2
+  PHY, since the white screen proves the kernel reached the driver phase.
 - [!] Flashing a mainline kernel is a one-way door and is not authorised yet.
   The SD card is not an escape: Rockchip's BootROM tries eMMC before SD, so a
   card is never reached while `boot` holds a valid loader, which is why the

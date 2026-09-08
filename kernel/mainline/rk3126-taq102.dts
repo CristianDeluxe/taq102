@@ -17,15 +17,92 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
 #include "rk3128.dtsi"
 
 / {
 	model = "Denver TAQ-102 (RK3126C, LVDS)";
 	compatible = "rockchip,rk3126-taq102", "rockchip,rk3126";
 
+	/*
+	 * A crash log that survives the reboot, because this board has no console
+	 * a failed boot can reach: no serial pads, and the USB gadget is raised by
+	 * userspace the kernel never gets to. Deliberately NOT 0x68000000, which the vendor tree also uses for
+	 * ramoops: the vendor kernel rewrites that region with its own boot log,
+	 * which destroyed the first capture. 0x68100000 is above it and still
+	 * inside the first bank, which ends at 0x68400000.
+	 */
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		ramoops@68100000 {
+			compatible = "ramoops";
+			reg = <0x68100000 0xf0000>;
+			record-size = <0x20000>;
+			console-size = <0x80000>;
+			pmsg-size = <0x50000>;
+		};
+	};
+
+	aliases {
+		mmc0 = &sdmmc;
+		mmc1 = &emmc;
+		mmc2 = &sdio;
+	};
+
+	/*
+	 * The RTL8723CS needs its 32 kHz clock and its reset released before
+	 * the SDIO function can be probed at all. Values from the tablet own
+	 * stock tree: the clock is the PMIC clkout2, the reset is GPIO2_B5.
+	 */
+	sdio_pwrseq: sdio-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		clocks = <&rk816 1>;
+		clock-names = "ext_clock";
+		reset-gpios = <&gpio2 RK_PB5 GPIO_ACTIVE_LOW>;
+	};
+
+	/*
+	 * Two banks with a 14 MB hole between them, not one contiguous gigabyte.
+	 * Read off the running vendor kernel on this tablet: /proc/iomem shows
+	 * 60000000-683fffff and 69200000-9fffffff, and its own device tree says
+	 * reg = <0x60000000 0x08400000>, <0x69200000 0x36e00000>. Declaring the
+	 * hole as memory kills the kernel during memblock init, long before any
+	 * console exists, which is exactly the silent black boot this cost.
+	 */
 	memory@60000000 {
 		device_type = "memory";
-		reg = <0x60000000 0x40000000>;
+		reg = <0x60000000 0x08400000>,
+		      <0x69200000 0x36e00000>;
+	};
+
+	/*
+	 * The touch controller's two rails. Nothing on this board switches
+	 * them: they are up before the kernel starts, the vendor node
+	 * describes no supply at all, and the RK816 that really feeds them
+	 * has no node in this file yet. They exist because silead.c takes
+	 * both with a plain devm_regulator_bulk_get() and refuses to probe
+	 * without them. Replace them with the real RK816 outputs when a PMIC
+	 * node lands here.
+	 */
+	vcc_io: regulator-vcc-io {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_io";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	vcc_tp: regulator-vcc-tp {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc_tp";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
 	};
 
 	backlight: backlight {
@@ -68,6 +145,10 @@
 	};
 };
 
+&display_subsystem {
+	status = "okay";
+};
+
 &dphy {
 	status = "okay";
 };
@@ -79,6 +160,66 @@
 &lvds_out {
 	lvds_out_panel: endpoint {
 		remote-endpoint = <&panel_in_lvds>;
+	};
+};
+
+/*
+ * GSL3673 capacitive touch, 0x40 on i2c2.
+ *
+ * i2c2, not i2c0: in the device tree the tablet actually runs
+ * (kernel/rk3126-taq102-hybrid.dts, decompiled from the live DTB) ts@40 is a
+ * child of i2c@2005a000, beside the RK816 at 0x1a and the accelerometer at
+ * 0x18, and i2c@20072000 is enabled with no children at all. rk3128.dtsi
+ * labels 0x2005a000 as i2c2, and so does the vendor rk312x.dtsi. The
+ * hand-written kernel/rk3126-taq102.dts in this repository puts the node
+ * under &i2c0; that file is a reconstruction and it is wrong on this point.
+ *
+ * No clock-frequency: the live node has none either, so the bus runs at the
+ * 100 kHz default i2c_parse_fw_timings() supplies. The 400 kHz in the sibling
+ * board's rk3126-bnd-d708.dtsi belongs to a different bus on a different
+ * board. At 100 kHz the firmware upload -- 4719 single-word SMBus writes
+ * where the vendor batched 32 words per transfer -- costs a few seconds once,
+ * at probe.
+ *
+ *  - interrupts is EDGE_RISING, not the LEVEL_LOW the vendor node prints.
+ *    gsl3673_init() reads irq_gpio_number only for the GPIO number and throws
+ *    the flags away; probe then calls devm_request_irq() with
+ *    IRQF_TRIGGER_RISING. Rising is the trigger this hardware was proved on.
+ *
+ *  - power-gpios is the vendor's rst_gpio_number, gpio2 14 active high.
+ *    silead.c has no separate reset: silead_ts_set_power() drives this pin
+ *    low to stop the chip and high to run it, then sleeps 20 ms, which is
+ *    exactly gsl3673_shutdown_low()/_high() and their msleep(20).
+ *
+ *  - firmware-name resolves to /lib/firmware/silead/gsl3673.fw, produced by
+ *    kernel/mainline/taq102-gsl3673-firmware.py from the GSL3673_FW array of
+ *    the vendor header after kernel/patches/0005-* has replaced it with the
+ *    tablet's own stock blob. The array the vendor tree ships untouched is
+ *    another panel's.
+ *
+ *  - touchscreen-size-x/y are unmeasured. They are the resolution word of the
+ *    stock configuration array, 0x02580400 = 600 << 16 | 1024, and the
+ *    screen_max_x/y of the reconstructed vendor node. The vendor driver's own
+ *    ABS range is no evidence: with CONFIG_TOUCHSCREEN_GSL3673 no TP_SIZE_*
+ *    macro is defined, so it falls through to 2048x1536.
+ */
+&i2c2 {
+	status = "okay";
+
+	touchscreen@40 {
+		compatible = "silead,gsl3673";
+		reg = <0x40>;
+
+		interrupt-parent = <&gpio2>;
+		interrupts = <15 IRQ_TYPE_EDGE_RISING>;
+		power-gpios = <&gpio2 14 GPIO_ACTIVE_HIGH>;
+
+		vddio-supply = <&vcc_io>;
+		avdd-supply = <&vcc_tp>;
+
+		firmware-name = "gsl3673.fw";
+		touchscreen-size-x = <1024>;
+		touchscreen-size-y = <600>;
 	};
 };
 
@@ -94,5 +235,146 @@
  * stock kernel, and the UART2 pads have never been located. */
 &usb_otg {
 	dr_mode = "peripheral";
+	status = "okay";
+};
+
+/*
+ * The RK816 PMIC and the battery behind it.
+ *
+ * These two headers are re-included here rather than at the top of the file
+ * so that this is one self-contained block; both carry include guards, so a
+ * second include costs nothing.
+ */
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+
+/*
+ * The PMIC sits on i2c2 at 0x1a, beside the GSL3673 touch controller at 0x40
+ * on the same bus; i2c0 is enabled with no children at all on this board.
+ * Its interrupt is GPIO0_A2, active low.
+ * Checked against the decompiled vendor DTB, where the same node reads
+ * interrupts = <0x02 0x08>.
+ *
+ * The regulators are deliberately not described. Nothing here needs them,
+ * and transcribing a rail constraint wrong is how a board stops booting;
+ * the vendor's DCDC and LDO constraints are a separate change with its own
+ * risk. "rockchip,system-power-controller" is left off for the same reason:
+ * it changes what happens on poweroff.
+ */
+&i2c2 {
+	status = "okay";
+
+	rk816: pmic@1a {
+		compatible = "rockchip,rk816";
+		reg = <0x1a>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <RK_PA2 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pmic_int_l>;
+		#clock-cells = <1>;
+		clock-output-names = "xin32k", "rk816-clkout2";
+		gpio-controller;
+		#gpio-cells = <2>;
+		extcon = <&usb2phy>;
+		wakeup-source;
+
+		charger {
+			monitored-battery = <&battery>;
+			rockchip,resistor-sense-micro-ohms = <20000>;
+			rockchip,sleep-enter-current-microamp = <300000>;
+			rockchip,sleep-filter-current-microamp = <100000>;
+			input-current-limit-microamp = <1600000>;
+		};
+	};
+};
+
+&pinctrl {
+	pmic {
+		pmic_int_l: pmic-int-l {
+			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_default>;
+		};
+	};
+};
+
+/*
+ * The OTG PHY is disabled in rk3128.dtsi, so the ACM gadget above cannot
+ * probe without this either. It is also what performs BC1.2 detection,
+ * which is the only way the charger can tell a wall adapter from a 450 mA
+ * port.
+ */
+&usb2phy {
+	status = "okay";
+};
+
+&usb2phy_otg {
+	status = "okay";
+};
+
+/ {
+	/*
+	 * Every number here comes from the battery node of the vendor board
+	 * file, converted out of its hexadecimal millivolts and milliamp
+	 * hours: design_capacity 0x10af, max_chrg_current 0x578,
+	 * max_chrg_voltage 0x1068, max_input_current 0x640, bat_res 0x64,
+	 * power_off_thresd 0xd7a, sleep_enter_current 0x12c,
+	 * sleep_filter_current 0x64. The termination current is not in the
+	 * vendor DTS at all: rk816_bat_finish_ma() derives 200 mA from a pack
+	 * of 4000 mAh or more.
+	 *
+	 * The OCV table is the vendor's ocv_table read backwards, because the
+	 * vendor lists 0 % first and the power supply core wants the highest
+	 * voltage first. There is no thermistor on this board, so one table
+	 * at 20 C is all there is.
+	 */
+	battery: battery {
+		compatible = "simple-battery";
+		charge-full-design-microamp-hours = <4271000>;
+		charge-term-current-microamp = <200000>;
+		constant-charge-current-max-microamp = <1400000>;
+		constant-charge-voltage-max-microvolt = <4200000>;
+		voltage-max-design-microvolt = <4200000>;
+		voltage-min-design-microvolt = <3450000>;
+		factory-internal-resistance-micro-ohms = <100000>;
+		ocv-capacity-celsius = <20>;
+		ocv-capacity-table-0 = <4200000 100>, <4139000 95>,
+				       <4093000 90>, <4056000 85>,
+				       <4005000 80>, <3975000 75>,
+				       <3943000 70>, <3897000 65>,
+				       <3858000 60>, <3836000 55>,
+				       <3817000 50>, <3802000 45>,
+				       <3789000 40>, <3777000 35>,
+				       <3762000 30>, <3746000 25>,
+				       <3731000 20>, <3706000 15>,
+				       <3686000 10>, <3671000 5>,
+				       <3450000 0>;
+	};
+};
+
+/*
+ * Storage and SDIO. Without the eMMC there is no /data, so no settings and no
+ * wifi.conf; without the SDIO there is no wlan0 whatever rtw88 is built with.
+ * Every capability below is the one the stock tree sets for this board.
+ * The SD slot is left disabled on purpose: nothing here uses it, and it would
+ * only add a controller that can fail to probe.
+ */
+&emmc {
+	bus-width = <8>;
+	cap-mmc-highspeed;
+	disable-wp;
+	non-removable;
+	pinctrl-names = "default";
+	pinctrl-0 = <&emmc_clk &emmc_cmd &emmc_bus8>;
+	status = "okay";
+};
+
+&sdio {
+	bus-width = <4>;
+	cap-sd-highspeed;
+	keep-power-in-suspend;
+	max-frequency = <50000000>;
+	mmc-pwrseq = <&sdio_pwrseq>;
+	non-removable;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdio_clk &sdio_cmd &sdio_bus4>;
 	status = "okay";
 };
