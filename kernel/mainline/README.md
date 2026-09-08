@@ -1,9 +1,14 @@
 # The TAQ-102 on mainline
 
-Work in progress. Nothing here has run on the tablet yet, and nothing goes
-near `boot` until the panel, the touch, the battery and the Wi-Fi are all four
-proved. The journal entry is in `../../README.md`; the backlog item is in
-`../../TODO.md`.
+**Start with `FINDINGS.md`**: what works, the two mainline bugs found, the
+hypotheses that were wrong, and what is still open. This file is the build and
+patch reference; `ISOLATING-THE-DISPLAY-HANG.md` is the narrative of the hunt.
+
+Superseded in part: this file was written before any of it had run. It has now
+run. The battery, the storage, the Wi-Fi, the USB console and the panel are all
+proved on hardware -- see `FINDINGS.md`. Touch is the one subsystem still
+untested. `boot` still holds the vendor appliance and every mainline image goes
+to `recovery`, which remains the right arrangement.
 
 Base: Linux 7.3.0-rc2, clone at `/work/linux-mainline` in the `taq102` VM,
 built with the same Buildroot GCC 14.3 toolchain the vendor kernel uses. The

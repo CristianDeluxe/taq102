@@ -1,0 +1,26 @@
+	struct inno_video_phy *inno = phy_get_drvdata(phy);
+
+	/*
+	 * The reference clock is only ever read here to name the PLL parent,
+	 * never enabled: on a MIPI board the DSI driver brings it up. In LVDS
+	 * mode nothing does, so the PHY PLL has no reference and never locks --
+	 * "PLL is not lock", and a panel lit but showing nothing.
+	 */
+	clk_prepare_enable(inno->ref_clk);
+	clk_prepare_enable(inno->pclk_host);
+	clk_prepare_enable(inno->pclk_phy);
+	clk_prepare_enable(inno->h2p_clk);
+	pm_runtime_get_sync(inno->dev);
+
+	/*
+	 * Reset before programming to discard the state U-Boot left behind.
+	 */
+	if (inno->rst) {
+		reset_control_assert(inno->rst);
+		udelay(20);
+		reset_control_deassert(inno->rst);
+		udelay(20);
+	}
+
+	/* Bandgap power on */
+	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x00,
