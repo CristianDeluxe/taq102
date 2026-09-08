@@ -84,3 +84,61 @@ instead: DRM built in, `&lvds` set to `disabled`.
 - **G hangs** -- the VOP alone is enough to kill it, our LVDS work is not
   implicated, and the problem is mainline's VOP against a panel U-Boot left
   scanning out.
+
+## Found it: a genpd deadlock in mainline, not in our patches
+
+The module build paid for itself. With the display stack as modules the kernel
+always reaches a console, and loading the PHY by hand reproduced the hang in
+isolation -- without the VOP, without the LVDS encoder, without anything of
+ours running.
+
+**The system does not hang. `insmod` blocks.** The beacon kept flashing every
+twelve seconds and the shell stayed alive throughout, which rules out the
+"register access wedges the bus" theory that drove three earlier attempts.
+It is a wait, not a crash -- and that is exactly why a built-in driver looked
+like a dead machine: the same wait happens in an initcall, so the boot never
+reaches userspace.
+
+**And it is not our code.** `phy-pristine.ko`, mainline's own driver built from
+a clean tree and verified by content to carry none of our three patches, blocks
+in precisely the same place:
+
+```
+task:insmod          state:D
+ __mutex_lock.constprop.0 from genpd_add_device+0xd4/0x264
+ genpd_add_device from __genpd_dev_pm_attach+0xa0/0x284
+ __genpd_dev_pm_attach from genpd_dev_pm_attach+0x58/0x60
+ genpd_dev_pm_attach from dev_pm_domain_attach+0x24/0x44
+ dev_pm_domain_attach from platform_probe+0x40/0x90
+ ...
+ do_one_initcall from do_init_module+0x50/0x224
+```
+
+`wchan` is `genpd_add_device`, and the mutex it waits on is `genpd->mlock` --
+the lock of one power domain, not the global list lock. Only one task is in D
+state, so whatever holds that mutex is not itself blocked on I/O.
+
+The circumstantial evidence points at sync_state. Every boot logs, before any
+of this:
+
+```
+rockchip-pm-domain 100a0000.syscon:power-controller: sync_state() pending due to 1010e000.vop
+rockchip-pm-domain 100a0000.syscon:power-controller: sync_state() pending due to lvds
+rockchip-pm-domain 100a0000.syscon:power-controller: sync_state() pending due to 20038000.phy
+```
+
+The domain is waiting for those three consumers to probe before it will run
+sync_state; `genpd_provider_sync_state()` takes `genpd_lock()` in its SIMPLE
+case. The Rockchip driver sets `GENPD_FLAG_PM_CLK | GENPD_FLAG_NO_STAY_ON` and
+does **not** set `GENPD_FLAG_NO_SYNC_STATE`.
+
+Evidence: `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
+
+### The cheap tests, in order
+
+1. `fw_devlink=off` (or `permissive`) on the command line. If the block is the
+   device-link/sync_state machinery, this sidesteps it and the PHY probes.
+   One rebuild, no button dance -- reboot-mode is in the image now.
+2. If that clears it, the honest fix is upstream-shaped rather than a boot
+   argument, and the next question is whether the Rockchip domains should
+   declare `GENPD_FLAG_NO_SYNC_STATE`.

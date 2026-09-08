@@ -1,0 +1,50 @@
+[  132.980388] sysrq: Show Blocked State
+[  132.987826] task:insmod          state:D stack:0     pid:307   tgid:307   ppid:306    task_flags:0x400100 flags:0x00000000
+[  132.995584] Call trace: 
+[  132.995621]  __schedule from schedule+0x20/0xe0
+[  133.010811]  schedule from schedule_preempt_disabled+0xc/0x10
+[  133.018706]  schedule_preempt_disabled from __mutex_lock.constprop.0+0x5d8/0xf50
+[  133.026817]  __mutex_lock.constprop.0 from genpd_add_device+0xd4/0x264
+[  133.035032]  genpd_add_device from __genpd_dev_pm_attach+0xa0/0x284
+[  133.043274]  __genpd_dev_pm_attach from genpd_dev_pm_attach+0x58/0x60
+[  133.051578]  genpd_dev_pm_attach from dev_pm_domain_attach+0x24/0x44
+[  133.059935]  dev_pm_domain_attach from platform_probe+0x40/0x90
+[  133.068312]  platform_probe from really_probe+0xc8/0x2c8
+[  133.076455]  really_probe from __driver_probe_device+0x94/0x1cc
+[  133.084377]  __driver_probe_device from driver_probe_device+0x34/0xb8
+[  133.092412]  driver_probe_device from __driver_attach+0x90/0x140
+[  133.100321]  __driver_attach from bus_for_each_dev+0x7c/0xcc
+[  133.108101]  bus_for_each_dev from bus_add_driver+0xcc/0x1ec
+[  133.115650]  bus_add_driver from driver_register+0x80/0x11c
+[  133.122990]  driver_register from do_one_initcall+0x58/0x2a8
+[  133.130427]  do_one_initcall from do_init_module+0x50/0x224
+[  133.137668]  do_init_module from init_module_from_file+0xe8/0x104
+[  133.144981]  init_module_from_file from sys_finit_module+0x1a0/0x304
+[  133.152081]  sys_finit_module from ret_fast_syscall+0x0/0x54
+[  133.159330] Exception stack(0xf0e9dfa8 to 0xf0e9dff0)
+[  133.166675] dfa0:                   a5e3d000 00000063 00000003 004f61d8 00000000 beb5df2f
+[  133.174302] dfc0: a5e3d000 00000063 beb5df2f 0000017b 00000003 0042b0dc b6f45e50 004f3874
+[  133.181855] dfe0: beb5dc60 beb5dc50 00446348 b6e8c900
+# [  135.459014] taq102-usb-beacon: code 4
+[  147.687585] taq102-usb-beacon: code 4
+echo ===OTHERS===; dmesg | grep -A14 "Show Blocked" | tail -6; echo "--- any o
+ther D-state task:"; for p in /proc/[0-9]*; do s=$(cut -d\  -f3 $p/stat 2>/dev/n
+ull); [ "$s" = D ] && echo "$(cat $p/comm) pid ${p##*/} wchan=$(cat $p/wchan 2>/
+dev/null)"; done
+===OTHERS===
+[  133.051578]  genpd_dev_pm_attach from dev_pm_domain_attach+0x24/0x44
+[  133.059935]  dev_pm_domain_attach from platform_probe+0x40/0x90
+[  133.068312]  platform_probe from really_probe+0xc8/0x2c8
+[  133.076455]  really_probe from __driver_probe_device+0x94/0x1cc
+[  133.084377]  __driver_probe_device from driver_probe_device+0x34/0xb8
+[  133.092412]  driver_probe_device from __driver_attach+0x90/0x140
+--- any other D-state task:
+insmod pid 307 wchan=genpd_add_device
+# [  159.936512] taq102-usb-beacon: code 4
+[  172.164656] taq102-usb-beacon: code 4
+[  184.392818] taq102-usb-beacon: code 4
+[  196.620273] taq102-usb-beacon: code 4
+[  208.849330] taq102-usb-beacon: code 4
+[  221.076322] taq102-usb-beacon: code 4
+[  233.303864] taq102-usb-beacon: code 4
+[  245.531984] taq102-usb-beacon: code 4
