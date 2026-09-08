@@ -6,6 +6,29 @@
 
 ### 2026-09
 
+- [x] 2026-09-09 — **Mainline:** the cube runs. v66 boots Linux 7.3.0-rc2 and
+  starts `glcube` by itself 14 s after power-on: Mesa 26.0.1 lima on the
+  Mali-400 MP2, 1024x600, 52.8 FPS, `glGetError 0x0`.
+  - Resolution: kernel = variant M unchanged; ramdisk gained `gpu-sched.ko`
+    (the symbol lima was missing) and `taq102-cube`; board DTS gained
+    `&gpu { status = "okay"; }` (rk3128.dtsi ships it disabled).
+  - Evidence: `docs/evidence/2026-09-09-cube/`, images v64-v66 and
+    `zImage-7.3.0-rc2-variant-M` in the archive with SHA256SUMS.
+- [-] 2026-09-09 — **Mainline:** `GENPD_FLAG_NO_SYNC_STATE` as the narrow fix
+  for the genpd deadlock. v63 (display stack built in plus that flag) hangs
+  before userspace exactly like v62 without it. Superseded by the open item to
+  trace a built-in boot; `fw_devlink=off` with the PHY as a module stays.
+- [x] 2026-09-08 — **Mainline:** the panel works. Kernel console on the
+  tablet's own screen at 1024x600, LVDS connector connected with the right
+  physical size; two mainline bugs found (genpd deadlock, LVDS panel-bridge
+  hijack), written up in `kernel/mainline/ISOLATING-THE-DISPLAY-HANG.md`.
+- [x] 2026-09-08 — **Mainline:** Linux 7.3.0-rc2 boots on the tablet (v59):
+  RK816 battery, eMMC and /data, rtw88 with a DHCP lease, USB ACM console.
+  Evidence: `docs/evidence/2026-09-08-mainline/`.
+- [x] 2026-09-08 — **Recovery:** the button dance landed after the v54 white
+  screen, the BCB was zeroed and v49 came back with glcube running; the
+  mainline crash log was not recovered (ramoops does not survive the power
+  cycle the dance needs).
 - [x] 2026-09-07 — **Appliance:** The status bar's battery and Wi-Fi icons were
   oversized and heavy, "nothing like iOS" in my words after v48.
   - Resolution: 5 by 11 units instead of 13 by 7, radius h/3, outline h/10,

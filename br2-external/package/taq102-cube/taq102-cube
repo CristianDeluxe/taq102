@@ -1,0 +1,29 @@
+#!/bin/sh
+# Bring up the display and the GPU as modules, then start the appliance app.
+# The kernel is variant M: VOP, LVDS encoder and panel built in, the LVDS PHY
+# and Lima as modules (built in, the PHY deadlocks the boot before a console).
+# Every step is announced to the kernel log before it is taken, so a hang
+# names its own cause.
+#
+#   taq102-cube          load the modules, report /dev/dri
+#   taq102-cube app      the same, then hand over to taq102-app (glcube)
+M=/lib/modules/$(uname -r)
+say() { echo "taq102-cube: $*"; echo "taq102-cube: $*" > /dev/kmsg 2>/dev/null; }
+load() {
+    [ -f "$M/$1.ko" ] || { say "no $1.ko in $M"; return 1; }
+    say "insmod $1"
+    out=$(insmod "$M/$1.ko" 2>&1) && { say "ok $1"; return 0; }
+    case "$out" in *"File exists"*) say "already in the kernel: $1"; return 0 ;; esac
+    say "FAILED $1: $out"; return 1
+}
+wait_for() { # path, seconds
+    i=0; while [ ! -e "$1" ] && [ $i -lt "$2" ]; do sleep 1; i=$((i+1)); done; [ -e "$1" ]
+}
+[ -e /dev/dri/card0 ] || load phy-rockchip-inno-dsidphy
+wait_for /dev/dri/card0 15 || say "no /dev/dri/card0 after the PHY"
+say "LVDS-1 is $(cat /sys/class/drm/card0-LVDS-1/status 2>/dev/null), modes: $(cat /sys/class/drm/card0-LVDS-1/modes 2>/dev/null | tr '\n' ' ')"
+load drm_shmem_helper || true
+load gpu-sched && load lima
+wait_for /dev/dri/renderD128 10 && say "render node up: $(ls /dev/dri | tr '\n' ' ')" || say "no render node: $(ls /dev/dri | tr '\n' ' ')"
+[ "$1" = app ] || exit 0
+exec /usr/bin/taq102-app
