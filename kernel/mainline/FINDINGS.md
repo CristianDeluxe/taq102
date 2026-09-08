@@ -139,13 +139,58 @@ display stack was built as modules -- after which one boot bought every
 remaining experiment, because the pieces could be inserted by hand with a
 console to watch.
 
+## The cube runs on mainline (2026-09-09)
+
+v66: the tablet boots Linux 7.3.0-rc2 and, 14 seconds after power-on, `glcube`
+is drawing through Mesa 26.0.1's lima driver on the Mali-400 MP2 at 52.8 FPS,
+1024x600 on the panel, `glGetError 0x0`. Evidence:
+`docs/evidence/2026-09-09-cube/`.
+
+It took three images after the panel worked, and the first two are the
+lesson from the method section applied backwards:
+
+- **v62, v63 -- the display stack built in, hangs before userspace.** v62 was
+  everything =y; v63 added `GENPD_FLAG_NO_SYNC_STATE` to the Rockchip power
+  domains, the "narrow fix" this file had proposed. Both: white screen, no
+  gadget, no console. So `fw_devlink=off` was never a workaround for a bug that
+  flag fixes on its own; whatever the full mechanism is, a built-in PHY still
+  blocks at boot with `NO_SYNC_STATE` set. The narrow fix is not one line, and
+  the workaround stays.
+- **v64 -- variant M's kernel byte for byte, M's ramdisk plus `gpu-sched.ko`.**
+  Boots, panel comes up when the PHY is loaded, lima loads -- and finds no
+  device: `rk3128.dtsi` declares `gpu@10090000` with `status = "disabled"` and
+  the board DTS never enabled it.
+- **v65 -- `&gpu { status = "okay"; };`.** lima probes: gp and two pp at
+  version 1.1, 64 K L2, bus and core at 148.5 MHz, `renderD128`. `glcube`
+  run by hand: `GL_RENDERER: Mali400`, 52.8 FPS.
+- **v66 -- inittab runs `taq102-cube app`** (PHY, then `drm_shmem_helper`,
+  `gpu-sched`, `lima`, then `taq102-app`), the backlight beacon is off. The
+  cube comes up by itself.
+
+The kernel of v64-v66 is variant M unchanged (`zImage-7.3.0-rc2-variant-M` in
+the archive): VOP, LVDS encoder and panel built in, PHY and Lima as modules,
+`fw_devlink=off`, patch 0010. lima's `mali` regulator is optional and absent
+(the vendor hands it `vdd_logic`; mainline has no RK816 regulators described
+yet), so the GPU runs at whatever the bootloader left ACLK_GPU at, 148.5 MHz.
+The cube does not need more.
+
 ## Still open
 
-- Replace `fw_devlink=off` with `GENPD_FLAG_NO_SYNC_STATE` and A/B it.
-- Send both patches upstream, with the stack trace.
-- lima needs `gpu-sched` in the initramfs (`lima: Unknown symbol
-  drm_sched_init`) before glcube has a GPU. Packaging, not a defect.
-- `modetest` cannot create a dumb buffer (-EINVAL); understand that before
-  blaming Mesa for anything.
-- Touch: the GSL3673 answers with chip ID 0x50910000 and then fails a register
-  write with -6, so the bus is fine and the chip is alive. Untouched since.
+- Replace `fw_devlink=off`. `GENPD_FLAG_NO_SYNC_STATE` alone does not do it
+  (v63); the built-in PHY still blocks at boot. Needs the trace from a built-in
+  boot, which means a diagnostic channel that survives the hang -- the
+  bootloader framebuffer with an early printk of the blocked task.
+- Send `0010-drm-rockchip-lvds-do-not-hijack-the-panel-bridge.patch` upstream,
+  and the genpd deadlock stack with what is known about it.
+- Package the modules. The v66 ramdisk is hand-assembled: `gpu-sched.ko`,
+  `lima.ko`, `drm_shmem_helper.ko` and `phy-rockchip-inno-dsidphy.ko` copied
+  from the kernel build into `rootfs-v55` plus `taq102-cube`. The Buildroot
+  mainline image should get them from the kernel's `modules_install`.
+- Describe the RK816 regulators in the board DTS and give lima `vdd_logic` as
+  `mali-supply`, then let devfreq run the OPP table (200-400 MHz on the vendor)
+  instead of the bootloader's 148.5 MHz.
+- `modetest` cannot create a dumb buffer (-EINVAL). Moot for glcube, which
+  allocates through GBM and lima; still worth understanding.
+- Touch: `glcube` reports `touch open: No such file or directory` -- the
+  GSL3673 answers with chip ID 0x50910000 and then fails a register write with
+  -6. Untouched since.

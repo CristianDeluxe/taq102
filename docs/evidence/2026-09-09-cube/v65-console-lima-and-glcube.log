@@ -1,0 +1,99 @@
+ ID is 270a
+[    3.725325] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[    3.732027] dwmmc_rockchip 10218000.mmc: allocated mmc-pwrseq
+[    3.738442] mmc_host mmc2: card is non-removable.
+[    3.758029] dwmmc_rockchip 1021c000.mmc: Using external DMA controller.
+[    3.767831] usbcore: registered new interface driver usbhid
+[    3.774260] usbhid: USB HID core driver
+[    3.785608] dwmmc_rockchip 1021c000.mmc: Version ID is 270a
+[    3.792148] dwmmc_rockchip
+[missed 4396 bytes]
+^M
+TAQ-102 rescue image
+^Mtaq102 login: root
+login[98]: root login on 'ttyGS0'^M
+# [   33.111581] taq102-wifi: no wlan0. The chip needs power removed -- a full power-off, not a reboot.
+8723cs did not give us wlan0
+-cube; ls /dev/dri; dmesg | grep -iE "lima|mali" | tail -5
+===V65===
+taq102-cube: insmod phy-rockchip-inno-dsidphy
+[   33.262095] taq102-cube: insmod phy-rockchip-inno-dsidphy
+taq102-cube: ok phy-rockchip-inno-dsidphy
+[   33.312734] taq102-cube: ok phy-rockchip-inno-dsidphy
+[   33.322296] Console: switching to colour dummy device 80x30
+[   33.325620] rockchip-drm display-subsystem: bound 1010e000.vop (ops 0xc11df848)
+[   33.326243] rockchip-drm display-subsystem: bound lvds (ops 0xc11e37e4)
+[   33.327079] rockchip-drm display-subsystem: [drm] [PLANE:35:plane-0] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   33.327302] rockchip-drm display-subsystem: [drm] [PLANE:37:plane-1] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   33.330803] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+taq102-cube: LVDS-1 is connected, modes: 1024x600 
+taq102-cube: insmod drm_shmem_helper
+taq102-cube: ok drm_shmem_helper
+taq102-cube: insmod gpu-sched
+taq102-cube: ok gpu-sched
+taq102-cube: insmod lima
+[   33.400236] taq102-cube: LVDS-1 is connected, modes: 1024x600 
+[   33.401087] taq102-cube: insmod drm_shmem_helper
+[   33.428433] Console: switching to colour frame buffer device 128x37
+[   33.467438] taq102-cube: ok drm_shmem_helper
+[   33.468335] taq102-cube: insmod gpu-sched
+[   33.528710] taq102-cube: ok gpu-sched
+[   33.529527] taq102-cube: insmod lima
+[   33.547195] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+[   33.576489] lima 10090000.gpu: gp - mali400 version major 1 minor 1
+[   33.585764] lima 10090000.gpu: pp0 - mali400 version major 1 minor 1
+[   33.602144] lima 10090000.gpu: pp1 - mali400 version major 1 minor 1
+[   33.611030] lima 10090000.gpu: l2_cache0 64K, 4-way, 64byte cache line, 64bit external bus
+[   33.621017] lima 10090000.gpu: bus rate = 148500000
+[   33.629449] lima 10090000.gpu: mod rate = 148500000
+[   33.645736] lima 10090000.gpu: error -ENODEV: _opp_set_regulators: no regulator (mali) found
+[   33.658104] [drm] Initialized lima 1.1.0 for 10090000.gpu on minor 1
+taq102-cube: ok lima
+[   33.696721] taq102-cube: ok lima
+taq102-cube: render node up: card0 card1 renderD128 
+[   33.754988] taq102-cube: render node up: card0 card1 renderD128 
+card0       card1       renderD128
+[   33.621017] lima 10090000.gpu: bus rate = 148500000
+[   33.629449] lima 10090000.gpu: mod rate = 148500000
+[   33.645736] lima 10090000.gpu: error -ENODEV: _opp_set_regulators: no regulator (mali) found
+[   33.658104] [drm] Initialized lima 1.1.0 for 10090000.gpu on minor 1
+[   33.696721] taq102-cube: ok lima
+# echo ===GL===; (GLCUBE_TRACE=1 /usr/bin/glcube > /tmp/glcube.log 2>&1 &); slee^M
+p 10; echo "--glcube alive: $(pgrep -c glcube)"; head -c 2500 /tmp/glcube.log; e^M
+===GL===
+-sh: pgrep: not found
+--glcube alive: 
+gbm backend: drm
+EGL 1.5 Mesa Project
+GL_RENDERER: Mali400
+GL_VERSION: OpenGL ES 2.0 Mesa 26.0.1
+touch open: No such file or directory
+glcube text: SemiBold 22: Inter
+glcube text: SemiBold 28: Inter
+glcube text: SemiBold 56: Inter
+glcube text: Regular 20: Inter
+glcube text: Regular 16: Inter
+accelerometer: background reader
+touch: declared 0x0, mapping 1024x600, flip xy
+diagnostics: finish off, static off, trace on
+statusbar text: Inter (/usr/share/fonts/taq102/Inter-SemiBold.ttf)
+KMS up: 1024x600@56 on connector 41
+53.8 FPS | max frame 367.02 ms | accel read 1197 us | slots 0: | cam 6.00 pinch_ref 0 dragging 0 | uploads/s 1.0 | glGetError 0x0 | panel 0 slide 0.00 armed 0 brightness 255 auto 0 timer 5
+52.8 FPS | max frame 54.71 ms | accel read 2892 us | slots 0: | cam 6.00 pinch_ref 0 dragging 0 | uploads/s 0.0 | glGetError 0x0 | panel 0 slide 0.00 armed 0 brightness 255 auto 0 timer 5
+52.8 FPS | max frame 54.75 ms | accel read 2892 us | slots 0: | cam 6.00 pinch_ref 0 dragging 0 | uploads/s 0.0 | glGetError 0x0 | panel 0 slide 0.00 armed 0 brightness 255 auto 0 timer 5
+52.8 FPS | max frame 54.74 ms | accel read 2892 us | slots 0: | cam 6.00 pinch_ref 0 dragging 0 | uploads/s 0.0 | glGetError 0x0 | panel 0 slide 0.00 armed 0 brightness 255 auto 0 timer 5
+52.8 FPS | max frame 54.68 ms | accel read 2892 us | slots 0: | cam 6.00 pinch_ref 0 dragging 0 | uploads/s 0.0 | glGetError 0x0 | panel 0 slide 0.00 armed 0 brightness 255 auto 0 timer 5
+52.8 FPS | max frame 54.96 ms | accel read 2892 us | slots 0: | cam 6.00 pinch_ref 0 dragging 0 | uploads/s 0.0 | glGetError 0x0 | panel 0 slide 0.00 armed 0 brightness 255 auto 0 timer 5
+52.8 FPS | max frame 54.75 ms | accel read 2892 us | slots 0: | cam 6.00 pinch_ref 0 dragging 0 | uploads/s 0.0 | glGetError 0x0 | panel 0 slide 0.00 armed 0 brightness 255 auto 0 timer 5
+52.8 FPS | max frame 54.70 ms | accel read 2892 us | slots 0: | cam 6.00 pinch_ref 0 dragging 0 | uploads/s 0.0 | glGetError 0x0 | panel 0 slide 0.00 armed 0 brightness 255 auto 0 timer 5
+
+--dmesg:
+[   33.602144] lima 10090000.gpu: pp1 - mali400 version major 1 minor 1
+[   33.611030] lima 10090000.gpu: l2_cache0 64K, 4-way, 64byte cache line, 64bit external bus
+[   33.621017] lima 10090000.gpu: bus rate = 148500000
+[   33.629449] lima 10090000.gpu: mod rate = 148500000
+[   33.645736] lima 10090000.gpu: error -ENODEV: _opp_set_regulators: no regulator (mali) found
+[   33.658104] [drm] Initialized lima 1.1.0 for 10090000.gpu on minor 1
+[   33.696721] taq102-cube: ok lima
+[   33.754988] taq102-cube: render node up: card0 card1 renderD128 
+# 

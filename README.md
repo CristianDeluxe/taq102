@@ -1479,3 +1479,18 @@ ramoops, a backlight beacon -- needed something that was not there. What worked
 was the framebuffer U-Boot leaves scanning out, `uboot_logo=0x02000000@0x9dc00000`:
 already lit before the kernel runs, needing nothing from it. The white screen we
 had all been staring at was the channel.
+
+## The cube runs on mainline (2026-09-09)
+
+Fourteen seconds after power-on, v66 is drawing `glcube` through Mesa's lima
+driver on the Mali-400 at 52.8 FPS, 1024x600, no errors. The kernel is the one
+that first showed the panel (variant M, unchanged); what was missing was a
+`gpu-sched.ko` left out of the ramdisk and a `&gpu { status = "okay"; }` the
+board DTS never had, because `rk3128.dtsi` ships the GPU disabled.
+
+Two images were spent first on the tempting shortcut: building the whole
+display stack into the kernel, once plain and once with the one-line genpd
+"fix" this project had queued. Both hang before userspace. The narrow fix is
+not that line, and `fw_devlink=off` with the PHY as a module stays the
+arrangement. Details and evidence in `kernel/mainline/FINDINGS.md` and
+`docs/evidence/2026-09-09-cube/`.

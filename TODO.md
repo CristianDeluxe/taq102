@@ -1,7 +1,7 @@
 # TODO
 
 > Consolidated from the accessible the working session, the reviewer, Cursor, and Antigravity
-> project history. Last reviewed: 2026-09-07. History coverage: Partial.
+> project history. Last reviewed: 2026-09-09. History coverage: Partial.
 > Unavailable: the session scratchpads of 2026-09-01 and 2026-09-02 (gone; the
 > the reviewer research report they held survives on the archive disk), and the reviewer's
 > 2026-09-01 round 3, which never answered. No Cursor or Antigravity history
@@ -11,11 +11,13 @@
 > verified complete · `[-]` obsolete or superseded. Closed work moves to
 > `TODO_LOG.md`.
 
-Device as of 2026-09-05: `boot` = `recovery-taq102-v43-appliance.img` (kernel
-v40, PHY PLL at 336 MHz, ramdisk `20260905-002916`), `recovery` = the matching
-stock-kernel rescue, BCB zero, proved by a round trip. The journal is
-`README.md` here and `~/p/brain/personal/denver-taq102-tablet.md`; images and
-checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
+Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
+v40, vendor 4.4.167), `recovery` = `recovery-taq102-v66-cube-auto.img` (mainline
+7.3.0-rc2, variant M kernel, glcube on lima), BCB = `boot-recovery`, so every
+power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
+appliance back. The journal is `README.md` here and
+`~/p/brain/personal/denver-taq102-tablet.md`; images and checksums are in
+`/Volumes/Datos4TB2/denver-taq102/`.
 
 ## Security
 
@@ -76,9 +78,6 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   with Mesa/Lima instead of the Utgard blob, and both firmware blobs are in the
   image. What blocks the port is no longer userspace but the kernel not
   reaching it; see `kernel/mainline/README.md`, "Four boots, no output".
-- [x] Recovered 2026-09-08: the button dance landed, the BCB was zeroed and the
-  tablet is back on v49 with glcube running. The crash log was NOT recovered --
-  see the next item.
 - [ ] The next mainline attempt must not lose its crash log again. Two causes,
   both now fixed but neither yet exercised: `tools/recover-from-mainline.sh`
   used the default known_hosts, where an older key for 192.168.1.51 fails
@@ -86,31 +85,33 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   the vendor kernel, which had already put modetest and libevdev there by the
   time it was read three minutes in. The rootfs `/init` now copies that region
   to /tmp before /data is even mounted, and parks it under /data afterwards.
-- [x] **Mainline boots.** 2026-09-08, v59: Linux 7.3.0-rc2 runs on the tablet
-  with the RK816 battery driver reporting real values, eMMC and /data, rtw88
-  associated with a DHCP lease, and the USB ACM console working. Evidence:
-  `docs/evidence/2026-09-08-mainline/`.
-- [x] **The panel works on mainline.** 2026-09-08: the kernel console is
-  visible on the tablet's own screen at the panel's real 1024x600, the LVDS
-  connector reports connected with the right 125x223 mm physical size, and the
-  VOP, our LVDS encoder patch and the PHY are all proved on hardware. It took
-  finding two mainline bugs; both are written up in
-  `kernel/mainline/ISOLATING-THE-DISPLAY-HANG.md` with before/after evidence.
-- [ ] Replace the `fw_devlink=off` workaround with the narrow fix. That boot
-  argument disables device links machine-wide; the real change is
-  `GENPD_FLAG_NO_SYNC_STATE` on the Rockchip power domains, which today set
-  only `GENPD_FLAG_PM_CLK | GENPD_FLAG_NO_STAY_ON`. One line, and it needs the
-  same A/B the workaround got.
+- [ ] Replace the `fw_devlink=off` workaround with a real fix. The one-line
+  candidate, `GENPD_FLAG_NO_SYNC_STATE` on the Rockchip power domains, was
+  tried in v63 with the display stack built in and the boot still hangs before
+  userspace (2026-09-09), so the mechanism is not fully understood. Needs a
+  trace from a built-in boot: an early printk of the blocked task onto the
+  bootloader framebuffer is the channel that would survive it.
+- [ ] Package the mainline modules. v66's ramdisk is hand-assembled:
+  `gpu-sched.ko`, `lima.ko`, `drm_shmem_helper.ko` and
+  `phy-rockchip-inno-dsidphy.ko` copied from the kernel build into the
+  Buildroot rootfs next to `taq102-cube` (now `br2-external/package/taq102-cube`).
+  The mainline defconfig should take them from the kernel's `modules_install`,
+  and `taq102_mainline_defconfig` should build the kernel from
+  `kernel/mainline/` in the first place.
+- [ ] Describe the RK816 regulators in the mainline board DTS and hand lima
+  `vdd_logic` as `mali-supply` so devfreq can run the OPP table; today the GPU
+  runs at the bootloader's 148.5 MHz (`lima: bus rate = 148500000`) and the
+  cube does not need more.
+- [ ] `modetest` cannot create a dumb buffer (-EINVAL). Moot for glcube,
+  which allocates through GBM and lima, but still unexplained.
 - [ ] Send both patches upstream: the genpd deadlock (with the stack trace in
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`) and
   `0010-drm-rockchip-lvds-do-not-hijack-the-panel-bridge.patch`. Neither is
   board-specific.
-- [ ] glcube still has no GPU: lima needs `gpu-sched`, which was left out of
-  the initramfs (`lima: Unknown symbol drm_sched_init`). Packaging, not a
-  defect. Also `modetest` fails to create a dumb buffer with -EINVAL, which is
-  worth understanding before blaming Mesa for anything.
-- [ ] Touch is untested: `silead` did not appear in the boot log, only the
-  rk805 pwrkey. Check whether the controller probed at all.
+- [ ] Touch does not work on mainline: `glcube` reports `touch open: No such
+  file or directory` (v65). The GSL3673 answers with chip ID 0x50910000 and
+  then fails a register write with -6, so the bus and the chip are alive;
+  the firmware load or the reset sequence is what to read next.
 - [-] Flash `recovery-taq102-v55-mainline-beacon.img` and read the panel. Built
   and verified 2026-09-08: same kernel and resource image as v54, ramdisk
   carrying the backlight beacon, the ramoops rescue and the userspace marker.

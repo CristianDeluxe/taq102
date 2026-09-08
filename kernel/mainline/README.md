@@ -350,3 +350,24 @@ holds power until the PMIC drops the rails, so the RAM was gone every time.
 The backlight beacon runs near the end of `/init`. The bootloader's own
 framebuffer needed none of them: it is already there, already lit, and it
 survives because the bootloader put it there before the kernel ran at all.
+
+## The image recipe that runs the cube (2026-09-09)
+
+Three inputs, all in `/Volumes/Datos4TB2/denver-taq102/gate3-build/`:
+
+- kernel: `zImage-7.3.0-rc2-variant-M` -- the VM tree at
+  `/work/linux-mainline` with patches 0001-0007, 0009, 0010 and `.config` as
+  `0008` now describes it (PHY and Lima `=m`, everything else in);
+- resource: `tools/make-resource.py <stock second> rk3126-taq102-v65.dtb` --
+  the DTB from this directory's `rk3126-taq102.dts`, which is the VM's file
+  copied out (simple-framebuffer, reboot-mode, the LVDS endpoint, `&gpu`);
+- ramdisk: `rootfs-v66-cube-auto.cpio.gz` -- Buildroot's
+  `taq102_mainline_defconfig` output with the four modules copied into
+  `/lib/modules/$(uname -r)/`, `/usr/sbin/taq102-cube`, and inittab running
+  `taq102-cube app`.
+
+Then `KERNEL=... SECOND=... MKBOOTIMG=tools/vendor/mkbootimg.py
+sh tools/make-recovery.sh <ramdisk> <out.img>` and `tools/flash-recovery.sh`.
+From a running mainline image `/usr/sbin/reboot-loader` drops the tablet into
+loader mode, so no buttons are needed between images; only a hung one costs
+I the dance, with `tools/loader-watch.sh recovery <img>` armed first.

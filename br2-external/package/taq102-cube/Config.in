@@ -1,0 +1,7 @@
+config BR2_PACKAGE_TAQ102_CUBE
+	bool "taq102-cube (mainline display and GPU module loader)"
+	help
+	  The script inittab runs on the mainline image: loads the LVDS PHY,
+	  waits for the DRM device, loads gpu-sched and lima, then hands over
+	  to taq102-app. The modules themselves come out of the kernel build
+	  (kernel/mainline/) and are not packaged here yet; see TODO.md.

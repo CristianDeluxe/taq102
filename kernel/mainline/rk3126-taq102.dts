@@ -37,6 +37,12 @@
 		#size-cells = <1>;
 		ranges;
 
+		/* The buffer the panel is scanning out; never hand it to the allocator. */
+		uboot_fb: framebuffer@9dc00000 {
+			reg = <0x9dc00000 (600 * 4096)>;
+			no-map;
+		};
+
 		ramoops@68100000 {
 			compatible = "ramoops";
 			reg = <0x68100000 0xf0000>;
@@ -44,6 +50,29 @@
 			console-size = <0x80000>;
 			pmsg-size = <0x50000>;
 		};
+	};
+
+	/*
+	 * The console of last resort: the framebuffer U-Boot is already scanning
+	 * out. Its command line names it -- uboot_logo=0x02000000@0x9dc00000 --
+	 * and the lit panel with no picture, the white screen this project has
+	 * been staring at, IS that buffer. Pointing simple-framebuffer at it puts
+	 * printk on the panel from very early, with no USB, no DRM driver, and
+	 * nothing that has to survive a power cycle; the previous attempt at a
+	 * diagnostic channel lived in RAM and the recovery procedure, which holds
+	 * power until the PMIC drops the rails, erased it every time.
+	 *
+	 * 1024x600, XR24 with a 4096-byte pitch: the format the vendor kernel
+	 * reports for the live scanout in /sys/kernel/debug/dri/0/summary.
+	 */
+	framebuffer: framebuffer@9dc00000 {
+		compatible = "simple-framebuffer";
+		reg = <0x9dc00000 (600 * 4096)>;
+		width = <1024>;
+		height = <600>;
+		stride = <4096>;
+		format = "x8r8g8b8";
+		status = "okay";
 	};
 
 	aliases {
@@ -158,7 +187,8 @@
 };
 
 &lvds_out {
-	lvds_out_panel: endpoint {
+	lvds_out_panel: endpoint@0 {
+		reg = <0>;
 		remote-endpoint = <&panel_in_lvds>;
 	};
 };
@@ -376,5 +406,40 @@
 	non-removable;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdio_clk &sdio_cmd &sdio_bus4>;
+	status = "okay";
+};
+
+/*
+ * Let `reboot loader` work under mainline. The vendor kernel has a notifier
+ * that turns the reboot command string into a magic in the PMU register
+ * U-Boot checks on the next start; mainline does the same thing through
+ * syscon-reboot-mode, but only if the DT says so -- and without it the only
+ * way into loader mode is the two-button dance, which is unreliable on this
+ * board and has been done by hand a dozen times.
+ *
+ * Offset and magics transcribed from the tablet's own stock tree.
+ */
+
+&pmu {
+	reboot-mode {
+		compatible = "syscon-reboot-mode";
+		offset = <0x38>;
+		mode-bootloader = <0x5242c301>;
+		mode-charge = <0x5242c30b>;
+		mode-fastboot = <0x5242c309>;
+		mode-loader = <0x5242c301>;
+		mode-normal = <0x5242c300>;
+		mode-recovery = <0x5242c303>;
+		mode-ums = <0x5242c30c>;
+	};
+};
+
+/*
+ * The Mali-400 MP2, for lima. rk3128.dtsi leaves it disabled; clocks,
+ * reset, OPPs and RK3128_PD_GPU all come from there. The vendor tree also
+ * hands it vdd_logic as mali-supply; that regulator is not described on
+ * mainline yet, and lima treats the supply as optional.
+ */
+&gpu {
 	status = "okay";
 };
