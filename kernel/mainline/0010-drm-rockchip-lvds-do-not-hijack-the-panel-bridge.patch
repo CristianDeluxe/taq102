@@ -1,0 +1,75 @@
+drm/rockchip: lvds: do not take over a panel bridge's funcs
+
+rockchip_lvds_bind() wraps a panel with drm_panel_bridge_add_typed(), then
+sets lvds->panel to NULL because the bridge owns it now. Immediately after,
+it overwrites that bridge's ops and funcs with its own -- and its
+get_modes() reads lvds->panel, the pointer just set to NULL.
+
+So the connector asks the bridge for modes, the bridge (now wearing this
+driver's funcs) asks for lvds->panel, gets NULL, and returns nothing. The
+panel's timing never reaches the connector, which falls back to the generic
+mode list. On a 1024x600 LVDS panel that means the connector offers 1024x768,
+800x600 and friends, and nothing can drive the display correctly.
+
+Measured on a Rockchip RK3126C tablet with a 1024x600 panel. Before:
+
+  rockchip-lvds lvds: panel=4fcc1c99 bridge=00000000 endpoint_id=0 children=1
+  rockchip-lvds lvds: get_modes panel=00000000 returned 0
+  $ cat /sys/class/drm/card0-LVDS-1/modes
+  1024x768
+  800x600
+  ...
+
+After, the connector offers exactly the panel's own mode:
+
+  $ cat /sys/class/drm/card0-LVDS-1/modes
+  1024x600
+
+A panel wrapped by drm_panel_bridge_add_typed() already answers get_modes
+from the panel, so leave its funcs alone; only claim them for a bridge this
+driver found in the device tree itself.
+
+diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+index 6baa25f97..79d19966a 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
++++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
+@@ -664,6 +664,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+ 	int ret = 0, child_count = 0;
+ 	const char *name;
+ 	u32 endpoint_id = 0;
++	bool panel_bridge = false;
+ 
+ 	lvds->drm_dev = drm_dev;
+ 	port = of_graph_get_port_by_id(dev->of_node, 1);
+@@ -731,6 +732,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+ 	drm_encoder_helper_add(encoder, lvds->soc_data->helper_funcs);
+ 
+ 	if (lvds->panel) {
++		panel_bridge = true;
+ 		lvds->bridge = drm_panel_bridge_add_typed(lvds->panel, DRM_MODE_CONNECTOR_LVDS);
+ 		drm_panel_put(lvds->panel);
+ 		lvds->panel = NULL;
+@@ -741,9 +743,20 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+ 	}
+ 
+ 	if (lvds->bridge) {
+-		lvds->bridge->driver_private = lvds;
+-		lvds->bridge->ops = DRM_BRIDGE_OP_MODES;
+-		lvds->bridge->funcs = &rockchip_lvds_bridge_funcs;
++		/*
++		 * Only claim the bridge's ops when it is a bridge this driver
++		 * found itself. A panel wrapped by drm_panel_bridge_add_typed()
++		 * already answers get_modes from the panel, and taking those
++		 * funcs over here would route the connector back into
++		 * rockchip_lvds_bridge_get_modes(), which reads lvds->panel --
++		 * set to NULL a few lines above. The panel's timing would never
++		 * reach the connector.
++		 */
++		if (!panel_bridge) {
++			lvds->bridge->driver_private = lvds;
++			lvds->bridge->ops = DRM_BRIDGE_OP_MODES;
++			lvds->bridge->funcs = &rockchip_lvds_bridge_funcs;
++		}
+ 
+ 		ret = drm_bridge_attach(encoder, lvds->bridge, NULL, DRM_BRIDGE_ATTACH_NO_CONNECTOR);
+ 		if (ret)
