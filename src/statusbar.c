@@ -9,8 +9,29 @@
 #define GREEN 0xFF34C759u   // iOS systemGreen, the charging fill
 #define RED   0xFFFF3B30u   // iOS systemRed, the low-battery fill
 
-// The charging bolt, 5 wide by 7 tall, bit 4 the left column.
-static const unsigned char BOLT[7] = { 0x03, 0x06, 0x0C, 0x1F, 0x06, 0x0C, 0x18 };
+// The charging bolt as the six-point polygon iOS draws, in a unit box with y
+// running down. It replaced a 5-by-7 bitmap: scaled up to the icon's height
+// that bitmap was the one shape in the bar with visible steps, because the
+// supersampling that smooths everything else can only average what the
+// geometry already describes.
+static const float BOLT[6][2] = {
+    { 0.62f, 0.00f }, { 0.20f, 0.52f }, { 0.45f, 0.52f },
+    { 0.38f, 1.00f }, { 0.80f, 0.46f }, { 0.55f, 0.46f },
+};
+
+// Even-odd ray cast, the standard point-in-polygon test: count the edges a
+// ray to the left crosses.
+static int in_bolt(float x, float y) {
+    int inside = 0;
+    for (int i = 0, j = 5; i < 6; j = i++) {
+        float xi = BOLT[i][0], yi = BOLT[i][1];
+        float xj = BOLT[j][0], yj = BOLT[j][1];
+        if ((yi > y) != (yj > y) &&
+            x < (xj - xi) * (y - yi) / (yj - yi) + xi)
+            inside = !inside;
+    }
+    return inside;
+}
 
 // The Wi-Fi fan: a dot and three arcs of a 90-degree sector opening upward
 // from the apex at (ax, ay). `lit` arcs from the inside out take ink, the
@@ -47,11 +68,16 @@ static void battery_icon(struct canvas *c, int x, int y, int w, int h, int cap, 
     if (fill_w > 0)
         canvas_round_rect(c, x + line + gap, y + line + gap, fill_w, inner_h, inner_r, col);
     if (charging) {
-        int s = inner_h / 7 > 1 ? inner_h / 7 : 1;
-        int bx = x + w / 2 - 5 * s / 2, by = y + h / 2 - 7 * s / 2;
-        for (int row = 0; row < 7; row++)
-            for (int k = 0; k < 5; k++)
-                if (BOLT[row] & (16 >> k)) canvas_fill_rect(c, bx + k * s, by + row * s, s, s, sty->pale);
+        // Sized to the cell, not to a glyph grid: the bolt stands as tall as
+        // the fill it sits on, less a hair of margin.
+        int bh = inner_h * 6 / 7, bw = bh * 3 / 5;
+        if (bh < 1) bh = 1;
+        if (bw < 1) bw = 1;
+        int bx = x + w / 2 - bw / 2, by = y + h / 2 - bh / 2;
+        for (int py = 0; py < bh; py++)
+            for (int px = 0; px < bw; px++)
+                if (in_bolt((px + 0.5f) / bw, (py + 0.5f) / bh))
+                    canvas_put(c, bx + px, by + py, sty->pale);
     }
 }
 

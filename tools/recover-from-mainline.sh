@@ -51,7 +51,12 @@ while [ "$(date +%s)" -lt "$DEADLINE" ]; do
 done
 
 echo "waiting for ssh, to grab the crash log before it is overwritten"
-SSH="ssh -i $KEY -o ConnectTimeout=4 -o BatchMode=yes -o StrictHostKeyChecking=accept-new root@$IP"
+# A known_hosts of its own. The user's has an older key for this address from
+# a machine that held it before, so the default file fails verification and the
+# dump never happens -- which is exactly what lost the first crash log.
+KH="${KNOWN_HOSTS:-$OUT/taq102-known-hosts}"
+ssh-keyscan -T 10 -t ed25519 "$IP" 2>/dev/null > "$KH" || true
+SSH="ssh -i $KEY -o ConnectTimeout=4 -o BatchMode=yes -o UserKnownHostsFile=$KH -o StrictHostKeyChecking=accept-new root@$IP"
 while [ "$(date +%s)" -lt "$DEADLINE" ]; do
     if $SSH true 2>/dev/null; then
         $SSH "dd if=/dev/mem bs=4096 skip=\$(($RAMOOPS/4096)) count=240 2>/dev/null" \

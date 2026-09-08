@@ -87,6 +87,23 @@ for BL in /sys/class/backlight/*/brightness; do
     echo "$LEVEL" > "$BL" 2>/dev/null && echo "$BUILD_ID: backlight $LEVEL of $MAX" > /dev/kmsg
 done
 
+# A crash log left by a previous kernel, rescued before anything can allocate
+# over it. The mainline diagnostic images put a ramoops region at 0x68100000,
+# which is ordinary RAM to this kernel -- on 2026-09-08 the first captured log
+# was already overwritten by modetest and libevdev by the time it was read over
+# ssh, three minutes into the boot. Copying it here, before /data is even
+# mounted, is the only way to win that race. 960 KB, and it costs nothing when
+# there is nothing there: the signature check discards a region full of
+# whatever the last boot left.
+if [ -c /dev/mem ] || mknod /dev/mem c 1 1 2>/dev/null; then
+    dd if=/dev/mem of=/tmp/ramoops-prev.bin bs=4096 skip=426240 count=240 2>/dev/null
+    if head -c 4 /tmp/ramoops-prev.bin 2>/dev/null | grep -q DBGC; then
+        echo "$BUILD_ID: rescued a previous kernel's ramoops from 0x68100000" > /dev/kmsg
+    else
+        rm -f /tmp/ramoops-prev.bin
+    fi
+fi
+
 # Persistent storage. Everything above this line lives in RAM and dies at
 # reboot; the last partition -- Android's `userdata`, 55 GB -- is where anything
 # that has to survive goes. Mount it only if it already carries a filesystem:
@@ -111,6 +128,12 @@ if [ -n "$DATA" ] && [ -b "$DATA" ]; then
     fi
 else
     echo "$BUILD_ID: no partition at LBA 4867072; /data left empty" > /dev/kmsg
+fi
+
+# Now that /data exists, park the rescued crash log where it survives a reboot.
+if [ -s /tmp/ramoops-prev.bin ] && [ -d /data/. ]; then
+    cp /tmp/ramoops-prev.bin "/data/ramoops-$(date +%Y%m%d-%H%M%S).bin" 2>/dev/null &&
+        echo "$BUILD_ID: previous ramoops saved under /data" > /dev/kmsg
 fi
 
 # BusyBox init never runs rcS here, so nothing else sets the hostname; mdnsd
