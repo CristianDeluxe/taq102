@@ -26,6 +26,17 @@ BCB_LBA=24608
 RAMOOPS=0x68100000
 DEADLINE=$(( $(date +%s) + ${1:-3600} ))
 
+# Before anything else, record what is on the USB bus. A mainline kernel that
+# got as far as binding g_serial appears as 0525:a4a7 ("Linux-USB Serial
+# Gadget"), NOT as the 1d6b:0104 the configfs gadget uses, and not as anything
+# with "rockchip" in its name -- which is how it was looked for, and missed,
+# on 2026-09-08. If the tablet is enumerating at all, this says so.
+echo "USB bus before recovery:"
+ioreg -p IOUSB -l 2>/dev/null | grep -iE '"USB Product Name"|"idVendor"|"idProduct"' |
+    paste - - - 2>/dev/null | sed 's/^/  /' || true
+ls /dev/cu.usbmodem* 2>/dev/null | sed 's/^/  tty: /' || echo "  no usbmodem tty"
+echo
+
 echo "waiting for loader mode (deadline ${1:-3600}s). Do the button dance now."
 while [ "$(date +%s)" -lt "$DEADLINE" ]; do
     if "$RK" ld 2>/dev/null | grep -qiE "loader|maskrom"; then
