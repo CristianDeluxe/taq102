@@ -43,3 +43,44 @@ What each outcome establishes:
   but it would be worth knowing.
 
 The order that costs the fewest attempts is A, then B, then D, then C.
+
+
+## Results, 2026-09-08 evening
+
+| image | result | what it establishes |
+| --- | --- | --- |
+| **A** reboot-mode only, no DRM | **boots** | reboot-mode is innocent. And `reboot loader` now works from the console, so the button dance is no longer needed between attempts as long as a kernel boots. |
+| **B** DRM, no reboot-mode | **hangs** | the fault is in the display stack. |
+| **E** DRM + the missing h2p clock | **hangs** | the missing `HCLK_VIO_H2P` gate was a good hypothesis and is not the cause. |
+
+Eliminated by reading, not by burning an attempt: the RK3128 power-domain table
+in mainline matches the vendor's bit for bit (VIO = pwr 3, status 3, req 2), so
+the domain description is not the problem.
+
+### The change of approach that should have come three variants earlier
+
+Each variant cost a physical button dance to recover, which buys one bit of
+information per intervention. **F** ends that: the whole display stack is built
+as modules -- rockchipdrm, the inno DSI PHY, panel-lvds, lima -- so the kernel
+always boots to a console and the pieces are inserted by hand afterwards.
+
+`/usr/sbin/taq102-drm-probe` in that image loads them one at a time and prints
+what it is *about* to load before loading it, so if the machine dies the last
+line names the piece that killed it. glcube's autostart is disabled there so it
+cannot grab the panel mid-experiment.
+
+    taq102-drm-probe phy    # the PHY alone; it never touches the VOP
+    taq102-drm-probe drm    # PHY, panel, then rockchipdrm
+    taq102-drm-probe        # everything, in dependency order
+
+### G, for the one split F cannot make
+
+`ROCKCHIP_LVDS` compiles *into* rockchipdrm.ko, so no amount of module loading
+separates the VOP from the LVDS encoder. **G** does it in the device tree
+instead: DRM built in, `&lvds` set to `disabled`.
+
+- **G boots** -- the VOP is fine and the fault is in the LVDS encoder or the
+  PHY it drives, which is where our own patches live.
+- **G hangs** -- the VOP alone is enough to kill it, our LVDS work is not
+  implicated, and the problem is mainline's VOP against a panel U-Boot left
+  scanning out.
