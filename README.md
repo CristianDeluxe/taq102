@@ -1456,3 +1456,26 @@ under the sanitizers, fonts included.
 matching stock-kernel rescue,
 whose backlight now boots at 40 so a plain USB port charges it. The rescue
 screen is set in Inter too.
+
+
+## Linux 7.3 runs on this tablet (2026-09-08)
+
+Battery, storage, Wi-Fi, USB and the panel, on mainline. The kernel console is
+visible on the tablet's own screen at the panel's real 1024x600, the RK816
+driver reports true battery values, `/data` mounts off the eMMC and `rtw88`
+takes a DHCP lease.
+
+Getting there turned up **two bugs in mainline itself**, neither specific to
+this board: a genpd deadlock that blocks any driver attaching to a Rockchip
+power domain, and an LVDS driver that hides its own panel behind a bridge whose
+funcs it then overwrites. Both are written up with before-and-after evidence,
+along with the seven hypotheses that were wrong and the two mistakes in method
+that cost the most, in `kernel/mainline/FINDINGS.md`.
+
+The one that is worth carrying into any future debugging on this board: **a
+diagnostic channel that depends on the thing being diagnosed is not a channel.**
+Six attempts produced no output because every channel tried -- the USB gadget,
+ramoops, a backlight beacon -- needed something that was not there. What worked
+was the framebuffer U-Boot leaves scanning out, `uboot_logo=0x02000000@0x9dc00000`:
+already lit before the kernel runs, needing nothing from it. The white screen we
+had all been staring at was the channel.

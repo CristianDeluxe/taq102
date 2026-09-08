@@ -1,0 +1,49 @@
+
+TAQ-102 rescue image
+taq102 login: root
+login[97]: root login on 'ttyGS0'
+# [   33.115857] taq102-wifi: no wlan0. The chip needs power removed -- a full power-off, not a reboot.
+8723cs did not give us wlan0
+echo ===M===; insmod /lib/modules/$(uname -r)/phy-rockchip-inno-dsidphy.ko; sl
+eep 4; cat /sys/class/drm/card0-LVDS-1/modes | head -3
+===M===
+[   34.415523] Console: switching to colour dummy device 80x30
+[   34.417901] rockchip-drm display-subsystem: bound 1010e000.vop (ops 0xc11df848)
+[   34.418315] rockchip-drm display-subsystem: bound lvds (ops 0xc11e37e4)
+[   34.420365] rockchip-drm display-subsystem: [drm] [PLANE:35:plane-0] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   34.420581] rockchip-drm display-subsystem: [drm] [PLANE:37:plane-1] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   34.422792] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+[   34.537084] Console: switching to colour frame buffer device 128x37
+[   34.583718] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+[   37.093757] taq102-usb-beacon: code 4
+1024x600
+# [   49.328081] taq102-usb-beacon: code 4
+echo ===FULL===; cat /sys/class/drm/card0-LVDS-1/modes; head -8 /sys/kernel/de
+bug/dri/0/summary 2>/dev/null
+===FULL===
+1024x600
+# [   61.561959] taq102-usb-beacon: code 4
+[   73.797767] taq102-usb-beacon: code 4
+[   86.032961] taq102-usb-beacon: code 4
+[   98.268088] taq102-usb-beacon: code 4
+[  110.518760] taq102-usb-beacon: code 4
+[  122.770799] taq102-usb-beacon: code 4
+[  135.019962] taq102-usb-beacon: code 4
+[  147.261272] taq102-usb-beacon: code 4
+[  159.511755] taq102-usb-beacon: code 4
+[  171.760188] taq102-usb-beacon: code 4
+echo ===STOPBEACON===; killall taq102-usb-beacon 2>/dev/null; killall sleep 2>
+/dev/null; for b in /sys/class/backlight/*/brightness; do cat ${b%brightness}max
+_brightness > $b; done; echo "beacon stopped, backlight steady"
+===STOPBEACON===
+beacon stopped, backlight steady
+# echo ===PATTERN===; modetest -M rockchip -c 2>&1 | grep -A2 LVDS | head -3; (t
+imeout 25 modetest -M rockchip -s 41@36:1024x600 >/tmp/mt.log 2>&1 &) ; sleep 4;
+ tail -2 /tmp/mt.log
+===PATTERN===
+41	40	connected	LVDS-1         	125x223		1	40
+  modes:
+	index name refresh (Hz) hdisp hss hse htot vdisp vss vse vtot
+failed to create dumb buffer: Invalid argument
+opened device `RockChip Soc DRM` on driver `rockchip` (version 1.0.0 at 0)
+# 

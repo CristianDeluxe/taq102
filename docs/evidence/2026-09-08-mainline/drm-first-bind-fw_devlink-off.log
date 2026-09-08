@@ -1,0 +1,167 @@
+
+[missed 5144 bytes]
+[    3.255110] input: rk805 pwrkey as /devices/platform/2005a000.i2c/i2c-2/2-001a/rk805-pwrkey.3.auto/input/input0
+[    3.468294] rk808-rtc rk808-rtc.4.auto: registered as rtc0
+[    3.485464] rk808-rtc rk808-rtc.4.auto: setting system clock to 2026-09-08T21:23:13 UTC (1788902593)
+[    3.696455] rk816-charger rk816-charger.6.auto: restored 100% from the last boot
+[    3.869496] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[    3.927414] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[    3.954009] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[    3.960761] dwmmc_rockchip 10218000.mmc: allocated mmc-pwrseq
+[    3.967175] mmc_host mmc2: card is non-removable.
+[    3.975372] dwmmc_rockchip 1021c000.mmc: Using external DMA controller.
+[    3.981922] dwmmc_rockchip 1021c000.mmc: Version ID is 270a
+[    3.988887] usbcore: registered new interface driver usbhid
+[    3.995279] usbhid: USB HID core driver
+[    4.021928] dwmmc_rockchip
+[missed 4539 bytes]
+[   49.330471] taq102-usb-beacon: code 4
+[   61.564141] taq102-usb-beacon: code 4
+
+TAQ-102 rescue image
+taq102 login: root
+login[99]: root login on 'ttyGS0'
+# echo ---I---; grep -o "fw_devlink=[a-z]*" /proc/cmdline; dmesg | grep -ci "syn
+c_state() pending"
+---I---
+fw_devlink=off
+0
+# [   73.797248] taq102-usb-beacon: code 4
+echo ===TEST===; /usr/sbin/taq102-phy-ab ours
+===TEST===
+phy-ab: about to insmod /lib/modules/7.3.0-rc2-g28924df2a08f-dirty/phy-rockchip-inno-dsidphy.ko
+[   80.797504] phy-ab: about to insmod /lib/modules/7.3.0-rc2-g28924df2a08f-dirty/phy-rockchip-inno-dsidphy.ko
+[   80.866953] phy-ab: LOADED OK
+[   80.876216] Console: switching to colour dummy device 80x30
+[   80.898670] rockchip-drm display-subsystem: bound 1010e000.vop (ops 0xc11df848)
+[   80.899109] rockchip-drm display-subsystem: bound lvds (ops 0xc11e37e4)
+[   80.899803] rockchip-drm display-subsystem: [drm] [PLANE:35:plane-0] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   80.899994] rockchip-drm display-subsystem: [drm] [PLANE:37:plane-1] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   80.901675] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+[   81.011234] Console: switching to colour frame buffer device 128x48
+[   81.067114] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+[   86.039804] taq102-usb-beacon: code 4
+phy-ab: 8 s later, insmod is 0 process(es) in flight
+[   80.899803] rockchip-drm display-subsystem: [drm] [PLANE:35:plane-0] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   80.899994] rockchip-drm display-subsystem: [drm] [PLANE:37:plane-1] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   80.901675] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+[   81.011234] Console: switching to colour frame buffer device 128x48
+[   81.067114] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+[   86.039804] taq102-usb-beacon: code 4
+# [   98.285977] taq102-usb-beacon: code 4
+echo ===DRI===; ls /dev/dri/; cat /sys/class/drm/card0-LVDS-1/status 2>/dev/nu
+ll; cat /sys/class/drm/card0-LVDS-1/modes 2>/dev/null | head -2; head -6 /sys/ke
+rnel/debug/dri/0/summary 2>/dev/null
+===DRI===
+[1;35mcard0[m
+connected
+1024x768
+800x600
+# [  110.531739] taq102-usb-beacon: code 4
+[  122.775820] taq102-usb-beacon: code 4
+echo ===PANEL===; insmod /lib/modules/$(uname -r)/panel-lvds.ko && echo PANEL-
+OK; sleep 3; cat /sys/class/drm/card0-LVDS-1/modes | head -3; head -8 /sys/kerne
+l/debug/dri/0/summary 2>/dev/null
+===PANEL===
+[  123.887492] panel_lvds: module is already loaded
+[  123.909949] panel_lvds: module is already loaded
+insmod: can't insert '/lib/modules/7.3.0-rc2-g28924df2a08f-dirty/panel-lvds.ko': Invalid argument
+1024x768
+800x600
+800x600
+# [  135.021696] taq102-usb-beacon: code 4
+[  147.266246] taq102-usb-beacon: code 4
+echo ===LIMA===; for m in drm_exec drm_shmem_helper drm_gpuvm lima; do insmod 
+/lib/modules/$(uname -r)/$m.ko 2>&1 | tail -1; done; ls /dev/dri/; dmesg | grep 
+-i "panel\|lima" | tail -4
+===LIMA===
+[  148.873832] lima: Unknown symbol drm_sched_entity_push_job (err -2)
+[  148.874847] lima: Unknown symbol drm_sched_entity_init (err -2)
+[  148.875610] lima: Unknown symbol drm_sched_job_cleanup (err -2)
+[  148.876190] lima: Unknown symbol drm_sched_job_add_syncobj_dependency (err -2)
+[  148.876924] lima: Unknown symbol drm_sched_job_init (err -2)
+[  148.877545] lima: Unknown symbol drm_sched_fault (err -2)
+[  148.878154] lima: Unknown symbol drm_sched_start (err -2)
+[  148.878782] lima: Unknown symbol drm_sched_entity_destroy (err -2)
+[  148.879278] lima: Unknown symbol drm_sched_job_add_implicit_dependencies (err -2)
+[  148.898984] lima: Unknown symbol drm_sched_init (err -2)
+[  148.909129] lima: Unknown symbol drm_sched_job_arm (err -2)
+[  148.918703] lima: Unknown symbol drm_sched_fini (err -2)
+[  148.928397] lima: Unknown symbol drm_sched_stop (err -2)
+[  148.937741] lima: Unknown symbol drm_sched_increase_karma (err -2)
+[  148.957099] lima: Unknown symbol drm_sched_resubmit_jobs (err -2)
+[  148.988009] lima: Unknown symbol drm_sched_entity_push_job (err -2)
+[  148.997172] lima: Unknown symbol drm_sched_entity_init (err -2)
+[  149.006129] lima: Unknown symbol drm_sched_job_cleanup (err -2)
+[  149.024805] lima: Unknown symbol drm_sched_job_add_syncobj_dependency (err -2)
+[  149.033822] lima: Unknown symbol drm_sched_job_init (err -2)
+[  149.042171] lima: Unknown symbol drm_sched_fault (err -2)
+[  149.060575] lima: Unknown symbol drm_sched_start (err -2)
+[  149.068984] lima: Unknown symbol drm_sched_entity_destroy (err -2)
+[  149.077059] lima: Unknown symbol drm_sched_job_add_implicit_dependencies (err -2)
+[  149.085253] lima: Unknown symbol drm_sched_init (err -2)
+[  149.103569] lima: Unknown symbol drm_sched_job_arm (err -2)
+[  149.111873] lima: Unknown symbol drm_sched_fini (err -2)
+[  149.120054] lima: Unknown symbol drm_sched_stop (err -2)
+[  149.138251] lima: Unknown symbol drm_sched_increase_karma (err -2)
+[  149.146426] lima: Unknown symbol drm_sched_resubmit_jobs (err -2)
+insmod: can't insert '/lib/modules/7.3.0-rc2-g28924df2a08f-dirty/lima.ko': unknown symbol in module, or unknown parameter
+[1;35mcard0[m
+[  149.111873] lima: Unknown symbol drm_sched_fini (err -2)
+[  149.120054] lima: Unknown symbol drm_sched_stop (err -2)
+[  149.138251] lima: Unknown symbol drm_sched_increase_karma (err -2)
+[  149.146426] lima: Unknown symbol drm_sched_resubmit_jobs (err -2)
+# [  159.512110] taq102-usb-beacon: code 4
+[  171.774952] taq102-usb-beacon: code 4
+echo ===WHYPANEL===; dmesg | grep -iE "panel|lvds" | grep -v beacon | tail -8;
+ echo "--- panel device bound?"; ls -l /sys/bus/platform/devices/panel/driver 2>
+&1 | tail -1
+===WHYPANEL===
+[    0.000000] OF: fdt: Machine model: Denver TAQ-102 (RK3126C, LVDS)
+[   21.606971] platform lvds: deferred probe pending: rockchip-lvds: Platform initialization failed
+[   80.899109] rockchip-drm display-subsystem: bound lvds (ops 0xc11e37e4)
+[  123.887492] panel_lvds: module is already loaded
+[  123.909949] panel_lvds: module is already loaded
+--- panel device bound?
+lrwxrwxrwx    1 root     root             0 Sep  8 21:26 /sys/bus/platform/devices/panel/driver -> ../../../bus/platform/drivers/panel-lvds
+# [  184.048762] taq102-usb-beacon: code 4
+echo ===MODES===; cat /sys/class/drm/card0-LVDS-1/modes; echo "--- summary:"; 
+head -12 /sys/kernel/debug/dri/0/summary 2>/dev/null
+===MODES===
+1024x768
+800x600
+800x600
+848x480
+640x480
+--- summary:
+# [  196.311568] taq102-usb-beacon: code 4
+[  208.572154] taq102-usb-beacon: code 4
+echo ===MODETEST===; modetest -M rockchip -c 2>&1 | grep -A3 "LVDS" | head -8;
+ echo "--- try a mode:"; timeout 10 modetest -M rockchip -s 41:1024x768 2>&1 | t
+ail -3 &
+===MODETEST===
+41	40	connected	LVDS-1         	0x0		5	40
+  modes:
+	index name refresh (Hz) hdisp hss hse htot vdisp vss vse vtot
+  #0 1024x768 60.00 1024 1048 1184 1344 768 771 777 806 65000 flags: nhsync, nvsync; type: driver
+--- try a mode:
+# [  220.833210] taq102-usb-beacon: code 4
+[  233.091539] taq102-usb-beacon: code 4
+[  245.348741] taq102-usb-beacon: code 4
+echo ===PDBG===; dmesg | grep -iE "panel-lvds|panel_lvds|orientation|panel-tim
+ing" | tail -6; echo "--- the panel node as the kernel sees it:"; ls /proc/devic
+e-tree/panel/ 2>/dev/null | tr "\n" " "
+===PDBG===
+[  123.887492] panel_lvds: module is already loaded
+[  123.909949] panel_lvds: module is already loaded
+--- the panel node as the kernel sees it:
+backlight compatible data-mapping enable-gpios height-mm name panel-timing port width-mm [1]+  Stopped (tty input)        timeout 10 modetest -M rockchip -s 41:1024x768 2>&1 | tail -3
+# echo ===GRAPH===; ls /proc/device-tree/lvds/ports/port@1/ 2>/dev/null | tr "\n
+" " "; echo; ls /proc/device-tree/lvds/ports/port@1/endpoint/ 2>/dev/null | tr "
+\n" " "; echo; echo "--- panel port endpoint:"; ls /proc/device-tree/panel/port/
+endpoint/ 2>/dev/null | tr "\n" " "
+===GRAPH===
+endpoint name reg 
+name phandle remote-endpoint 
+--- panel port endpoint:
+name phandle remote-endpoint # reboot
