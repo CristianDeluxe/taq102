@@ -302,3 +302,46 @@ cycle: the text is simply on the screen, to be read or photographed.
 That is the next thing to try, and it is the first proposed channel whose
 failure mode is also informative -- if no text appears, the kernel is dying
 before fbcon registers, which is earlier than anything reached so far.
+
+
+## Linux 7.3.0-rc2 boots on the TAQ-102 (2026-09-08)
+
+v59, and the console that finally answered was the one the bootloader had been
+handing us all along.
+
+`uboot_logo=0x02000000@0x9dc00000` on the vendor command line is a framebuffer
+U-Boot leaves lit and scanning out -- the white screen this hunt had been
+staring at for six attempts. A `simple-framebuffer` node pointing at it, with
+`CONFIG_FB_SIMPLE` and fbcon, and `CONFIG_DRM_ROCKCHIP` **off** so nothing
+takes the panel away from that buffer, put printk on the screen from early
+boot. And with the panel no longer contested, the USB gadget came up too: the
+ACM console enumerated for the first time on mainline and the whole log came
+out over the cable.
+
+What the log shows, running:
+
+- `arch_timer: cp15 timer running at 24.00MHz`, both memory banks correct
+- **the RK816 driver we wrote works**: `capacity=100`, `status=Full`,
+  `voltage_now=4153600`, `current_now=-3012`, and `usb/online` = 1
+- eMMC at `mmcblk1` with the `blkdevparts=` partition, `/data` mounted ext4
+  after a journal recovery
+- `rtw88_8723cs` bound, wlan0 authenticated, associated, DHCP lease, mdnsd
+  announcing `taq102.local`
+- the backlight beacon reporting **code 4**: a UDC exists, a gadget is bound,
+  and the host has configured it
+
+The one failure is self-inflicted and expected: `glcube` cannot open
+`/dev/dri/card0` because this diagnostic build has the Rockchip DRM disabled
+on purpose. The panel and the KMS driver are the next build, not a defect.
+
+Console log: `docs/evidence/2026-09-08-mainline/first-mainline-boot-console.log`.
+
+### Why six attempts produced nothing
+
+Every diagnostic channel tried before this one depended on something that was
+not there. The USB gadget needs userspace, or so it seemed, and userspace was
+never reached. ramoops lives in RAM, and the only recovery from a failed boot
+holds power until the PMIC drops the rails, so the RAM was gone every time.
+The backlight beacon runs near the end of `/init`. The bootloader's own
+framebuffer needed none of them: it is already there, already lit, and it
+survives because the bootloader put it there before the kernel ran at all.

@@ -1,0 +1,381 @@
+] Zone ranges:
+[    0.000000]   Normal   [mem 0x0000000060000000-0x000000008fffffff]
+[    0.000000]   HighMem  [mem 0x0000000090000000-0x000000009fffffff]
+[    0.000000] Movable zone start for each node
+[    0.000000] Early memory node ranges
+[    0.000000]   node   0: [mem 0x0000000060000000-0x00000000683fffff]
+[    0.000000]   node   0: [mem 0x0000000069200000-0x000000009dbfffff]
+[    0.000000]   node   0: [mem 0x000000009dc00000-0x000000009de57fff]
+[    0.000000]   node   0: [mem 0x000000009de58000-0x000000009fffffff]
+[    0.000000] Initmem setup node 0 [mem 0x0000000060000000-0x000000009fffffff]
+[    0.000000] On node 0, zone Normal: 1536 pages in unavailable ranges
+[    0.000000] percpu: Embedded 17 pages/cpu s40460 r8192 d20980 u69632
+[    0.000000] pcpu-alloc: s40460 r8192 d20980 u69632 alloc=17*4096
+[    0.000000] pcpu-alloc: [0] 0 [0] 1 [0] 2 [0] 3 
+[    0.000000] Kernel command line: console=ttyFIQ0 androidboot.baseband=N/A androidboot.veritymode=enforcing androidboot.hardware=rk30board androidboot.console=ttyFIQ0 init=/init  mtdparts=rk29xxnand:0x00002000@0x00000000(parameter),0x00002000@0x00002000(uboot),0x00002000@0x00004000(trust),0x00002000@0x00006000(misc),0x00008000@0x00008000(resource),0x00010000@0x00010000(kernel),0x00010000@0x00020000(boot),0x00020000@0x00030000(recovery),0x00038000@0x00050000(backup),0x00002000@0x00088000(security),0x0080000@0x0008a000(cache),0x00300000@0x0010a000(system),0x00008000@0x0040a000(metadata),0x00060000@0x00412000(vendor),0x00030000@0x00472000(oem),0x00000400@0x004a2000(frp),-@0x004a2400(userdata) storagemedia=emmc androidboot.deviceid=CPTP_RK3126_TAQ-102_A01 uboot_logo=0x02000000@0x9dc00000 loader.timestamp=2021-05-17_10:08:05 adc.incre=0 SecureBootCheckOk=0 console=tty0 console=ttyGS0 ignore_loglevel initcall_debug log_buf_len=1M keep_bootcon nosmp consoleblank=0 fbcon=nodefer blkdevparts=mmcblk1:-@0x94880000(data)
+[    0.000000] Unknown kernel command line parameters "storagemedia=emmc uboot_logo=0x02000000@0x9dc00000 SecureBootCheckOk=0", will be passed to user space.
+[    0.000000] printk: log buffer data + meta data: 1048576 + 3276800 = 4325376 bytes
+[    0.000000] printk: early log buf free: 128300(97%)
+[    0.000000] Dentry cache hash table entries: 131072 (order: 7, 524288 bytes, linear)
+[    0.000000] Inode-cache hash table entries: 65536 (order: 6, 262144 bytes, linear)
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 258560
+[    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+[    0.000000] rcu: Hierarchical RCU implementation.
+[    0.000000] rcu: 	RCU event tracing is enabled.
+[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=16 to nr_cpu_ids=4.
+[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+[    0.000000] NR_IRQS: 16, nr_irqs: 16, preallocated irqs: 16
+[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.
+[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+[    0.000000] arch_timer: cp15 timer running at 24.00MHz (sec-phys).
+[    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+[    0.000004] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+[    0.000047] Switching to timer-based delay loop, resolution 41ns
+[    0.003301] clocksource: rk_timer: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 79635851949 ns
+[    0.003367] sched_clock: 32 bits at 24MHz, resolution 41ns, wraps every 89478484971ns
+[    0.003491] Too many timer definitions for 'rk_timer'
+[    0.003506] Failed to initialize '/timer@20044040': -22
+[    0.003644] Too many timer definitions for 'rk_timer'
+[    0.003657] Failed to initialize '/timer@20044060': -22
+[    0.003780] Too many timer definitions for 'rk_timer'
+[    0.003793] Failed to initialize '/timer@20044080': -22
+[    0.003916] Too many timer definitions for 'rk_timer'
+[    0.003929] Failed to initialize '/timer@200440a0': -22
+[    0.007313] entering initcall level: console
+[    0.007340] calling  con_init+0x0/0x214 @ 0
+[    0.007620] Console: colour dummy device 80x30
+[    0.007673] printk: legacy console [tty0] enabled
+[    0.010623] initcall con_init+0x0/0x214 returned 0 after 10000 usecs
+[    0.010741] calling  hvc_console_init+0x0/0x18 @ 0
+[    0.010845] initcall hvc_console_init+0x0/0x18 returned 0 after 0 usecs
+[    0.010951] calling  univ8250_console_init+0x0/0x38 @ 0
+[    0.011087] initcall univ8250_console_init+0x0/0x38 returned 0 after 0 usecs
+[    0.011201] calling  omap8250_console_fixup+0x0/0xa8 @ 0
+[    0.011469] initcall omap8250_console_fixup+0x0/0xa8 returned 0 after 0 usecs
+[    0.011674] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=240000)
+[    0.011800] CPU: Testing write buffer coherency: ok
+[    0.012017] pid_max: default: 32768 minimum: 301
+[    0.012892] Mount-cache hash table entries: 2048 (order: 1, 8192 bytes, linear)
+[    0.013034] Mountpoint-cache hash table entries: 2048 (order: 1, 8192 bytes, linear)
+[    0.014279] VFS: Finished mounting rootfs on nullfs
+[    0.016469] /cpus/cpu@f00 missing clock-frequency property
+[    0.016653] /cpus/cpu@f01 missing clock-frequency property
+[    0.016776] /cpus/cpu@f02 missing clock-frequency property
+[    0.016898] /cpus/cpu@f03 missing clock-frequency property
+[    0.016989] CPU0: thread -1, cpu 0, socket 15, mpidr 80000f00
+[    0.022263] entering initcall level: early
+[    0.022383] calling  trace_init_flags_sys_exit+0x0/0x1c @ 1
+[    0.022496] initcall trace_init_flags_sys_exit+0x0/0x1c returned 0 after 0 usecs
+[    0.022607] calling  trace_init_flags_sys_enter+0x0/0x1c @ 1
+[    0.022696] initcall trace_init_flags_sys_enter+0x0/0x1c returned 0 after 0 usecs
+[    0.022802] calling  allocate_overflow_stacks+0x0/0x84 @ 1
+[    0.022908] initcall allocate_overflow_stacks+0x0/0x84 returned 0 after 0 usecs
+[    0.023018] calling  cpu_suspend_alloc_sp+0x0/0xac @ 1
+[    0.023129] initcall cpu_suspend_alloc_sp+0x0/0xac returned 0 after 0 usecs
+[    0.023242] calling  init_static_idmap+0x0/0xfc @ 1
+[    0.023378] Setting up static identity map for 0x60100000 - 0x60100060
+[    0.023454] initcall init_static_idmap+0x0/0xfc returned 0 after 0 usecs
+[    0.023559] calling  __omap4430_phy_power_down+0x0/0x10 @ 1
+[    0.023665] initcall __omap4430_phy_power_down+0x0/0x10 returned 0 after 0 usecs
+[    0.023789] calling  spawn_ksoftirqd+0x0/0x7c @ 1
+[    0.024374] initcall spawn_ksoftirqd+0x0/0x7c returned 0 after 0 usecs
+[    0.024510] calling  init_signal_sysctls+0x0/0x48 @ 1
+[    0.024669] initcall init_signal_sysctls+0x0/0x48 returned 0 after 0 usecs
+[    0.024780] calling  init_umh_sysctls+0x0/0x2c @ 1
+[    0.024882] initcall init_umh_sysctls+0x0/0x2c returned 0 after 0 usecs
+[    0.024982] calling  kthreads_init+0x0/0x38 @ 1
+[    0.025075] initcall kthreads_init+0x0/0x38 returned 0 after 0 usecs
+[    0.025169] calling  migrat
+[missed 111511 bytes]
+[   12.664903] initcall em3027_driver_init+0x0/0x10 returned 0 after 437 usecs
+[   12.672614] calling  scmi_imx_bbm_rtc_driver_init+0x0/0x18 @ 1
+[   12.680638] initcall scmi_imx_bbm_rtc_driver_init+0x0/0x18 returned 0 after 406 usecs
+[   12.688305] calling  max77686_rtc_driver_init+0x0/0x18 @ 1
+[   12.696173] initcall max77686_rtc_driver_init+0x0/0x18 returned 0 after 394 usecs
+[   12.703832] calling  max8907_rtc_driver_init+0x0/0x18 @ 1
+[   12.711754] initcall max8907_rtc_driver_init+0x0/0x18 returned 0 after 344 usecs
+[   12.719427] calling  palmas_rtc_driver_init+0x0/0x18 @ 1
+[   12.727461] initcall palmas_rtc_driver_init+0x0/0x18 returned 0 after 508 usecs
+[   12.735168] calling  pl031_driver_init+0x0/0x10 @ 1
+[   12.742850] initcall pl031_driver_init+0x0/0x10 returned 0 after 118 usecs
+[   12.750511] calling  rk808_rtc_driver_init+0x0/0x18 @ 1
+[   12.758448] initcall rk808_rtc_driver_init+0x0/0x18 returned 0 after 408 usecs
+[   12.766085] calling  spear_rtc_driver_init+0x0/0x18 @ 1
+[missed 17357 bytes]
+[   15.313613]  mmcblk1: p1(data)
+[   15.322523] mmcblk1boot0: mmc1:0001 Origin 4.00 MiB
+[   15.329827] initcall raw_module_init+0x0/0x5c returned 0 after 29021 usecs
+[   15.337030] calling  bcm_module_init+0x0/0xb0 @ 1
+[   15.368430] can: broadcast manager protocol
+[   15.375444] initcall bcm_module_init+0x0/0xb0 returned 0 after 31296 usecs
+[   15.382690] calling  cgw_module_init+0x0/0x118 @ 1
+[   15.389747] can: netlink gateway - max_hops=1
+[   15.410816] rtw88_8723cs mmc2:0001:1: efuse MAC invalid, using random
+[   15.418357] initcall cgw_module_init+0x0/0x118 returned 0 after 28607 usecs
+[   15.425515] calling  init_rpcsec_gss+0x0/0x68 @ 1
+[   15.446477] probe of mmc2:0001:1 with driver rtw88_8723cs returned 0 after 885633 usecs
+[   15.454160] initcall init_rpcsec_gss+0x0/0x68 returned 0 after 21557 usecs
+[   15.461609] calling  init_kerberos_module+0x0/0x100 @ 1
+[   15.474757] mmcblk1boot1: mmc1:0001 Origin 4.00 MiB
+[   15.482345] initcall init_kerberos_module+0x0/0x100 returned 0 after 13346 usecs
+[   15.489993] calling  rfkill_gpio_driver_init+0x0/0x18 @ 1
+[   15.504429] mmcblk1rpmb: mmc1:0001 Origin 4.00 MiB, chardev (238:0)
+[   15.512557] initcall rfkill_gpio_driver_init+0x0/0x18 returned 0 after 15159 usecs
+[   15.520295] calling  init_dns_resolver+0x0/0xf8 @ 1
+[   15.528306] probe of mmc1:0001 with driver mmcblk returned 0 after 899364 usecs
+[   15.536681] Key type dns_resolver registered
+[   15.544534] initcall init_dns_resolver+0x0/0xf8 returned 0 after 16536 usecs
+[   15.552496] calling  handshake_init+0x0/0x8c @ 1
+[   15.560889] initcall handshake_init+0x0/0x8c returned 0 after 506 usecs
+[   15.569597] entering initcall level: late
+[   15.577458] calling  init_machine_late+0x0/0x90 @ 1
+[   15.585728] initcall init_machine_late+0x0/0x90 returned 0 after 342 usecs
+[   15.593717] calling  thumbee_init+0x0/0x5c @ 1
+[   15.601637] ThumbEE CPU extension supported.
+[   15.609377] initcall thumbee_init+0x0/0x5c returned 0 after 7741 usecs
+[   15.617183] calling  swp_emulation_init+0x0/0x64 @ 1
+[   15.625527] Registering SWP/SWPB emulation handler
+[   15.633511] initcall swp_emulation_init+0x0/0x64 returned 0 after 8449 usecs
+[   15.641603] calling  __omap2_common_pm_late_init+0x0/0x64 @ 1
+[   15.649671] initcall __omap2_common_pm_late_init+0x0/0x64 returned 0 after 2 usecs
+[   15.657683] calling  __cpcap_late_init+0x0/0x2c @ 1
+[   15.665781] initcall __cpcap_late_init+0x0/0x2c returned 0 after 2 usecs
+[   15.673942] calling  panic_force_cpu_late_init+0x0/0x4c @ 1
+[   15.682089] initcall panic_force_cpu_late_init+0x0/0x4c returned 0 after 2 usecs
+[   15.690246] calling  kernel_panic_sysfs_init+0x0/0x28 @ 1
+[   15.699017] initcall kernel_panic_sysfs_init+0x0/0x28 returned 0 after 584 usecs
+[   15.707222] calling  kernel_panic_sysctls_init+0x0/0x2c @ 1
+[   15.715599] initcall kernel_panic_sysctls_init+0x0/0x2c returned 0 after 194 usecs
+[   15.723942] calling  kernel_exit_sysfs_init+0x0/0x28 @ 1
+[   15.732396] initcall kernel_exit_sysfs_init+0x0/0x28 returned 0 after 321 usecs
+[   15.740596] calling  kernel_exit_sysctls_init+0x0/0x2c @ 1
+[   15.748925] initcall kernel_exit_sysctls_init+0x0/0x2c returned 0 after 286 usecs
+[   15.756886] calling  param_sysfs_builtin_init+0x0/0x1d0 @ 1
+[   15.817620] initcall param_sysfs_builtin_init+0x0/0x1d0 returned 0 after 52883 usecs
+[   15.825798] calling  reboot_ksysfs_init+0x0/0x70 @ 1
+[   15.834506] initcall reboot_ksysfs_init+0x0/0x70 returned 0 after 788 usecs
+[   15.842489] calling  sched_core_sysctl_init+0x0/0x30 @ 1
+[   15.850768] initcall sched_core_sysctl_init+0x0/0x30 returned 0 after 500 usecs
+[   15.858592] calling  sched_fair_sysctl_init+0x0/0x2c @ 1
+[   15.866232] initcall sched_fair_sysctl_init+0x0/0x2c returned 0 after 151 usecs
+[   15.873821] calling  sched_dl_sysctl_init+0x0/0x2c @ 1
+[   15.881489] initcall sched_dl_sysctl_init+0x0/0x2c returned 0 after 263 usecs
+[   15.888949] calling  sched_rt_sysctl_init+0x0/0x2c @ 1
+[   15.896258] initcall sched_rt_sysctl_init+0x0/0x2c returned 0 after 161 usecs
+[   15.903538] calling  sched_init_debug+0x0/0x320 @ 1
+[   15.911412] initcall sched_init_debug+0x0/0x320 returned 0 after 704 usecs
+[   15.918697] calling  cpu_latency_qos_init+0x0/0x40 @ 1
+[   15.926611] initcall cpu_latency_qos_init+0x0/0x40 returned 0 after 776 usecs
+[   15.934063] calling  pm_debugfs_init+0x0/0x40 @ 1
+[   15.941581] initcall pm_debugfs_init+0x0/0x40 returned 0 after 313 usecs
+[   15.948971] calling  printk_late_init+0x0/0x1e8 @ 1
+[   15.956316] initcall printk_late_init+0x0/0x1e8 returned 0 after 202 usecs
+[   15.963626] calling  init_srcu_module_notifier+0x0/0x2c @ 1
+[   15.971139] initcall init_srcu_module_notifier+0x0/0x2c returned 0 after 278 usecs
+[   15.978411] calling  kernel_rcu_stall_sysfs_init+0x0/0x28 @ 1
+[   15.985684] initcall kernel_rcu_stall_sysfs_init+0x0/0x28 returned 0 after 179 usecs
+[   15.993015] calling  tmigr_init_isolation+0x0/0x120 @ 1
+[   16.000175] initcall tmigr_init_isolation+0x0/0x120 returned 0 after 3 usecs
+[   16.007354] calling  tk_debug_sleep_time_init+0x0/0x40 @ 1
+[   16.014841] initcall tk_debug_sleep_time_init+0x0/0x40 returned 0 after 306 usecs
+[   16.022176] calling  kexec_core_sysctl_init+0x0/0x2c @ 1
+[   16.029645] initcall kexec_core_sysctl_init+0x0/0x2c returned 0 after 258 usecs
+[   16.036910] calling  bpf_rstat_kfunc_init+0x0/0x8 @ 1
+[   16.044137] initcall bpf_rstat_kfunc_init+0x0/0x8 returned 0 after 1 usecs
+[   16.051437] calling  trigger_data_free_init+0x0/0x78 @ 1
+[   16.058877] initcall trigger_data_free_init+0x0/0x78 returned 0 after 227 usecs
+[   16.066161] calling  load_system_certificate_list+0x0/0x4c @ 1
+[   16.073438] Loading compiled-in X.509 certificates
+[   16.080676] initcall load_system_certificate_list+0x0/0x4c returned 0 after 7238 usecs
+[   16.088077] calling  mempool_faul_inject_init+0x0/0x8 @ 1
+[   16.095553] initcall mempool_faul_inject_init+0x0/0x8 returned -19 after 2 usecs
+[   16.102972] calling  vmstat_late_init+0x0/0x20 @ 1
+[   16.110384] initcall vmstat_late_init+0x0/0x20 returned 0 after 6 usecs
+[   16.117725] calling  fault_around_debugfs+0x0/0x38 @ 1
+[   16.125617] initcall fault_around_debugfs+0x0/0x38 returned 0 after 428 usecs
+[   16.133175] calling  slab_late_init+0x0/0x12c @ 1
+[   16.163857] initcall slab_late_init+0x0/0x12c returned 0 after 23170 usecs
+[   16.171599] calling  max_swapfiles_check+0x0/0x8 @ 1
+[   16.179202] initcall max_swapfiles_check+0x0/0x8 returned 0 after 2 usecs
+[   16.186729] calling  check_early_ioremap_leak+0x0/0x64 @ 1
+[   16.194333] initcall check_early_ioremap_leak+0x0/0x64 returned 0 after 2 usecs
+[   16.201945] calling  mg_debugfs_init+0x0/0x40 @ 1
+[   16.209940] initcall mg_debugfs_init+0x0/0x40 returned 0 after 404 usecs
+[   16.217590] calling  ubifs_init+0x0/0x130 @ 1
+[   16.226077] initcall ubifs_init+0x0/0x130 returned 0 after 880 usecs
+[   16.233839] calling  pstore_init+0x0/0x4c @ 1
+[   16.241837] initcall pstore_init+0x0/0x4c returned 0 after 409 usecs
+[   16.249478] calling  init_root_keyring+0x0/0xc @ 1
+[   16.257309] initcall init_root_keyring+0x0/0xc returned 0 after 331 usecs
+[   16.265009] calling  crypto_algapi_init+0x0/0x10 @ 1
+[   16.272986] initcall crypto_algapi_init+0x0/0x10 returned 0 after 401 usecs
+[   16.280607] calling  blk_timeout_init+0x0/0x18 @ 1
+[   16.288078] initcall blk_timeout_init+0x0/0x18 returned 0 after 2 usecs
+[   16.295572] calling  depot_debugfs_init+0x0/0x60 @ 1
+[   16.303384] initcall depot_debugfs_init+0x0/0x60 returned 0 after 309 usecs
+[   16.310949] calling  pci_resource_alignment_sysfs_init+0x0/0x14 @ 1
+[   16.318814] initcall pci_resource_alignment_sysfs_init+0x0/0x14 returned 0 after 279 usecs
+[   16.326345] calling  clk_debug_init+0x0/0x10c @ 1
+[   16.362316] initcall clk_debug_init+0x0/0x10c returned 0 after 28430 usecs
+[   16.370165] calling  genpd_debug_init+0x0/0x88 @ 1
+[   16.378520] initcall genpd_debug_init+0x0/0x88 returned 0 after 886 usecs
+[   16.386086] calling  sync_state_resume_initcall+0x0/0x10 @ 1
+[   16.393823] initcall sync_state_resume_initcall+0x0/0x10 returned 0 after 156 usecs
+[   16.401450] calling  deferred_probe_initcall+0x0/0xac @ 1
+[   16.409384] initcall deferred_probe_initcall+0x0/0xac returned 0 after 419 usecs
+[   16.416850] calling  ubi_init_attach+0x0/0x168 @ 1
+[   16.424252] initcall ubi_init_attach+0x0/0x168 returned 0 after 2 usecs
+[   16.431699] calling  gpio_keys_init+0x0/0x18 @ 1
+[   16.440126] initcall gpio_keys_init+0x0/0x18 returned 0 after 1123 usecs
+[   16.447601] calling  psci_debugfs_init+0x0/0x68 @ 1
+[   16.454990] initcall psci_debugfs_init+0x0/0x68 returned 0 after 2 usecs
+[   16.462433] calling  of_fdt_raw_init+0x0/0x80 @ 1
+[   16.471027] initcall of_fdt_raw_init+0x0/0x80 returned 0 after 1243 usecs
+[   16.478537] calling  init_subsystem+0x0/0x8 @ 1
+[   16.485750] initcall init_subsystem+0x0/0x8 returned 0 after 2 usecs
+[   16.493122] calling  bpf_kfunc_init+0x0/0x8 @ 1
+[   16.500365] initcall bpf_kfunc_init+0x0/0x8 returned 0 after 2 usecs
+[   16.507629] calling  xdp_metadata_init+0x0/0x8 @ 1
+[   16.514828] initcall xdp_metadata_init+0x0/0x8 returned 0 after 1 usecs
+[   16.522108] calling  tcp_congestion_default+0x0/0x14 @ 1
+[   16.529355] initcall tcp_congestion_default+0x0/0x14 returned 0 after 6 usecs
+[   16.536570] calling  inet_blackhole_dev_init+0x0/0x30 @ 1
+[   16.544228] initcall inet_blackhole_dev_init+0x0/0x30 returned 0 after 445 usecs
+[   16.551610] calling  ip_auto_config+0x0/0x1188 @ 1
+[   16.559200] initcall ip_auto_config+0x0/0x1188 returned 0 after 303 usecs
+[   16.566524] calling  regulatory_init_db+0x0/0x138 @ 1
+[   16.573962] cfg80211: Loading compiled-in X.509 certificates for regulatory database
+[   16.617699] Loaded X.509 cert 'sforshee: 00b28ddf47aef9cea7'
+[   16.632330] Loaded X.509 cert 'wens: 61c038651aabdcf94bd0ac7ff06c7248db18c600'
+[   16.640443] initcall regulatory_init_db+0x0/0x138 returned 0 after 66654 usecs
+[   16.648048] calling  late_trace_init+0x0/0x108 @ 1
+[   16.655704] initcall late_trace_init+0x0/0x108 returned 0 after 3 usecs
+[   16.663340] calling  trace_eval_sync+0x0/0x2c @ 1
+[   16.671429] faux_driver regulatory: Direct firmware load for regulatory.db failed with error -2
+[   16.679296] cfg80211: failed to load regulatory.db
+[   16.687232] initcall trace_eval_sync+0x0/0x2c returned 0 after 16342 usecs
+[   16.695166] calling  amba_stub_drv_init+0x0/0x34 @ 1
+[   16.703474] initcall amba_stub_drv_init+0x0/0x34 returned 0 after 476 usecs
+[   16.711421] calling  clk_disable_unused+0x0/0x10c @ 1
+[   16.719274] clk: Disabling unused clocks
+[   16.727442] initcall clk_disable_unused+0x0/0x10c returned 0 after 8166 usecs
+[   16.735478] calling  genpd_power_off_unused+0x0/0x90 @ 1
+[   16.743313] PM: genpd: Disabling unused power domains
+[   16.751459] initcall genpd_power_off_unused+0x0/0x90 returned 0 after 8144 usecs
+[   16.759486] calling  regulator_init_complete+0x0/0x5c @ 1
+[   16.767403] initcall regulator_init_complete+0x0/0x5c returned 0 after 11 usecs
+[   16.775388] calling  of_platform_sync_state_init+0x0/0x10 @ 1
+[   16.783781] initcall of_platform_sync_state_init+0x0/0x10 returned 0 after 377 usecs
+[   16.797846] Freeing unused kernel image (initmem) memory: 1024K
+[   16.807532] Run /init as init process
+[   16.815517]   with arguments:
+[   16.823367]     /init
+[   16.831037]   with environment:
+[   16.838694]     HOME=/
+[   16.846129]     TERM=linux
+[   16.853551]     storagemedia=emmc
+[   16.860877]     uboot_logo=0x02000000@0x9dc00000
+[   16.868300]     SecureBootCheckOk=0
+[   17.012416] taq102-initramfs 20260908-030330-f001466: init running
+[   17.036911] taq102-initramfs 20260908-030330-f001466: diagnostic image, kernel owns the USB console
+[   17.046768] taq102-initramfs 20260908-030330-f001466: NO gadget -- no console will appear
+[   17.135158] taq102-display: no PHY module for 7.3.0-rc2-g28924df2a08f-dirty; the kernel must carry the driver itself
+[   17.198170] taq102-initramfs 20260908-030330-f001466: backlight 255 of 255
+[   17.274476] taq102-initramfs 20260908-030330-f001466: rescued a previous ramoops from 0x68100000
+[   17.873643] EXT4-fs (mmcblk1p1): recovery complete
+[   17.882913] EXT4-fs (mmcblk1p1): mounted filesystem 056c3b81-6827-4622-972a-5b2f34e489ab r/w with ordered data mode. Quota mode: disabled.
+[   17.901121] taq102-initramfs 20260908-030330-f001466: /data mounted from /dev/mmcblk1p1
+[   17.968670] taq102-initramfs 20260908-030330-f001466: MAINLINE-USERSPACE-REACHED handing over to init
+taq102-initramfs 20260908-030330-f001466: MAINLINE-USERSPACE-REACHED
+taq102-initramfs 20260908-030330-f001466: MAINLINE-USERSPACE-REACHED
+mount: mounting devpts on /dev/pts failed: No such file or directory
+mount: mounting tmpfs on /dev/shm failed: No such file or directory
+open: No such file or directory
+
+TAQ-102 rescue image
+taq102 login: open: No such file or directory
+[   18.377845] taq102-usb-beacon: code 4
+[   18.499957] taq102-ssh: dropbear listening on 22
+[   18.588458] random: crng init done
+Successfully initialized wpa_supplicant
+udhcpc: started, v1.37.0
+udhcpc: broadcasting discover
+[   22.223324] wlan0: authenticate with 00:00:5e:00:53:01 (local address=1a:d7:ee:c7:17:22)
+[   22.375691] wlan0: send auth to 00:00:5e:00:53:01 (try 1/3)
+[   22.409001] wlan0: authenticated
+[   22.428335] wlan0: associate with 00:00:5e:00:53:01 (try 1/3)
+[   22.469028] wlan0: RX AssocResp from 00:00:5e:00:53:01 (capab=0x1831 status=0 aid=19)
+[   22.485191] wlan0: associated
+[   22.539680] wlan0: Limiting TX power to 30 (30 - 0) dBm as advertised by 00:00:5e:00:53:01
+udhcpc: broadcasting discover
+udhcpc: broadcasting discover
+udhcpc: broadcasting select for 192.168.1.70, server 192.168.1.1
+udhcpc: lease of 192.168.1.70 obtained from 192.168.1.1, lease time 43200
+deleting routers
+adding dns 1.1.1.1
+adding dns 1.0.0.1
+[   25.983569] taq102-wifi: mdnsd announcing taq102.local on wlan0
+[   26.728590] rockchip-pm-domain 100a0000.syscon:power-controller: sync_state() pending due to 10106000.video-codec
+[   26.737068] rockchip-pm-domain 100a0000.syscon:power-controller: sync_state() pending due to 1010e000.vop
+[   26.745460] rockchip-pm-domain 100a0000.syscon:power-controller: sync_state() pending due to lvds
+
+TAQ-102 rescue image
+taq102 login: [   30.377813] taq102-app: no /dev/dri/card0 after 10 s; starting /usr/bin/glcube anyway
+[   30.421839] Console: switching to colour dummy device 80x30
+[   30.422714] taq102-app: fbcon unbound from /sys/class/vtconsole/vtcon1
+[   30.423787] taq102-app: starting /usr/bin/glcube (attempt 1)
+[   30.745485] taq102-usb-beacon: code 4
+[   31.502057] taq102-app: starting /usr/bin/glcube (attempt 2)
+[   32.570663] taq102-app: starting /usr/bin/glcube (attempt 3)
+[   33.639050] taq102-app: starting /usr/bin/glcube (attempt 4)
+[   34.707984] taq102-app: starting /usr/bin/glcube (attempt 5)
+[   35.776317] taq102-app: /usr/bin/glcube exited 5 times; giving up
+[   42.971222] taq102-usb-beacon: code 4
+[   55.206074] taq102-usb-beacon: code 4
+root
+login[97]: root login on 'ttyGS0'
+# echo ---LIVE---; uname -r; cat /sys/class/power_supply/battery/capacity 2>&1; 
+ls /sys/class/udc/; ls /dev/dri/ 2>&1; ls /sys/class/input/ | head -4
+---LIVE---
+7.3.0-rc2-g28924df2a08f-dirty
+100
+[1;36m10180000.usb[m
+ls: /dev/dri/: No such file or directory
+event0
+input0
+# [   67.435508] taq102-usb-beacon: code 4
+echo ---HW---; echo "batt:"; cat /sys/class/power_supply/battery/{capacity,sta
+tus,voltage_now,current_now} 2>&1 | tr "\n" " "; echo; echo "usb/ac:"; cat /sys/
+class/power_supply/usb/online /sys/class/power_supply/ac/online 2>&1 | tr "\n" "
+ "; echo; echo "touch:"; cat /sys/class/input/input0/name 2>&1; echo "mmc:"; ls 
+/dev/mmcblk* 2>&1 | head -3; echo "data:"; mount | grep -c data
+---HW---
+batt:
+cat: can't open '/sys/class/power_supply/battery/{capacity,status,voltage_now,current_now}': No such file or directory 
+usb/ac:
+1 0 
+touch:
+rk805 pwrkey
+mmc:
+/dev/mmcblk1
+/dev/mmcblk1boot0
+/dev/mmcblk1boot1
+data:
+1
+# [   79.661522] taq102-usb-beacon: code 4
+echo ---HW2---; for f in capacity status voltage_now current_now; do printf "%
+s=" $f; cat /sys/class/power_supply/battery/$f 2>&1; done; echo "parts:"; ls /de
+v/mmcblk1p* 2>&1 | tail -2; echo "data mounted:"; mount | grep data
+---HW2---
+capacity=100
+status=Full
+voltage_now=4153600
+current_now=-3012
+parts:
+/dev/mmcblk1p1
+data mounted:
+/dev/mmcblk1p1 on /data type ext4 (rw,noatime)
+# [   91.886100] taq102-usb-beacon: code 4
+[  104.111899] taq102-usb-beacon: code 4
