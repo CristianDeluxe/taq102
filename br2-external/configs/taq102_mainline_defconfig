@@ -21,6 +21,11 @@ BR2_ARM_FPU_NEON_VFPV4=y
 # sibling means one Buildroot download cache serves both.
 BR2_ARM_EABIHF=y
 BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
+# Mesa is C++ and `depends on BR2_INSTALL_LIBSTDCPP`. Without this the mesa3d
+# menu entry cannot be selected at all, and because glcube depends on the
+# libegl/libgles/libgbm virtual packages, Buildroot then drops glcube too --
+# silently, with a rootfs that builds and simply has no application in it.
+BR2_TOOLCHAIN_BUILDROOT_CXX=y
 
 # Headers for the kernel this runs on. The tree is 7.3-rc, which Buildroot does
 # not offer; 6.19 is the newest it has and is close enough for userspace, which
@@ -63,12 +68,11 @@ BR2_PACKAGE_LIBEVDEV=y
 BR2_PACKAGE_EVTEST=y
 
 # Mesa with the Lima gallium driver: the Mali-400 MP2's open user space,
-# against mainline's CONFIG_DRM_LIMA. kmsro is what lets a GBM surface on the
-# Rockchip VOP be rendered by a separate GPU node, which is exactly this
-# arrangement: /dev/dri/card0 is the display, the render node is Lima's.
+# against mainline's CONFIG_DRM_LIMA. There is no kmsro option to set: this
+# Mesa handles the split between the Rockchip display node and Lima's render
+# node itself, and the symbol no longer exists.
 BR2_PACKAGE_MESA3D=y
 BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_LIMA=y
-BR2_PACKAGE_MESA3D_GALLIUM_DRIVER_KMSRO=y
 BR2_PACKAGE_MESA3D_OPENGL_ES=y
 BR2_PACKAGE_MESA3D_OPENGL_EGL=y
 BR2_PACKAGE_MESA3D_GBM=y
