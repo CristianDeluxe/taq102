@@ -261,3 +261,44 @@ before anything allocates over it.
   same way, written to `recovery`, and booted normally -- so mkbootimg layout,
   the RSCE resource image, the recovery partition and the BCB mechanism are all
   proven, and none of them should be re-litigated.
+
+
+## Why the RAM mailbox cannot work with this recovery path (2026-09-08)
+
+The mailbox was built, proved, and then defeated by the recovery procedure
+itself.
+
+Proved: `tools/dtb-add-memreserve.py` puts 0x68100000 in the vendor DTB's
+reserve map without recompiling the blob, v58 boots with
+`0x68100000..0x681effff` in its reserved list, and a synthetic ramoops zone
+written there survived a **reboot** and was rescued by `/init` into `/data`
+with its signature and text intact.
+
+Defeated: the only way back from a failed mainline boot is the button dance,
+and that dance holds power until the PMIC drops the rails. DRAM loses its
+contents. After the sixth mainline attempt the region held uniform random
+bytes -- the signature of freshly powered DRAM, not of an overwritten log --
+so nothing can be concluded about whether mainline ever wrote there.
+
+The synthetic test passed because `reboot` is a warm reset that never cuts
+power. That difference is the whole result, and it was not obvious until the
+two runs were compared.
+
+**So any diagnostic channel that lives in RAM is useless here**, including the
+assembly stage-writer idea, unless a recovery path is found that does not
+remove power. Entering loader mode without a power cycle has happened once,
+by accident, and is not reproducible on demand.
+
+### The channel that does survive: the bootloader's own framebuffer
+
+The vendor command line names it: `uboot_logo=0x02000000@0x9dc00000`. U-Boot
+leaves a 32 MB framebuffer at 0x9dc00000 with the panel lit and scanning it
+out -- which is what the white screen has been all along. A
+`simple-framebuffer` node pointing at that address, with `CONFIG_FB_SIMPLE`
+and fbcon, gives the kernel a console on the panel from very early in boot,
+with no USB, no DRM driver, no timer, and nothing that has to survive a power
+cycle: the text is simply on the screen, to be read or photographed.
+
+That is the next thing to try, and it is the first proposed channel whose
+failure mode is also informative -- if no text appears, the kernel is dying
+before fbcon registers, which is earlier than anything reached so far.
