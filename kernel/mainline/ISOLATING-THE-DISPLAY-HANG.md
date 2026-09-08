@@ -186,3 +186,35 @@ declare `GENPD_FLAG_NO_SYNC_STATE` -- the driver currently sets only
 sync_state that takes the domain lock while a consumer is trying to attach to
 it. That is a one-line change to test, and if it holds it is worth sending
 upstream with this stack trace attached.
+
+## A second mainline bug: the LVDS driver hides its own panel
+
+With the deadlock out of the way the display came up, but the connector kept
+offering generic modes -- 1024x768, 800x600 -- and never the panel's 1024x600.
+The panel device was bound to `panel-lvds`, the device-tree graph was correct
+at both ends, and there were no errors. Two rebuilds chasing device-tree
+details found nothing, so the driver was instrumented instead:
+
+    rockchip-lvds lvds: panel=4fcc1c99 bridge=00000000 endpoint_id=0 children=1
+    rockchip-lvds lvds: get_modes panel=00000000 returned 0
+
+Found at bind time, NULL when the modes are asked for. The cause is four lines
+apart in `rockchip_lvds_bind()`: it wraps the panel with
+`drm_panel_bridge_add_typed()`, sets `lvds->panel = NULL` because the bridge
+owns it now, and then overwrites *that bridge's* funcs with its own -- whose
+`get_modes()` reads `lvds->panel`. The connector asks the bridge, the bridge
+asks for a pointer that was just cleared, and the panel is unreachable.
+
+`0010-drm-rockchip-lvds-do-not-hijack-the-panel-bridge.patch` only claims the
+bridge's ops when the driver found a real bridge in the DT; a panel bridge
+already answers `get_modes` correctly on its own. After it, the connector
+offers exactly one mode:
+
+    $ cat /sys/class/drm/card0-LVDS-1/modes
+    1024x600
+
+and the framebuffer console resizes from 128x48 to 128x37, which is the panel's
+real geometry rather than the 1024x768 fallback.
+
+This one is worth sending upstream too. It is not board-specific: any
+`rockchip,*-lvds` with a panel rather than a bridge hits it.

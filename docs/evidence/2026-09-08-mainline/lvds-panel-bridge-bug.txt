@@ -1,0 +1,8 @@
+/opt/qlcplus/assets/M.log:[   34.537084] Console: switching to colour frame buffer device 128x37
+/opt/qlcplus/assets/M.log:1024x600
+/opt/qlcplus/assets/M.log:1024x600
+/opt/qlcplus/assets/L.log:eep 3; dmesg | grep TAQ102
+/opt/qlcplus/assets/L.log:[   33.514216] rockchip-lvds lvds: TAQ102: panel=4fcc1c99 bridge=00000000 endpoint_id=0 children=1
+/opt/qlcplus/assets/L.log:[   33.517528] rockchip-lvds lvds: TAQ102: get_modes panel=00000000 returned 0
+/opt/qlcplus/assets/L.log:[   33.684178] rockchip-lvds lvds: TAQ102: get_modes panel=00000000 returned 0
+/opt/qlcplus/assets/L.log:[   33.514216] rockchip-lvds lvds: TAQ102: panel=4fcc1c99 bridge=00000000 endpoint_id=0 children=1
