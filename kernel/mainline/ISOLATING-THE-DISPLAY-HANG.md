@@ -142,3 +142,47 @@ Evidence: `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
 2. If that clears it, the honest fix is upstream-shaped rather than a boot
    argument, and the next question is whether the Rockchip domains should
    declare `GENPD_FLAG_NO_SYNC_STATE`.
+
+## Confirmed, and the display comes up: `fw_devlink=off`
+
+The hypothesis held. With `fw_devlink=off` on the command line the four
+`sync_state() pending` lines disappear entirely (0 of them, against 4 on every
+previous boot), the PHY module loads in 70 ms instead of blocking forever, and
+the whole display stack falls into place behind it:
+
+```
+phy-ab: LOADED OK
+rockchip-drm display-subsystem: bound 1010e000.vop
+rockchip-drm display-subsystem: bound lvds
+[drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+Console: switching to colour frame buffer device 128x48
+rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+```
+
+`/dev/dri/card0` exists and **`card0-LVDS-1` reports `connected`** -- so the
+VOP, our LVDS encoder patch and the PHY all work. The three patches that were
+under suspicion for a day are exonerated twice over: once by the pristine
+module blocking identically, and now by the whole path working once the genpd
+deadlock is out of the way.
+
+### What is left, and neither is the hang
+
+- **The panel contributes no timing.** `card0-LVDS-1/modes` lists the generic
+  fallbacks (1024x768, 800x600, ...) and not the panel's own 1024x600 at
+  56.14 Hz. The `panel` device *is* bound to `panel-lvds`
+  (`/sys/bus/platform/devices/panel/driver` points at it), so the driver
+  attached but its `panel-timing` is not reaching the connector. That is the
+  next thing to fix, and it is ordinary DT/driver work with a console to debug
+  from.
+- **Lima needs `gpu-sched`**, which was left out of the initramfs: `lima:
+  Unknown symbol drm_sched_init`. A packaging omission, not a defect.
+
+### The proper fix, rather than the boot argument
+
+`fw_devlink=off` disables device links machine-wide, which is a diagnostic, not
+a shipping configuration. The narrow fix is for the Rockchip power domains to
+declare `GENPD_FLAG_NO_SYNC_STATE` -- the driver currently sets only
+`GENPD_FLAG_PM_CLK | GENPD_FLAG_NO_STAY_ON` -- so the provider never runs the
+sync_state that takes the domain lock while a consumer is trying to attach to
+it. That is a one-line change to test, and if it holds it is worth sending
+upstream with this stack trace attached.
