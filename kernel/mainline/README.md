@@ -196,3 +196,68 @@ and PLL down and the LVDS enable never powers them back up.
   counter, the touch controller's unaided output.
 - **Shutdown policy.** With the vendor's zero algorithm gone, a shutdown must
   be triggered on voltage, not on the reported percentage.
+
+## Four boots, no output, and what each one eliminated (2026-09-08)
+
+None of these reached a shell. They are recorded because each one closed a
+door, and because the cost of a failed attempt here is a physical recovery by
+hand: the board's only console is a USB gadget that userspace raises, so a
+kernel that dies before that is completely silent, and the way back is the
+two-button loader-mode dance, which this project has always found unreliable.
+
+**v50** -- the first mainline image. Black screen, no USB, no network.
+
+**v51** -- `multi_v7_defconfig` builds 163 ARM platforms into the kernel;
+disabling every non-Rockchip `ARCH_*` took the decompressed Image from 33.7 MB
+to 25.7 MB. The theory was that it overwrote the ramdisk. It did not: measured
+from the running vendor kernel, `/sys/kernel/debug/memblock/reserved` puts the
+FDT at 0x64600000 and the initrd at 0x64bf0000, while our Image ends at
+0x619C6F1C. Still black. **Kernel size eliminated.**
+
+**v52** -- the memory node was wrong and this was a real bug: the vendor
+kernel reports two banks, `60000000-683fffff` and `69200000-9fffffff`, with a
+14 MB hole between them, and our DTS declared one contiguous gigabyte. Fixed.
+Still black, so it was not the cause either, but it had to be right.
+
+**v53/v54** -- the diagnostic build: `CONFIG_USB_G_SERIAL` so the *kernel*
+owns the ACM gadget and can print before userspace exists, `nosmp`,
+`CONFIG_CPU_FREQ` off, ramoops rewired to the form mainline actually parses,
+and `&display_subsystem` enabled -- `rk3128.dtsi` leaves it disabled and no
+board file here had ever overridden it, so the Rockchip DRM master never bound
+at all. **The screen came up white instead of black.**
+
+That white screen is the most useful result of the day. Black meant the kernel
+died before anything touched the panel. White means the panel is powered and
+lit, which needs a driver bound or `/init` running -- so mainline gets as far
+as the driver phase, and possibly into userspace. Every early-boot theory dies
+with it, and so do the two leading candidates from an independent review
+(a PSCI-versus-`rockchip,rk3036-smp` firmware contract mismatch, and cpufreq
+scaling with no CPU regulator), because this build had `nosmp` and no cpufreq.
+
+**What that leaves.** The kernel reaches the driver phase and still enumerates
+nothing on USB -- not the gadget, not even a charging device. So the suspect is
+now DWC2 or its PHY, which is an ordinary driver failure with an ordinary log.
+This build writes that log to ramoops at 0x68100000, and it is still sitting in
+RAM. Reading it back is the next step, and it is a race: 0x68100000 is ordinary
+RAM to the vendor kernel, so the dump has to happen immediately after recovery,
+before anything allocates over it.
+
+### Hypotheses eliminated by reading the source, not by burning a boot
+
+- **The `MZ` header is not an EFI requirement.**
+  `arch/arm/boot/compressed/efi-header.S` emits two `eor r5, r5, #0x4d000`
+  instructions that cancel each other; the legacy entry at +0x20 still works.
+  (`CONFIG_EFI_STUB` was disabled anyway, and the `EEEE` word at 0x34 is
+  zImage extension metadata that stays either way.)
+- **The machine compatible does not matter.** `mach-rockchip/rockchip.c` lists
+  neither rk3126 nor rk3128, but `arch/arm/kernel/devtree.c` falls back to a
+  GENERIC_DT descriptor, and `arch/arm/kernel/time.c` then calls `of_clk_init()`
+  and `timer_probe()` itself. The in-tree `rk3128-evb.dts` has the same
+  property.
+- **`CLK_RK312X` was already enabled.** An earlier note in this repository
+  claimed it was missing; that was a check for `CLK_RK3128`, which is not a
+  symbol. The driver object was in the tree before the first attempt.
+- **The container is fine.** The known-good vendor image (v49) was packed the
+  same way, written to `recovery`, and booted normally -- so mkbootimg layout,
+  the RSCE resource image, the recovery partition and the BCB mechanism are all
+  proven, and none of them should be re-litigated.
