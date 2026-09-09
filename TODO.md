@@ -12,8 +12,8 @@
 > `TODO_LOG.md`.
 
 Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
-v40, vendor 4.4.167), `recovery` = `recovery-taq102-v68-cube-touch.img` (mainline
-7.3.0-rc2, kernel M plus patch 0011, glcube on lima at 148.5 MHz), BCB = `boot-recovery`, so every
+v40, vendor 4.4.167), `recovery` = `recovery-taq102-v69-cube-reviewed.img` (mainline
+7.3.0-rc2, the reviewed series, glcube on lima at 148.5 MHz), BCB = `boot-recovery`, so every
 power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
 appliance back. The journal is `README.md` here and
 `~/p/brain/personal/denver-taq102-tablet.md`; images and checksums are in
@@ -107,10 +107,13 @@ appliance back. The journal is `README.md` here and
   `kernel/rk3126-taq102-hybrid.dts` (gpu opp table, phandle 0x19).
 - [ ] `modetest` cannot create a dumb buffer (-EINVAL). Moot for glcube,
   which allocates through GBM and lima, but still unexplained.
-- [ ] Send both patches upstream: the genpd deadlock (with the stack trace in
-  `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`) and
-  `0010-drm-rockchip-lvds-do-not-hijack-the-panel-bridge.patch`. Neither is
-  board-specific.
+- [ ] Send upstream. The series was reviewed and rebuilt as `git am`-able
+  patches on 2026-09-09 (`kernel/mainline/FINDINGS.md`, "The series,
+  reviewed"): 0009 (LVDS panel-bridge fix) and 0010 (silead NAK quirk) are
+  ready to post; 0001-0004 (VOP, binding, LVDS, DTS) need a
+  `dt_binding_check` run first, which needs `dtschema` in the VM. The genpd
+  deadlock goes as a bug report with
+  `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
 - [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write
   (`0xe0 = 0x88`) while applying it, and `silead.c` treated that as a probe
   failure. Patch 0011 accepts the NAK; v68 probes (`input0 = silead_ts`,

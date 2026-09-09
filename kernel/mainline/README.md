@@ -29,13 +29,14 @@ wiring between the two, and it is small:
   vendor 4.4 tree, `rockchip_vop_reg.c:1150` -- `RK3036_AXI_BUS_CTRL` bit 26
   and bit 27, the same register upstream already uses for rgb, hdmi and mipi.
   SoCs without the bits keep the old path, chosen by `VOP_HAS_REG`.
-- **0002** adds `rockchip,rk3126-lvds` to `rockchip_lvds.c`. The PX30 path is
+- **0003** adds `rockchip,rk3126-lvds` to `rockchip_lvds.c` (0002 is its DT
+  binding). The PX30 path is
   the model: the D-PHY does the work and the GRF only selects LVDS mode, the
   MSB order and the format. RK312x holds all of it in one register,
   `GRF_LVDS_CON0` at 0x150, with P2S_EN at bit 9, MODE_EN at 6, MSBSEL at 3
   and the format at 2:1 -- read off the vendor driver. There is no VOP
   selector because this SoC has one VOP.
-- **0003** adds the `lvds` node to `rk3128.dtsi` and a third VOP output
+- **0004** adds the `lvds` node to `rk3128.dtsi` and a third VOP output
   endpoint for it, shaped like the PX30 one.
 
 `rk3126-taq102.dts` is the board. Every number in it comes from the vendor
@@ -90,7 +91,7 @@ PLL, never pulses `REG_SYNCRST` after loading the dividers, and never enables
 the analog lanes behind the LVDS drivers, while `inno_dsidphy_power_off()`
 powers the LDO and PLL down -- asymmetric, so a second power-on cannot recover.
 And `inno->rst` is taken in probe under the name `apb` and then never used.
-Ported as `0004` and `0005`; both `git apply --check` clean against
+Ported as `0005` and `0006`; both `git apply --check` clean against
 `28924df2a`, in that order.
 
 Mainline needs nothing from `../patches/0001`'s clock hunks either. It has no
@@ -111,20 +112,24 @@ toolchain: `zImage` 13234688 bytes, `rk3126-taq102.dtb` 27187 bytes, exit 0,
 no compiler warnings. The tree at the end of that build reverse-applies all
 four patches below as a set, so these files are exactly what compiled.
 
-Apply in order, 0001 through 0012 (there is no 0008 patch; that number is the
-config fragment). The board DTS is special: `rk3126-taq102.dts` in this
-directory is the whole file as it runs on the tablet, and 0006, 0007 and 0009
-also carry hunks for it from before it was kept as a file. Apply those three
-with `git apply --exclude=arch/arm/boot/dts/rockchip/rk3126-taq102.dts`, then
-copy the file in. Checked 2026-09-09: the series applied that way onto
-`28924df2a` reproduces the `/work/linux-mainline` tree exactly (`git diff
-HEAD` of both is identical), and the DTB it builds is byte for byte the one in
-v67 and v68. The numbering was reconciled by hand after the first build:
-concurrent agents had written three files numbered 0004 and two numbered
-0005, and the seven superseded drafts listed below were deleted rather than
-left to be applied by mistake.
+The series is `git am`-able as a whole, 0001 through 0012, each patch with a
+message and a Signed-off-by: it is `git format-patch` output from a branch
+built on `28924df2a` (2026-09-09, after the review recorded in `FINDINGS.md`).
+0012 adds the board DTS whole, so `rk3126-taq102.dts` in this directory is
+the same file, kept for reading. Checked: the branch's tree equals
+`/work/linux-mainline` (`git diff` against the base identical, zero lines),
+and the DTB it builds is byte for byte the one in v67, v68 and v69.
 
-then merge `0008-taq102-mainline.config` onto the `.config` and run
+Numbering history, since the documents below use the old numbers in places:
+until 2026-09-09 the series was 0001-0007 and 0009-0012 with the config
+fragment as 0008. The renumbering inserted the DT binding as 0002 and moved
+the board DTS to the end as 0012, so old 0002-0007 are now 0003-0008, old
+0010-0012 are 0009-0011, and old 0009 (eMMC and SDIO) lives inside 0012. The
+first reconciliation, on 2026-09-08, had already deleted seven superseded
+drafts after concurrent agents wrote three files numbered 0004 and two
+numbered 0005; they are listed below by their names at the time.
+
+then merge `taq102-mainline.config` onto the `.config` and run
 `olddefconfig`. All 32 symbols the fragment names survive `olddefconfig`;
 they were checked one by one against the resulting `.config`, not assumed.
 
@@ -364,8 +369,9 @@ survives because the bootloader put it there before the kernel ran at all.
 Three inputs, all in `/Volumes/Datos4TB2/denver-taq102/gate3-build/`:
 
 - kernel: `zImage-7.3.0-rc2-variant-M` -- the VM tree at
-  `/work/linux-mainline` with patches 0001-0007, 0009, 0010 and `.config` as
-  `0008` now describes it (PHY and Lima `=m`, everything else in);
+  `/work/linux-mainline` with the series applied and `.config` as
+  `taq102-mainline.config` describes it (PHY and Lima `=m`, everything else
+  in); v69 is the same with the reviewed fixes (`zImage-7.3.0-rc2-v69`);
 - resource: `tools/make-resource.py <stock second> rk3126-taq102-v65.dtb` --
   the DTB from this directory's `rk3126-taq102.dts`, which is the VM's file
   copied out (simple-framebuffer, reboot-mode, the LVDS endpoint, `&gpu`);

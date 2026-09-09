@@ -81,7 +81,7 @@ rockchip-lvds lvds: get_modes panel=00000000 returned 0
 
 Found at bind, NULL when the modes are asked for.
 
-**Fix**: `0010-drm-rockchip-lvds-do-not-hijack-the-panel-bridge.patch`. Only
+**Fix**: patch 0009 (drm/rockchip: lvds: do not take over a panel bridge's funcs). Only
 claim the bridge's ops for a bridge found in the DT; a panel bridge already
 answers `get_modes` correctly. After it the connector offers exactly 1024x600
 and fbcon resizes 128x48 -> 128x37.
@@ -169,7 +169,7 @@ lesson from the method section applied backwards:
 
 The kernel of v64-v66 is variant M unchanged (`zImage-7.3.0-rc2-variant-M` in
 the archive): VOP, LVDS encoder and panel built in, PHY and Lima as modules,
-`fw_devlink=off`, patch 0010. lima's `mali` regulator is optional and absent
+`fw_devlink=off`, patch 0009. lima's `mali` regulator is optional and absent
 (the vendor hands it `vdd_logic`; mainline has no RK816 regulators described
 yet), so the GPU runs at whatever the bootloader left ACLK_GPU at, 148.5 MHz.
 The cube does not need more.
@@ -203,10 +203,50 @@ reset command, is NAKed -- yet 0xe0 reads 0x00 after an acknowledged
 the command before it acknowledges the byte. The vendor driver, like every
 driver descended from Silead's reference code, never checks the return of
 that write. Patch 0011 accepts -ENXIO on that one write, in
-`silead_ts_init()` and `silead_ts_reset()`; the firmware has no 0xe0 entries.
+`silead_ts_init()` and `silead_ts_reset()`, for chips flagged with the
+quirk; the firmware has no 0xe0 entries.
 v68: probe completes, `input0 = silead_ts`, firmware in 9 s at 100 kHz.
 Whether events arrive is my test; evidence so far in
 `docs/evidence/2026-09-09-cube/v68-console-silead-probes.log`.
+
+## The series, reviewed (2026-09-09)
+
+A strict read of the eleven patches against the tree, with each finding
+checked before it was acted on:
+
+- **0011 conflicted with 0007.** It had been cut as the whole `silead.c` diff
+  and carried 0007's id-table hunks, so it could not apply after 0007. Fixed.
+- **No messages, no Signed-off-by** on most of the series. The series is now
+  `git format-patch` output from a branch built on `28924df2a`: twelve
+  commits, each with a message and a Signed-off-by, `git am`-clean as a set.
+- **`rk312x_lvds_probe()` leaked the PHY**: `phy_init()` succeeded and the
+  `phy_set_mode()` and `phy_power_on()` error paths returned without
+  `phy_exit()`. Fixed in 0003. `px30_lvds_probe()` upstream has the same
+  shape and is left alone; that is a separate patch if anyone wants it.
+- **`rockchip,rk3126-lvds` had no binding.** 0002 adds it to
+  `rockchip,lvds.yaml`, in the PX30 clause (phys required, no reg, no
+  clocks), which is the shape the node has.
+- **The NAK tolerance was unscoped.** 0010 accepted -ENXIO on the reset
+  write for every Silead chip; it now applies only to entries flagged
+  `SILEAD_QUIRK_RESET_NAK`, which is the gsl3673 id and compatible.
+- **RK816 message claimed nothing had run on hardware**, written before it
+  had. Replaced with the measured values. Its `fcc_uah / 100` could reach
+  zero for a design capacity under 100 uAh; the probe now requires the
+  vendor's 500 mAh floor.
+- **Stale numbers** in the README and the config fragment, from before the
+  first reconciliation. Updated to the new numbering; the README carries the
+  mapping.
+- **Not changed, on purpose:** the monitor work in the RK816 driver reads
+  `soc`, `charge_status` and the online flags for its did-it-change
+  comparison after dropping the lock. Word-sized reads, worst case one
+  spurious or missed `power_supply_changed()`. Noted for the maintainer.
+- **Checked and found correct:** 0006's claim that the `apb` reset was never
+  used elsewhere in the driver (it is not); 0005's evidence is stated with
+  the right weakness.
+
+v69 carries the reviewed tree and runs: panel, cube at 52.8 FPS, battery
+values, `silead_ts` probing. `dt_binding_check` has not run -- the VM has no
+`dtschema`.
 
 ## Still open
 
@@ -214,8 +254,9 @@ Whether events arrive is my test; evidence so far in
   (v63); the built-in PHY still blocks at boot. Needs the trace from a built-in
   boot, which means a diagnostic channel that survives the hang -- the
   bootloader framebuffer with an early printk of the blocked task.
-- Send `0010-drm-rockchip-lvds-do-not-hijack-the-panel-bridge.patch` upstream,
-  and the genpd deadlock stack with what is known about it.
+- Send upstream: 0009 (the LVDS panel-bridge fix) and 0010 (the silead NAK
+  quirk) are `git am`-shaped and scoped; 0001-0004 want a `dt_binding_check`
+  run first. The genpd deadlock goes as a report with the stack trace.
 - Package the modules. The v66 ramdisk is hand-assembled: `gpu-sched.ko`,
   `lima.ko`, `drm_shmem_helper.ko` and `phy-rockchip-inno-dsidphy.ko` copied
   from the kernel build into `rootfs-v55` plus `taq102-cube`. The Buildroot
@@ -226,7 +267,7 @@ Whether events arrive is my test; evidence so far in
   panel rate, so this is not urgent.
 - `modetest` cannot create a dumb buffer (-EINVAL). Moot for glcube, which
   allocates through GBM and lima; still worth understanding.
-- Touch: probes since v68 (patch 0011). Events not yet seen; the interrupt
+- Touch: probes since v68 (patch 0010). Events not yet seen; the interrupt
   count was zero before anyone had touched the glass.
   GSL3673 answers with chip ID 0x50910000 and then fails a register write with
   -6. Untouched since.

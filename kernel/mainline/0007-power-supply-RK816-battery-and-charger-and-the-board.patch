@@ -1,12 +1,14 @@
+From 135e823c6debf071c1c5024bc0965acaf0ba25b7 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Subject: [PATCH] power: supply: RK816 battery and charger, and the board that
- needs it
+Date: Wed, 9 Sep 2026 02:24:28 +0200
+Subject: [PATCH 07/12] power: supply: add the RK816 battery and charger
 
 /sys/class/power_supply/battery does not exist on an RK816 board under
 mainline: the rk816s[] cell list in drivers/mfd/rk8xx-core.c has a pinctrl, a
 clkout, a regulator, a pwrkey and an rtc cell, and no charger, so nothing ever
 claims the fuel gauge. This adds the cell and the driver behind it, together
-with the binding and the board device tree the TAQ-102 needs to use them.
+with the binding; the TAQ-102 board file that uses them is the last patch
+of this series.
 
 The RK816 has a real coulomb counter, a battery voltage and current ADC, a
 charge state machine and a VBUS presence bit. What it does not have is a state
@@ -58,14 +60,28 @@ Three other things fall out of the hardware and are worth naming:
 
 Every register offset, bit position, scaling constant, table and default was
 read out of the Rockchip 4.4 vendor tree, and every number in the board's
-battery node was converted from the vendor board file's own hexadecimal. None
-of it has been run on hardware yet.
+battery node was converted from the vendor board file's own hexadecimal.
+Measured on the TAQ-102 under Linux 7.3.0-rc2: capacity 100, status Full,
+voltage_now 4153600, current_now -3012, usb/online 1, and the values track
+charging and discharging across reboots.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
 ---
+ .../bindings/mfd/rockchip,rk816.yaml          |   54 +
+ arch/arm/boot/dts/rockchip/Makefile           |    1 +
+ drivers/mfd/rk8xx-core.c                      |   10 +
+ drivers/mfd/rk8xx-i2c.c                       |   11 +-
+ drivers/power/supply/Kconfig                  |    9 +
+ drivers/power/supply/Makefile                 |    1 +
+ drivers/power/supply/rk816_charger.c          | 1207 +++++++++++++++++
+ 7 files changed, 1292 insertions(+), 1 deletion(-)
+ create mode 100644 drivers/power/supply/rk816_charger.c
+
+diff --git a/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml b/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
+index a58d9455a..39fbc7991 100644
 --- a/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
 +++ b/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
-@@ -78,6 +78,14 @@
+@@ -78,6 +78,14 @@ properties:
      description:
        The input supply for otg-switch.
  
@@ -80,7 +96,7 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
    regulators:
      type: object
      patternProperties:
-@@ -87,6 +95,52 @@
+@@ -87,6 +95,52 @@ properties:
          unevaluatedProperties: false
      additionalProperties: false
  
@@ -133,127 +149,23 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  patternProperties:
    '-pins$':
      type: object
---- a/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
-+++ b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
-@@ -96,3 +96,115 @@
- 	dr_mode = "peripheral";
- 	status = "okay";
- };
-+
-+/*
-+ * The RK816 PMIC and the battery behind it.
-+ *
-+ * These two headers are re-included here rather than at the top of the file
-+ * so that this is one self-contained block; both carry include guards, so a
-+ * second include costs nothing.
-+ */
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/pinctrl/rockchip.h>
-+
-+/*
-+ * The PMIC sits on i2c2 at 0x1a, beside the GSL3673 touch controller at 0x40
-+ * on the same bus; i2c0 is enabled with no children at all on this board.
-+ * Its interrupt is GPIO0_A2, active low.
-+ * Checked against the decompiled vendor DTB, where the same node reads
-+ * interrupts = <0x02 0x08>.
-+ *
-+ * The regulators are deliberately not described. Nothing here needs them,
-+ * and transcribing a rail constraint wrong is how a board stops booting;
-+ * the vendor's DCDC and LDO constraints are a separate change with its own
-+ * risk. "rockchip,system-power-controller" is left off for the same reason:
-+ * it changes what happens on poweroff.
-+ */
-+&i2c2 {
-+	status = "okay";
-+
-+	pmic@1a {
-+		compatible = "rockchip,rk816";
-+		reg = <0x1a>;
-+		interrupt-parent = <&gpio0>;
-+		interrupts = <RK_PA2 IRQ_TYPE_LEVEL_LOW>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pmic_int_l>;
-+		#clock-cells = <1>;
-+		clock-output-names = "xin32k", "rk816-clkout2";
-+		gpio-controller;
-+		#gpio-cells = <2>;
-+		extcon = <&usb2phy>;
-+		wakeup-source;
-+
-+		charger {
-+			monitored-battery = <&battery>;
-+			rockchip,resistor-sense-micro-ohms = <20000>;
-+			rockchip,sleep-enter-current-microamp = <300000>;
-+			rockchip,sleep-filter-current-microamp = <100000>;
-+			input-current-limit-microamp = <1600000>;
-+		};
-+	};
-+};
-+
-+&pinctrl {
-+	pmic {
-+		pmic_int_l: pmic-int-l {
-+			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_default>;
-+		};
-+	};
-+};
-+
-+/*
-+ * The OTG PHY is disabled in rk3128.dtsi, so the ACM gadget above cannot
-+ * probe without this either. It is also what performs BC1.2 detection,
-+ * which is the only way the charger can tell a wall adapter from a 450 mA
-+ * port.
-+ */
-+&usb2phy {
-+	status = "okay";
-+};
-+
-+&usb2phy_otg {
-+	status = "okay";
-+};
-+
-+/ {
-+	/*
-+	 * Every number here comes from the battery node of the vendor board
-+	 * file, converted out of its hexadecimal millivolts and milliamp
-+	 * hours: design_capacity 0x10af, max_chrg_current 0x578,
-+	 * max_chrg_voltage 0x1068, max_input_current 0x640, bat_res 0x64,
-+	 * power_off_thresd 0xd7a, sleep_enter_current 0x12c,
-+	 * sleep_filter_current 0x64. The termination current is not in the
-+	 * vendor DTS at all: rk816_bat_finish_ma() derives 200 mA from a pack
-+	 * of 4000 mAh or more.
-+	 *
-+	 * The OCV table is the vendor's ocv_table read backwards, because the
-+	 * vendor lists 0 % first and the power supply core wants the highest
-+	 * voltage first. There is no thermistor on this board, so one table
-+	 * at 20 C is all there is.
-+	 */
-+	battery: battery {
-+		compatible = "simple-battery";
-+		charge-full-design-microamp-hours = <4271000>;
-+		charge-term-current-microamp = <200000>;
-+		constant-charge-current-max-microamp = <1400000>;
-+		constant-charge-voltage-max-microvolt = <4200000>;
-+		voltage-max-design-microvolt = <4200000>;
-+		voltage-min-design-microvolt = <3450000>;
-+		factory-internal-resistance-micro-ohms = <100000>;
-+		ocv-capacity-celsius = <20>;
-+		ocv-capacity-table-0 = <4200000 100>, <4139000 95>,
-+				       <4093000 90>, <4056000 85>,
-+				       <4005000 80>, <3975000 75>,
-+				       <3943000 70>, <3897000 65>,
-+				       <3858000 60>, <3836000 55>,
-+				       <3817000 50>, <3802000 45>,
-+				       <3789000 40>, <3777000 35>,
-+				       <3762000 30>, <3746000 25>,
-+				       <3731000 20>, <3706000 15>,
-+				       <3686000 10>, <3671000 5>,
-+				       <3450000 0>;
-+	};
-+};
+diff --git a/arch/arm/boot/dts/rockchip/Makefile b/arch/arm/boot/dts/rockchip/Makefile
+index e9f9e0ac3..5041ee632 100644
+--- a/arch/arm/boot/dts/rockchip/Makefile
++++ b/arch/arm/boot/dts/rockchip/Makefile
+@@ -14,6 +14,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
+ 	rk3066a-marsboard.dtb \
+ 	rk3066a-mk808.dtb \
+ 	rk3066a-rayeager.dtb \
++	rk3126-taq102.dtb \
+ 	rk3128-evb.dtb \
+ 	rk3128-xpi-3128.dtb \
+ 	rk3188-bqedison2qc.dtb \
+diff --git a/drivers/mfd/rk8xx-core.c b/drivers/mfd/rk8xx-core.c
+index 3dcf6abfd..b3d060bf1 100644
 --- a/drivers/mfd/rk8xx-core.c
 +++ b/drivers/mfd/rk8xx-core.c
-@@ -57,6 +57,11 @@
+@@ -57,6 +57,11 @@ static const struct resource rk817_pwrkey_resources[] = {
  	DEFINE_RES_IRQ(RK817_IRQ_PWRON_RISE),
  };
  
@@ -265,7 +177,7 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  static const struct resource rk817_charger_resources[] = {
  	DEFINE_RES_IRQ(RK817_IRQ_PLUG_IN),
  	DEFINE_RES_IRQ(RK817_IRQ_PLUG_OUT),
-@@ -119,6 +124,11 @@
+@@ -119,6 +124,11 @@ static const struct mfd_cell rk816s[] = {
  		.num_resources = ARRAY_SIZE(rk816_rtc_resources),
  		.resources = rk816_rtc_resources,
  	},
@@ -277,9 +189,11 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  };
  
  static const struct mfd_cell rk817s[] = {
+diff --git a/drivers/mfd/rk8xx-i2c.c b/drivers/mfd/rk8xx-i2c.c
+index 2951b2911..28d3b43c7 100644
 --- a/drivers/mfd/rk8xx-i2c.c
 +++ b/drivers/mfd/rk8xx-i2c.c
-@@ -99,7 +99,16 @@
+@@ -99,7 +99,16 @@ static bool rk816_is_volatile_reg(struct device *dev, unsigned int reg)
  	case RK816_GGSTS_REG:
  	case RK816_ZERO_CUR_ADC_REGH:
  	case RK816_ZERO_CUR_ADC_REGL:
@@ -297,9 +211,11 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  		return true;
  	}
  
+diff --git a/drivers/power/supply/Kconfig b/drivers/power/supply/Kconfig
+index b89ef40df..563ae5b58 100644
 --- a/drivers/power/supply/Kconfig
 +++ b/drivers/power/supply/Kconfig
-@@ -857,6 +857,15 @@
+@@ -857,6 +857,15 @@ config CHARGER_BQ256XX
  	  charge management and system power path management devices for single
  	  cell Li-ion and Li-polymer batteries.
  
@@ -315,9 +231,11 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  config CHARGER_RK817
  	tristate "Rockchip RK817 PMIC Battery Charger"
  	depends on MFD_RK8XX
+diff --git a/drivers/power/supply/Makefile b/drivers/power/supply/Makefile
+index f3c0d1006..b6daf48fc 100644
 --- a/drivers/power/supply/Makefile
 +++ b/drivers/power/supply/Makefile
-@@ -107,6 +107,7 @@
+@@ -107,6 +107,7 @@ obj-$(CONFIG_CHARGER_BQ25890)	+= bq25890_charger.o
  obj-$(CONFIG_CHARGER_BQ25980)	+= bq25980_charger.o
  obj-$(CONFIG_CHARGER_BQ25630)	+= bq25630_charger.o
  obj-$(CONFIG_CHARGER_BQ256XX)	+= bq256xx_charger.o
@@ -325,9 +243,12 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  obj-$(CONFIG_CHARGER_RK817)	+= rk817_charger.o
  obj-$(CONFIG_CHARGER_S2M)	+= s2m-charger.o
  obj-$(CONFIG_CHARGER_SGM41542)	+= sgm41542_charger.o
+diff --git a/drivers/power/supply/rk816_charger.c b/drivers/power/supply/rk816_charger.c
+new file mode 100644
+index 000000000..6f9a073bc
 --- /dev/null
 +++ b/drivers/power/supply/rk816_charger.c
-@@ -0,0 +1,1206 @@
+@@ -0,0 +1,1207 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Battery and charger driver for the Rockchip RK816 PMIC.
@@ -1415,12 +1336,13 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
 +	if (ret)
 +		return ret;
 +
-+	if (cg->bat_info->charge_full_design_uah <= 0 ||
++	if (cg->bat_info->charge_full_design_uah < RK816_MIN_FCC_MAH * 1000 ||
 +	    cg->bat_info->constant_charge_current_max_ua <= 0 ||
 +	    cg->bat_info->constant_charge_voltage_max_uv <= 0 ||
 +	    cg->bat_info->charge_term_current_ua <= 0)
 +		return dev_err_probe(dev, -EINVAL,
-+				     "monitored-battery is missing a required value\n");
++				     "monitored-battery is missing a required value or its design capacity is below %d mAh\n",
++				     RK816_MIN_FCC_MAH);
 +
 +	cg->charge_full_design_uah = cg->bat_info->charge_full_design_uah;
 +	cg->voltage_min_design_uv = cg->bat_info->voltage_min_design_uv;
@@ -1534,15 +1456,6 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
 +MODULE_AUTHOR("Cristian Deluxe <info@busirocket.com>");
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:rk816-charger");
-diff --git a/arch/arm/boot/dts/rockchip/Makefile b/arch/arm/boot/dts/rockchip/Makefile
-index e9f9e0ac3..5041ee632 100644
---- a/arch/arm/boot/dts/rockchip/Makefile
-+++ b/arch/arm/boot/dts/rockchip/Makefile
-@@ -14,6 +14,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
- 	rk3066a-marsboard.dtb \
- 	rk3066a-mk808.dtb \
- 	rk3066a-rayeager.dtb \
-+	rk3126-taq102.dtb \
- 	rk3128-evb.dtb \
- 	rk3128-xpi-3128.dtb \
- 	rk3188-bqedison2qc.dtb \
+-- 
+2.53.0
+

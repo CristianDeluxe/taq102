@@ -1,3 +1,27 @@
+From 0e3d3121de49a4c106259f71dfd624d8fc00e49e Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 02:24:24 +0200
+Subject: [PATCH 01/12] drm/rockchip: vop: drive the LVDS output enable on
+ RK312x
+
+Upstream enables DRM_MODE_CONNECTOR_LVDS through the RGB output enable,
+which is right for RK3288 and PX30 and wrong for RK3126/RK3128: this VOP has
+its own LVDS enable and dclk polarity bits, bit 26 and bit 27 of
+RK3036_AXI_BUS_CTRL, the register the driver already uses for the rgb, hdmi
+and mipi enables. The values are the vendor 4.4 tree's
+(rockchip_vop_reg.c:1150).
+
+Add lvds_en and lvds_dclk_pol to struct vop_output, fill them in for RK312x,
+and use them when the SoC has them; SoCs without the bits keep the old path,
+selected by VOP_HAS_REG.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.c | 11 ++++++++---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.h |  2 ++
+ drivers/gpu/drm/rockchip/rockchip_vop_reg.c |  2 ++
+ 3 files changed, 12 insertions(+), 3 deletions(-)
+
 diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
 index 0090d8ff0..d7a792cba 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
@@ -46,3 +70,6 @@ index 72301e0a3..07f46ecec 100644
  	.mipi_en = VOP_REG(RK3036_AXI_BUS_CTRL, 0x1, 28),
  	.mipi_dclk_pol = VOP_REG(RK3036_AXI_BUS_CTRL, 0x1, 29),
  };
+-- 
+2.53.0
+

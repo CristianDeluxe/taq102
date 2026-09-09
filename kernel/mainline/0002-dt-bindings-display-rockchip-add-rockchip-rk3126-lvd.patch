@@ -1,0 +1,43 @@
+From e25070c9d2430efda271c38af5644d08edfdab28 Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 02:24:24 +0200
+Subject: [PATCH 02/12] dt-bindings: display: rockchip: add
+ rockchip,rk3126-lvds
+
+The RK3126/RK3128 LVDS transmitter is shaped like the PX30 one: the
+Innosilicon MIPI/LVDS/TTL D-PHY drives the pins and the block itself has no
+register window and no clock of its own, only a GRF phandle. Add the
+compatible to the enum and to the PX30 clause that requires phys and forbids
+reg and clocks.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ .../devicetree/bindings/display/rockchip/rockchip,lvds.yaml  | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/display/rockchip/rockchip,lvds.yaml b/Documentation/devicetree/bindings/display/rockchip/rockchip,lvds.yaml
+index 03b002a05..8cca83dca 100644
+--- a/Documentation/devicetree/bindings/display/rockchip/rockchip,lvds.yaml
++++ b/Documentation/devicetree/bindings/display/rockchip/rockchip,lvds.yaml
+@@ -14,6 +14,7 @@ properties:
+   compatible:
+     enum:
+       - rockchip,px30-lvds
++      - rockchip,rk3126-lvds
+       - rockchip,rk3288-lvds
+ 
+   reg:
+@@ -87,7 +88,9 @@ allOf:
+       properties:
+         compatible:
+           contains:
+-            const: rockchip,px30-lvds
++            enum:
++              - rockchip,px30-lvds
++              - rockchip,rk3126-lvds
+ 
+     then:
+       properties:
+-- 
+2.53.0
+

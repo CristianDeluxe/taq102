@@ -1,0 +1,138 @@
+From edb19732b58f3d23ae231eda1d24739a2df1726d Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 02:24:30 +0200
+Subject: [PATCH 10/12] Input: silead - accept the NAK the GSL3673 gives its
+ own reset command
+
+silead_ts_init() and silead_ts_reset() write SILEAD_CMD_RESET to
+SILEAD_REG_RESET and treat any error as fatal: "Registers clear error -6",
+and the probe fails.
+
+On the GSL3673 the write is answered with a NAK on the data byte and applied
+all the same. Measured on a chip reporting ID 0x50910000 (Denver TAQ-102,
+Rockchip RK3126C, rk3x-i2c): the register reads 0x00 after an acknowledged
+SILEAD_CMD_START and 0x80 immediately after the NAKed SILEAD_CMD_RESET
+write, and every other register accepts writes with an ACK. The controller
+halts on the command before it acknowledges the byte. The vendor driver,
+like every driver descended from Silead's reference code, never checks the
+return value of that write and so works by accident.
+
+Add SILEAD_QUIRK_RESET_NAK, set it for the gsl3673 entries, and let the reset
+write return success on -ENXIO for chips that carry it. Other chips keep the
+old behaviour. The chip has already answered the ID read by the time the
+reset is written, so a missing device is not mistaken for the quirk.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ drivers/input/touchscreen/silead.c | 41 ++++++++++++++++++++++++++----
+ 1 file changed, 36 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/input/touchscreen/silead.c b/drivers/input/touchscreen/silead.c
+index c1a6a3a7b..febba49e3 100644
+--- a/drivers/input/touchscreen/silead.c
++++ b/drivers/input/touchscreen/silead.c
+@@ -20,6 +20,7 @@
+ #include <linux/input/mt.h>
+ #include <linux/input/touchscreen.h>
+ #include <linux/pm.h>
++#include <linux/property.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/irq.h>
+ #include <linux/regulator/consumer.h>
+@@ -44,6 +45,9 @@
+ #define SILEAD_CMD_RESET	0x88
+ #define SILEAD_CMD_START	0x00
+ 
++/* The controller NAKs the data byte of SILEAD_CMD_RESET while applying it. */
++#define SILEAD_QUIRK_RESET_NAK	BIT(0)
++
+ #define SILEAD_POINT_DATA_LEN	0x04
+ #define SILEAD_POINT_Y_OFF      0x00
+ #define SILEAD_POINT_Y_MSB_OFF	0x01
+@@ -82,6 +86,7 @@ struct silead_ts_data {
+ 	u32 pen_x_res;
+ 	u32 pen_y_res;
+ 	int pen_up_count;
++	unsigned long quirks;
+ };
+ 
+ struct silead_fw_data {
+@@ -312,12 +317,36 @@ static void silead_ts_read_data(struct i2c_client *client)
+ 	input_sync(input);
+ }
+ 
+-static int silead_ts_init(struct i2c_client *client)
++/*
++ * The GSL3673 halts on SILEAD_CMD_RESET before it acknowledges the data byte,
++ * so the transfer ends in a NAK (-ENXIO from the bus driver) although the
++ * reset has taken effect: measured on a chip reporting ID 0x50910000, the
++ * register reads 0x00 after an acknowledged SILEAD_CMD_START and 0x80 right
++ * after the NAKed SILEAD_CMD_RESET write, and every other register accepts
++ * writes normally. The vendor driver never checks the return value of that
++ * write and so works by accident. Only chips flagged with
++ * SILEAD_QUIRK_RESET_NAK get this treatment; the chip has already answered
++ * the ID read by the time this runs, so a missing device is not confused
++ * with the quirk.
++ */
++static int silead_ts_write_reset(struct i2c_client *client)
+ {
++	struct silead_ts_data *data = i2c_get_clientdata(client);
+ 	int error;
+ 
+ 	error = i2c_smbus_write_byte_data(client, SILEAD_REG_RESET,
+ 					  SILEAD_CMD_RESET);
++	if (error == -ENXIO && (data->quirks & SILEAD_QUIRK_RESET_NAK))
++		return 0;
++
++	return error;
++}
++
++static int silead_ts_init(struct i2c_client *client)
++{
++	int error;
++
++	error = silead_ts_write_reset(client);
+ 	if (error)
+ 		goto i2c_write_err;
+ 	usleep_range(SILEAD_CMD_SLEEP_MIN, SILEAD_CMD_SLEEP_MAX);
+@@ -351,8 +380,7 @@ static int silead_ts_reset(struct i2c_client *client)
+ {
+ 	int error;
+ 
+-	error = i2c_smbus_write_byte_data(client, SILEAD_REG_RESET,
+-					  SILEAD_CMD_RESET);
++	error = silead_ts_write_reset(client);
+ 	if (error)
+ 		goto i2c_write_err;
+ 	usleep_range(SILEAD_CMD_SLEEP_MIN, SILEAD_CMD_SLEEP_MAX);
+@@ -664,6 +692,9 @@ static int silead_ts_probe(struct i2c_client *client)
+ 
+ 	i2c_set_clientdata(client, data);
+ 	data->client = client;
++	data->quirks = (unsigned long)device_get_match_data(dev);
++	if (!data->quirks && id)
++		data->quirks = id->driver_data;
+ 
+ 	error = silead_ts_set_default_fw_name(data, id);
+ 	if (error)
+@@ -779,7 +810,7 @@ static const struct i2c_device_id silead_ts_id[] = {
+ 	{ .name = "gsl1680" },
+ 	{ .name = "gsl1688" },
+ 	{ .name = "gsl3670" },
+-	{ .name = "gsl3673" },
++	{ .name = "gsl3673", .driver_data = SILEAD_QUIRK_RESET_NAK },
+ 	{ .name = "gsl3675" },
+ 	{ .name = "gsl3692" },
+ 	{ .name = "mssl1680" },
+@@ -808,7 +839,7 @@ static const struct of_device_id silead_ts_of_match[] = {
+ 	{ .compatible = "silead,gsl1680" },
+ 	{ .compatible = "silead,gsl1688" },
+ 	{ .compatible = "silead,gsl3670" },
+-	{ .compatible = "silead,gsl3673" },
++	{ .compatible = "silead,gsl3673", .data = (void *)SILEAD_QUIRK_RESET_NAK },
+ 	{ .compatible = "silead,gsl3675" },
+ 	{ .compatible = "silead,gsl3692" },
+ 	{ },
+-- 
+2.53.0
+
