@@ -134,6 +134,22 @@ appliance back. The journal is `README.md` here and
   the vendor `wireless-wlan` node) and pulse that. Note `1021c000.mmc` is
   the eMMC: unbinding it drops `/data`, which then needs
   `mount -t ext4 /dev/mmcblk1p1 /data` by hand.
+  2026-09-09 later, from the trees alone (tablet off the LAN, so unverified):
+  there is no rail to cut. Neither SDIO host names a supply, the vendor
+  `wireless-wlan` node has no power GPIO, and the vendor pwrseq resets the
+  same gpio2 PB5 line mainline does, so no kernel has ever taken power off
+  the chip; the RK816 LDOs 4-6 are all always-on and unnamed. The line the
+  vendor drives and mainline does not is `BT,reset_gpio` = gpio2 PB1
+  (active high, the RTL8723CS BT enable). The combo chip keeps its core up
+  while either enable is high, which would explain why holding PB5 low for
+  seconds re-enumerated the card without a power cycle. Next, on the wedged
+  tablet: read PB1 (`devmem 0x20084050`, bit 9; iomux GRF `0x200080cc`
+  bits 3:2 must be 0), drive PB1 and PB5 low together for 200 ms through
+  `0x20084000`/`0x20084004`, release, rebind `10218000.mmc`, and see if
+  rtw88 gets past `failed to poll offset=0x6`. If it does, the fix is a BT
+  node with `enable-gpios` held low plus `post-power-on-delay-ms` on the
+  pwrseq. Poll 0x6 bit 1 is the chip's own power-ready flag, so the driver
+  is not the suspect.
 - [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write
   (`0xe0 = 0x88`) while applying it, and `silead.c` treated that as a probe
   failure. Patch 0011 accepts the NAK; v68 probes (`input0 = silead_ts`,
