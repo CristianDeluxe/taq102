@@ -1,0 +1,65 @@
+Subject: phy: rockchip: inno-dsidphy: enable the MIPI host pclk and the VIO h2p bridge clock
+
+The vendor driver enables four clocks before it touches a PHY register where
+mainline names two. HCLK_VIO_H2P is the AHB-to-APB bridge the PHY registers
+sit behind; it is an ordinary gate with neither CLK_IS_CRITICAL nor
+CLK_IGNORE_UNUSED in clk-rk3128.c, so it comes out of reset off and nothing
+turns it on. Both are taken as optional, so a DT that does not name them is
+unaffected; rk3128.dtsi names them in 0003.
+
+Measured on the TAQ-102 (kernel/mainline/FINDINGS.md): this was not the cause
+of the display hang, which was a genpd deadlock. Kept because the PHY module
+that runs on the tablet was built with it and it is correct on its own terms.
+
+diff --git a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
+index c8f7566d4..53eb7cd6b 100644
+--- a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
+@@ -228,6 +228,16 @@ struct inno_dsidphy {
+ 	struct device *dev;
+ 	struct clk *ref_clk;
+ 	struct clk *pclk_phy;
++	/*
++	 * Two gates mainline never asks for, and the vendor driver always
++	 * enables before it touches a PHY register: the APB clock of the MIPI
++	 * host block, and the AHB-to-APB bridge those registers sit behind.
++	 * HCLK_VIO_H2P is an ordinary gate with no CLK_IS_CRITICAL and no
++	 * CLK_IGNORE_UNUSED (clk-rk3128.c), so it comes out of reset off and
++	 * nothing turns it on -- and a register access through a bridge whose
++	 * clock is gated does not fault, it hangs the bus.
++	 */
++	struct clk *h2p_clk;
+ 	struct clk *pclk_host;
+ 	const struct inno_video_phy_plat_data *pdata;
+ 	void __iomem *phy_base;
+@@ -668,6 +678,8 @@ static int inno_dsidphy_power_on(struct phy *phy)
+ 
+ 	clk_prepare_enable(inno->pclk_phy);
+ 	clk_prepare_enable(inno->ref_clk);
++	clk_prepare_enable(inno->pclk_host);
++	clk_prepare_enable(inno->h2p_clk);
+ 	pm_runtime_get_sync(inno->dev);
+ 
+ 	/* Discard the register state the bootloader left behind */
+@@ -719,6 +731,8 @@ static int inno_dsidphy_power_off(struct phy *phy)
+ 			LVDS_PLL_POWER_OFF | LVDS_BANDGAP_POWER_DOWN);
+ 
+ 	pm_runtime_put(inno->dev);
++	clk_disable_unprepare(inno->h2p_clk);
++	clk_disable_unprepare(inno->pclk_host);
+ 	clk_disable_unprepare(inno->ref_clk);
+ 	clk_disable_unprepare(inno->pclk_phy);
+ 
+@@ -823,6 +837,12 @@ static int inno_dsidphy_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
++	/* Optional: only this board's DT names them, so an absent one is fine. */
++	inno->h2p_clk = devm_clk_get_optional(dev, "h2p");
++	if (IS_ERR(inno->h2p_clk))
++		return dev_err_probe(dev, PTR_ERR(inno->h2p_clk),
++				     "failed to get h2p clock\n");
++
+ 	inno->rst = devm_reset_control_get(dev, "apb");
+ 	if (IS_ERR(inno->rst)) {
+ 		ret = PTR_ERR(inno->rst);

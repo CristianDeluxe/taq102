@@ -1,8 +1,8 @@
 diff --git a/arch/arm/boot/dts/rockchip/rk3128.dtsi b/arch/arm/boot/dts/rockchip/rk3128.dtsi
-index c49099954..1b865bae5 100644
+index c49099954..f481430e1 100644
 --- a/arch/arm/boot/dts/rockchip/rk3128.dtsi
 +++ b/arch/arm/boot/dts/rockchip/rk3128.dtsi
-@@ -312,6 +312,38 @@ vop_out_dsi: endpoint@1 {
+@@ -312,6 +312,40 @@ vop_out_dsi: endpoint@1 {
  				reg = <1>;
  				remote-endpoint = <&dsi_in_vop>;
  			};
@@ -37,7 +37,21 @@ index c49099954..1b865bae5 100644
 +
 +			lvds_out: port@1 {
 +				reg = <1>;
++				#address-cells = <1>;
++				#size-cells = <0>;
 +			};
  		};
  	};
  
+@@ -619,8 +653,9 @@ hdmi_out: port@1 {
+ 	dphy: phy@20038000 {
+ 		compatible = "rockchip,rk3128-dsi-dphy";
+ 		reg = <0x20038000 0x4000>;
+-		clocks = <&cru SCLK_MIPI_24M>, <&cru PCLK_MIPIPHY>;
+-		clock-names = "ref", "pclk";
++		clocks = <&cru SCLK_MIPI_24M>, <&cru PCLK_MIPIPHY>,
++			 <&cru PCLK_MIPI>, <&cru HCLK_VIO_H2P>;
++		clock-names = "ref", "pclk", "pclk_host", "h2p";
+ 		#phy-cells = <0>;
+ 		power-domains = <&power RK3128_PD_VIO>;
+ 		resets = <&cru SRST_MIPIPHY_P>;

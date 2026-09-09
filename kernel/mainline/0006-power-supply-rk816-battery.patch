@@ -1534,3 +1534,15 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
 +MODULE_AUTHOR("Cristian Deluxe <info@busirocket.com>");
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:rk816-charger");
+diff --git a/arch/arm/boot/dts/rockchip/Makefile b/arch/arm/boot/dts/rockchip/Makefile
+index e9f9e0ac3..5041ee632 100644
+--- a/arch/arm/boot/dts/rockchip/Makefile
++++ b/arch/arm/boot/dts/rockchip/Makefile
+@@ -14,6 +14,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
+ 	rk3066a-marsboard.dtb \
+ 	rk3066a-mk808.dtb \
+ 	rk3066a-rayeager.dtb \
++	rk3126-taq102.dtb \
+ 	rk3128-evb.dtb \
+ 	rk3128-xpi-3128.dtb \
+ 	rk3188-bqedison2qc.dtb \
