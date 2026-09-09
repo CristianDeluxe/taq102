@@ -1,39 +1,55 @@
-From 135e823c6debf071c1c5024bc0965acaf0ba25b7 Mon Sep 17 00:00:00 2001
+From 1ca0c111928ae298f191e7d85fd49745636455ed Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 02:24:28 +0200
-Subject: [PATCH 07/12] power: supply: add the RK816 battery and charger
+Date: Wed, 9 Sep 2026 03:45:34 +0200
+Subject: [PATCH 08/17] power: supply: add the RK816 battery and charger
 
 /sys/class/power_supply/battery does not exist on an RK816 board under
-mainline: the rk816s[] cell list in drivers/mfd/rk8xx-core.c has a pinctrl, a
-clkout, a regulator, a pwrkey and an rtc cell, and no charger, so nothing ever
-claims the fuel gauge. This adds the cell and the driver behind it, together
-with the binding; the TAQ-102 board file that uses them is the last patch
-of this series.
+mainline: the rk816s[] cell list in drivers/mfd/rk8xx-core.c has a pinctrl,
+a
+clkout, a regulator, a pwrkey and an rtc cell, and no charger, so nothing
+ever
+claims the fuel gauge. This adds the cell and the driver behind it; the
+binding is the patch before it, and the TAQ-102 board file that uses them
+is the last patch of this series.
 
 The RK816 has a real coulomb counter, a battery voltage and current ADC, a
-charge state machine and a VBUS presence bit. What it does not have is a state
-of charge register. RK816_SOC_REG at 0xe0 is the first of the battery-backed
-general purpose data registers - mainline's own rk808.h already names the block
-RK816_DATA_REG(x) - and in five thousand lines of vendor driver it is written
-in exactly one place, rk816_bat_save_dsoc() at rk816_battery.c:1438, with the
+charge state machine and a VBUS presence bit. What it does not have is a
+state
+of charge register. RK816_SOC_REG at 0xe0 is the first of the
+battery-backed
+general purpose data registers - mainline's own rk808.h already names the
+block
+RK816_DATA_REG(x) - and in five thousand lines of vendor driver it is
+written
+in exactly one place, rk816_bat_save_dsoc() at rk816_battery.c:1438, with
+the
 driver's own computed percentage, and read in exactly one, at :1445, on the
 next boot. It is a scratch byte.
 
 So the percentage here is the integral, not a lookup. The 32 bit coulomb
 counter is preloaded once at probe from the relaxed open circuit voltage
-through the battery's ocv-capacity table, divided by the full charge capacity
-on every poll, and re-anchored in exactly one place: when the charger reports
-termination, which is the only moment the true charge is known. Nothing is ever
-derived from the loaded terminal voltage, which is what stops the percentage
+through the battery's ocv-capacity table, divided by the full charge
+capacity
+on every poll, and re-anchored in exactly one place: when the charger
+reports
+termination, which is the only moment the true charge is known. Nothing is
+ever
+derived from the loaded terminal voltage, which is what stops the
+percentage
 swinging when a GPU load steps - the appliance on this board is a single GL
-application, and a battery indicator that moves with the frame rate is worse
+application, and a battery indicator that moves with the frame rate is
+worse
 than none.
 
-The vendor's software layer on top of the counter is not reproduced, and each
-omission is marked at its site in the driver: the zero algorithm that bends the
-last few percent onto the power-off voltage, FCC relearning, the current ADC
+The vendor's software layer on top of the counter is not reproduced, and
+each
+omission is marked at its site in the driver: the zero algorithm that bends
+the
+last few percent onto the power-off voltage, FCC relearning, the current
+ADC
 offset self-calibration, and the sleep discharge estimate. The consequence
-worth stating up front is that this driver's 0 % is not the vendor's 0 %: the
+worth stating up front is that this driver's 0 % is not the vendor's 0 %:
+the
 system should shut down on voltage, not on capacity.
 
 Three other things fall out of the hardware and are worth naming:
@@ -58,7 +74,8 @@ Three other things fall out of the hardware and are worth naming:
     rk817-charger's "rk817-battery" and "rk817-charger". Those three names
     under /sys/class/power_supply are the userspace ABI on this class of board.
 
-Every register offset, bit position, scaling constant, table and default was
+Every register offset, bit position, scaling constant, table and default
+was
 read out of the Rockchip 4.4 vendor tree, and every number in the board's
 battery node was converted from the vendor board file's own hexadecimal.
 Measured on the TAQ-102 under Linux 7.3.0-rc2: capacity 100, status Full,
@@ -67,88 +84,15 @@ charging and discharging across reboots.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
 ---
- .../bindings/mfd/rockchip,rk816.yaml          |   54 +
- arch/arm/boot/dts/rockchip/Makefile           |    1 +
- drivers/mfd/rk8xx-core.c                      |   10 +
- drivers/mfd/rk8xx-i2c.c                       |   11 +-
- drivers/power/supply/Kconfig                  |    9 +
- drivers/power/supply/Makefile                 |    1 +
- drivers/power/supply/rk816_charger.c          | 1207 +++++++++++++++++
- 7 files changed, 1292 insertions(+), 1 deletion(-)
+ arch/arm/boot/dts/rockchip/Makefile  |    1 +
+ drivers/mfd/rk8xx-core.c             |   10 +
+ drivers/mfd/rk8xx-i2c.c              |   11 +-
+ drivers/power/supply/Kconfig         |    9 +
+ drivers/power/supply/Makefile        |    1 +
+ drivers/power/supply/rk816_charger.c | 1209 ++++++++++++++++++++++++++
+ 6 files changed, 1240 insertions(+), 1 deletion(-)
  create mode 100644 drivers/power/supply/rk816_charger.c
 
-diff --git a/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml b/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
-index a58d9455a..39fbc7991 100644
---- a/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
-+++ b/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
-@@ -78,6 +78,14 @@ properties:
-     description:
-       The input supply for otg-switch.
- 
-+  extcon:
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+    description:
-+      Phandle to an extcon device, usually the SoC USB PHY, that performs
-+      BC1.2 charger detection. The RK816 can tell that VBUS is present but
-+      not what is supplying it, so without this every charger is treated as
-+      a 450 mA USB port.
-+
-   regulators:
-     type: object
-     patternProperties:
-@@ -87,6 +95,52 @@ properties:
-         unevaluatedProperties: false
-     additionalProperties: false
- 
-+  charger:
-+    type: object
-+    $ref: /schemas/power/supply/power-supply.yaml
-+
-+    properties:
-+      monitored-battery:
-+        description: |
-+          A phandle to a monitored battery node that carries a valid value
-+          for charge-full-design-microamp-hours,
-+          charge-term-current-microamp,
-+          constant-charge-current-max-microamp,
-+          constant-charge-voltage-max-microvolt,
-+          voltage-max-design-microvolt, voltage-min-design-microvolt,
-+          and a valid ocv-capacity table.
-+
-+      rockchip,resistor-sense-micro-ohms:
-+        description:
-+          Value in microohms of the battery sense resistor. The gauge's ADC
-+          scaling constants are defined for 20 mOhm; the driver corrects for
-+          the other supported value.
-+        enum: [10000, 20000]
-+
-+      rockchip,sleep-enter-current-microamp:
-+        description:
-+          Value in microamps of the sleep enter current, which sets the
-+          relax mode entry and exit thresholds.
-+
-+      rockchip,sleep-filter-current-microamp:
-+        description:
-+          Value in microamps of the sleep filter current, which sets the
-+          sleep sample current.
-+
-+      input-current-limit-microamp:
-+        description:
-+          Maximum current the board may draw from a dedicated charging
-+          port. Standard and charging downstream ports are held to their
-+          BC1.2 values instead.
-+
-+    required:
-+      - monitored-battery
-+      - rockchip,resistor-sense-micro-ohms
-+      - rockchip,sleep-enter-current-microamp
-+      - rockchip,sleep-filter-current-microamp
-+
-+    additionalProperties: false
-+
- patternProperties:
-   '-pins$':
-     type: object
 diff --git a/arch/arm/boot/dts/rockchip/Makefile b/arch/arm/boot/dts/rockchip/Makefile
 index e9f9e0ac3..5041ee632 100644
 --- a/arch/arm/boot/dts/rockchip/Makefile
@@ -245,10 +189,10 @@ index f3c0d1006..b6daf48fc 100644
  obj-$(CONFIG_CHARGER_SGM41542)	+= sgm41542_charger.o
 diff --git a/drivers/power/supply/rk816_charger.c b/drivers/power/supply/rk816_charger.c
 new file mode 100644
-index 000000000..6f9a073bc
+index 000000000..c5a258ccd
 --- /dev/null
 +++ b/drivers/power/supply/rk816_charger.c
-@@ -0,0 +1,1207 @@
+@@ -0,0 +1,1209 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Battery and charger driver for the Rockchip RK816 PMIC.
@@ -607,10 +551,12 @@ index 000000000..6f9a073bc
 +	 * refines it. This is the vendor's rk816_bat_check_charger(), which
 +	 * overrides extcon in both directions for the same reason.
 +	 */
-+	if (cg->plugged_in && !cg->usb_online && !cg->ac_online)
++	if (cg->plugged_in && !cg->usb_online && !cg->ac_online) {
 +		cg->usb_online = true;
-+	else if (!cg->plugged_in)
-+		cg->usb_online = cg->ac_online = false;
++	} else if (!cg->plugged_in) {
++		cg->usb_online = false;
++		cg->ac_online = false;
++	}
 +
 +	if (rk816_bat_get_charge_uah(cg, &val))
 +		return;

@@ -26,4 +26,14 @@ load drm_shmem_helper || true
 load gpu-sched && load lima
 wait_for /dev/dri/renderD128 10 && say "render node up: $(ls /dev/dri | tr '\n' ' ')" || say "no render node: $(ls /dev/dri | tr '\n' ' ')"
 [ "$1" = app ] || exit 0
+# glcube defaults to event1 for touch and event0 for the power key, which is
+# the vendor kernel's order. Mainline registers silead_ts first, so pick the
+# nodes by device name instead of trusting the numbering.
+for e in /sys/class/input/event*; do
+    case "$(cat "$e/device/name" 2>/dev/null)" in
+    silead_ts)     export GLCUBE_TOUCH=/dev/input/$(basename "$e") ;;
+    "rk805 pwrkey") export GLCUBE_POWER=/dev/input/$(basename "$e") ;;
+    esac
+done
+say "touch ${GLCUBE_TOUCH:-unset}, power key ${GLCUBE_POWER:-unset}"
 exec /usr/bin/taq102-app

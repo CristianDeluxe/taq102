@@ -1,12 +1,14 @@
-From 1489c613133b32e66dbcee196887330f344f408d Mon Sep 17 00:00:00 2001
+From 5be027e87db76935f47627418f08317402ca2ce8 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 02:24:25 +0200
-Subject: [PATCH 03/12] drm/rockchip: lvds: add RK3126/RK3128 support
+Date: Wed, 9 Sep 2026 03:45:32 +0200
+Subject: [PATCH 03/17] drm/rockchip: lvds: add RK3126/RK3128 support
 
-The PX30 path is the model: the D-PHY does the work and the GRF only selects
+The PX30 path is the model: the D-PHY does the work and the GRF only
+selects
 LVDS mode, the MSB order and the format. RK312x keeps all of it in one
 register, GRF_LVDS_CON0 at 0x150, with P2S_EN at bit 9, MODE_EN at bit 6,
-MSBSEL at bit 3 and the format at bits 2:1, read off the vendor driver. There
+MSBSEL at bit 3 and the format at bits 2:1, read off the vendor driver.
+There
 is no VOP selector because this SoC has one VOP.
 
 Proved on a Denver TAQ-102 (RK3126C): the panel scans out 1024x600 at its
@@ -14,12 +16,12 @@ native 56 Hz and the connector reports the right physical size.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
 ---
- drivers/gpu/drm/rockchip/rockchip_lvds.c | 130 +++++++++++++++++++++++
+ drivers/gpu/drm/rockchip/rockchip_lvds.c | 129 +++++++++++++++++++++++
  drivers/gpu/drm/rockchip/rockchip_lvds.h |   6 ++
- 2 files changed, 136 insertions(+)
+ 2 files changed, 135 insertions(+)
 
 diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
-index 505c6c567..fe02ebbee 100644
+index 505c6c567..17dbcc160 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
 @@ -426,6 +426,84 @@ static void px30_lvds_encoder_disable(struct drm_encoder *encoder)
@@ -107,12 +109,11 @@ index 505c6c567..fe02ebbee 100644
  static const struct drm_encoder_funcs rockchip_lvds_encoder_funcs = {
  	.destroy = drm_encoder_cleanup,
  };
-@@ -437,6 +515,13 @@ struct drm_encoder_helper_funcs rk3288_lvds_encoder_helper_funcs = {
+@@ -437,6 +515,12 @@ struct drm_encoder_helper_funcs rk3288_lvds_encoder_helper_funcs = {
  	.atomic_check = rockchip_lvds_encoder_atomic_check,
  };
  
-+static const
-+struct drm_encoder_helper_funcs rk312x_lvds_encoder_helper_funcs = {
++static const struct drm_encoder_helper_funcs rk312x_lvds_encoder_helper_funcs = {
 +	.enable = rk312x_lvds_encoder_enable,
 +	.disable = rk312x_lvds_encoder_disable,
 +	.atomic_check = rockchip_lvds_encoder_atomic_check,
@@ -121,7 +122,7 @@ index 505c6c567..fe02ebbee 100644
  static const
  struct drm_encoder_helper_funcs px30_lvds_encoder_helper_funcs = {
  	.enable = px30_lvds_encoder_enable,
-@@ -507,6 +592,47 @@ static int px30_lvds_probe(struct platform_device *pdev,
+@@ -507,6 +591,47 @@ static int px30_lvds_probe(struct platform_device *pdev,
  	return phy_power_on(lvds->dphy);
  }
  
@@ -169,7 +170,7 @@ index 505c6c567..fe02ebbee 100644
  static const struct rockchip_lvds_soc_data rk3288_lvds_data = {
  	.probe = rk3288_lvds_probe,
  	.helper_funcs = &rk3288_lvds_encoder_helper_funcs,
-@@ -526,6 +652,10 @@ static const struct of_device_id rockchip_lvds_dt_ids[] = {
+@@ -526,6 +651,10 @@ static const struct of_device_id rockchip_lvds_dt_ids[] = {
  		.compatible = "rockchip,px30-lvds",
  		.data = &px30_lvds_data
  	},

@@ -1,0 +1,45 @@
+From 7828a86db3b4370387e11dcd639cf89d11301265 Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 03:45:37 +0200
+Subject: [PATCH 13/17] dt-bindings: phy: rockchip,px30-dsi-dphy: allow the
+ host pclk and the h2p bridge clock
+
+The vendor driver enables four clocks before it touches a PHY register
+where
+the binding names two: the APB clock of the MIPI host block and the
+AHB-to-APB bridge the PHY registers sit behind. Both are optional to the
+driver; allow them so a board that needs them can name them.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ .../devicetree/bindings/phy/rockchip,px30-dsi-dphy.yaml     | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/phy/rockchip,px30-dsi-dphy.yaml b/Documentation/devicetree/bindings/phy/rockchip,px30-dsi-dphy.yaml
+index 83e7c8258..c90ee331e 100644
+--- a/Documentation/devicetree/bindings/phy/rockchip,px30-dsi-dphy.yaml
++++ b/Documentation/devicetree/bindings/phy/rockchip,px30-dsi-dphy.yaml
+@@ -26,14 +26,20 @@ properties:
+     maxItems: 1
+ 
+   clocks:
++    minItems: 2
+     items:
+       - description: PLL reference clock
+       - description: Module clock
++      - description: APB clock of the MIPI host block
++      - description: AHB-to-APB bridge clock the PHY registers sit behind
+ 
+   clock-names:
++    minItems: 2
+     items:
+       - const: ref
+       - const: pclk
++      - const: pclk_host
++      - const: h2p
+ 
+   power-domains:
+     maxItems: 1
+-- 
+2.53.0
+

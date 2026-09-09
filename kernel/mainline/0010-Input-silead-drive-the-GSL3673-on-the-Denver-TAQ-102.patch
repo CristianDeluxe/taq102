@@ -1,10 +1,13 @@
-From 4678cbecfd74e00559f6d3ed76f3c25019894c7f Mon Sep 17 00:00:00 2001
+From 2e63fba3adc58902737d85855568c8ecbff42b5d Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 02:24:28 +0200
-Subject: [PATCH 08/12] Input: silead - drive the GSL3673 on the Denver TAQ-102
+Date: Wed, 9 Sep 2026 03:45:35 +0200
+Subject: [PATCH 10/17] Input: silead - drive the GSL3673 on the Denver TAQ-102
 
 Route: mainline silead.c, not a port of the vendor driver. This patch adds
-identifiers and a board node. It changes no driver logic, because none is
+the identifiers; the binding is the patch before it and the board node is
+in
+the board file at the end of the series. It changes no driver logic,
+because none is
 needed: silead.c and the vendor's gsl3673.c speak the same chip.
 
 Proved by reading both, not by the part number:
@@ -36,10 +39,13 @@ Proved by reading both, not by the part number:
     the upload is batching -- silead writes one word per transfer where the
     vendor packed up to 32 -- which the chip cannot see.
 
-What is deliberately not carried across: gsl_config_data_id_3673[]. It is not
+What is deliberately not carried across: gsl_config_data_id_3673[]. It is
+not
 firmware and is never written to i2c. Its one non-debug consumer is
-startup_chip() -> gsl_DataInit(), inside the closed-source host-side algorithm
-in gsl_point_id.c. silead.c has no such layer and needs none, but it also does
+startup_chip() -> gsl_DataInit(), inside the closed-source host-side
+algorithm
+in gsl_point_id.c. silead.c has no such layer and needs none, but it also
+does
 without what that layer did: gsl_alg_id_main() rewrote coordinates and the
 finger count before they were reported, and gsl_mask_tiaoping() wrote a
 noise-hopping mask back to the chip at 0xf0/0x08 on every frame. silead
@@ -82,16 +88,20 @@ Not proved, because it cannot be proved without the tablet:
     node lands in this DTS.
 
 One correction to the earlier investigation of this subsystem, which said
-i2c0: the touchscreen is on i2c2. In the device tree the tablet actually runs
+i2c0: the touchscreen is on i2c2. In the device tree the tablet actually
+runs
 (kernel/rk3126-taq102-hybrid.dts, decompiled from the live DTB) ts@40 is a
 child of i2c@2005a000, next to the RK816 at 0x1a and the accelerometer at
-0x18, while i2c@20072000 is enabled with no children. Both rk3128.dtsi and the
+0x18, while i2c@20072000 is enabled with no children. Both rk3128.dtsi and
+the
 vendor rk312x.dtsi label 0x2005a000 as i2c2. The live node also carries no
 clock-frequency, so the bus runs at the 100 kHz default; the 400 kHz quoted
-from rk3126-bnd-d708.dtsi is a different bus on a different board. This patch
+from rk3126-bnd-d708.dtsi is a different bus on a different board. This
+patch
 follows the live DTB.
 
-No ACPI id is added: this board has no ACPI, and there is no Silead ACPI HID
+No ACPI id is added: this board has no ACPI, and there is no Silead ACPI
+HID
 for the GSL3673 that anyone here has observed.
 
 This supersedes 0006-input-silead-add-gsl3673.patch and
@@ -104,22 +114,9 @@ CONFIG_REGULATOR_FIXED_VOLTAGE; the rootfs needs the blob at
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
 ---
- .../devicetree/bindings/input/touchscreen/silead,gsl1680.yaml   | 1 +
- drivers/input/touchscreen/silead.c                              | 2 ++
- 2 files changed, 3 insertions(+)
+ drivers/input/touchscreen/silead.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/input/touchscreen/silead,gsl1680.yaml b/Documentation/devicetree/bindings/input/touchscreen/silead,gsl1680.yaml
-index 5381a96f4..8d155fb2d 100644
---- a/Documentation/devicetree/bindings/input/touchscreen/silead,gsl1680.yaml
-+++ b/Documentation/devicetree/bindings/input/touchscreen/silead,gsl1680.yaml
-@@ -18,6 +18,7 @@ properties:
-       - silead,gsl1680
-       - silead,gsl1688
-       - silead,gsl3670
-+      - silead,gsl3673
-       - silead,gsl3675
-       - silead,gsl3692
- 
 diff --git a/drivers/input/touchscreen/silead.c b/drivers/input/touchscreen/silead.c
 index 44d714110..c1a6a3a7b 100644
 --- a/drivers/input/touchscreen/silead.c

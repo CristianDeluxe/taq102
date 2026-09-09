@@ -81,7 +81,7 @@ rockchip-lvds lvds: get_modes panel=00000000 returned 0
 
 Found at bind, NULL when the modes are asked for.
 
-**Fix**: patch 0009 (drm/rockchip: lvds: do not take over a panel bridge's funcs). Only
+**Fix**: patch 0011 (drm/rockchip: lvds: do not take over a panel bridge's funcs). Only
 claim the bridge's ops for a bridge found in the DT; a panel bridge already
 answers `get_modes` correctly. After it the connector offers exactly 1024x600
 and fbcon resizes 128x48 -> 128x37.
@@ -169,7 +169,7 @@ lesson from the method section applied backwards:
 
 The kernel of v64-v66 is variant M unchanged (`zImage-7.3.0-rc2-variant-M` in
 the archive): VOP, LVDS encoder and panel built in, PHY and Lima as modules,
-`fw_devlink=off`, patch 0009. lima's `mali` regulator is optional and absent
+`fw_devlink=off`, patch 0011. lima's `mali` regulator is optional and absent
 (the vendor hands it `vdd_logic`; mainline has no RK816 regulators described
 yet), so the GPU runs at whatever the bootloader left ACLK_GPU at, 148.5 MHz.
 The cube does not need more.
@@ -248,15 +248,46 @@ v69 carries the reviewed tree and runs: panel, cube at 52.8 FPS, battery
 values, `silead_ts` probing. `dt_binding_check` has not run -- the VM has no
 `dtschema`.
 
+### Second pass, with the tools (2026-09-09, later)
+
+`checkpatch.pl --strict` on the series, `dt_binding_check` on the five
+bindings it touches, and `dtbs_check` of the board DTB against every schema
+in the tree, once `dtschema` was installed in the VM. What they found, all
+fixed in the tree and rebuilt into a 17-patch series:
+
+- the board compatible had no schema: it is now `denver,taq102`,
+  `rockchip,rk3126`, with a vendor prefix (0015) and a board entry (0016);
+- `reboot-mode` under the PMU carried `mode-charge`, `mode-fastboot` and
+  `mode-ums`, which `pmu.yaml` forbids; the four it allows remain, with the
+  Rockchip magics, and `reboot loader` still works (v72);
+- the D-PHY's two extra clocks were outside `rockchip,px30-dsi-dphy.yaml`;
+  the binding now allows them (0013), ahead of the driver patch (0014);
+- the DT bindings inside the RK816 and GSL3673 patches are their own
+  patches now (0007, 0009), as checkpatch and the DT maintainers want;
+- `usleep_range` for the two 20 us waits of the reset pulse, braces on both
+  arms of the RK816 cable check, a 111-column line and a comment closer in
+  the DTS. The `const` warning on the encoder helper funcs was a false
+  positive of the two-line `static const` style the file uses; the RK312x
+  one is on one line now.
+
+Left: `panel-lvds` without a part number, and MAINTAINERS. Both in TODO.md.
+v73 is the tree the series reproduces, running on the tablet.
+
 ## Still open
 
 - Replace `fw_devlink=off`. `GENPD_FLAG_NO_SYNC_STATE` alone does not do it
   (v63); the built-in PHY still blocks at boot. Needs the trace from a built-in
   boot, which means a diagnostic channel that survives the hang -- the
   bootloader framebuffer with an early printk of the blocked task.
-- Send upstream: 0009 (the LVDS panel-bridge fix) and 0010 (the silead NAK
-  quirk) are `git am`-shaped and scoped; 0001-0004 want a `dt_binding_check`
-  run first. The genpd deadlock goes as a report with the stack trace.
+- Send upstream: 0011 (the LVDS panel-bridge fix) and 0012 (the silead NAK
+  quirk) are ready; 0001-0004 pass `dt_binding_check` and `dtbs_check` bar
+  the panel compatible below. The genpd deadlock goes as a report with the
+  stack trace.
+- The panel node says `panel-lvds` alone, which `panel-lvds.yaml` rejects: it
+  wants the panel's own part number first, and nobody has opened the tablet
+  to read it. The last `dtbs_check` finding.
+- MAINTAINERS entries for `rk816_charger.c` and the board DTS, which
+  checkpatch asks for.
 - Package the modules. The v66 ramdisk is hand-assembled: `gpu-sched.ko`,
   `lima.ko`, `drm_shmem_helper.ko` and `phy-rockchip-inno-dsidphy.ko` copied
   from the kernel build into `rootfs-v55` plus `taq102-cube`. The Buildroot
@@ -267,7 +298,7 @@ values, `silead_ts` probing. `dt_binding_check` has not run -- the VM has no
   panel rate, so this is not urgent.
 - `modetest` cannot create a dumb buffer (-EINVAL). Moot for glcube, which
   allocates through GBM and lima; still worth understanding.
-- Touch: probes since v68 (patch 0010). Events not yet seen; the interrupt
+- Touch: probes since v68 (patch 0012). Events not yet seen; the interrupt
   count was zero before anyone had touched the glass.
   GSL3673 answers with chip ID 0x50910000 and then fails a register write with
   -6. Untouched since.

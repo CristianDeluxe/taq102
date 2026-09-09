@@ -112,19 +112,28 @@ toolchain: `zImage` 13234688 bytes, `rk3126-taq102.dtb` 27187 bytes, exit 0,
 no compiler warnings. The tree at the end of that build reverse-applies all
 four patches below as a set, so these files are exactly what compiled.
 
-The series is `git am`-able as a whole, 0001 through 0012, each patch with a
+The series is `git am`-able as a whole, 0001 through 0017, each patch with a
 message and a Signed-off-by: it is `git format-patch` output from a branch
 built on `28924df2a` (2026-09-09, after the review recorded in `FINDINGS.md`).
-0012 adds the board DTS whole, so `rk3126-taq102.dts` in this directory is
-the same file, kept for reading. Checked: the branch's tree equals
-`/work/linux-mainline` (`git diff` against the base identical, zero lines),
-and the DTB it builds is byte for byte the one in v67, v68 and v69.
+DT bindings are their own patches, each ahead of the driver or DTS that
+needs it. 0017 adds the board DTS whole, so `rk3126-taq102.dts` in this
+directory is the same file, kept for reading. Checked: `git am` of the
+seventeen onto `28924df2a` gives a tree equal to `/work/linux-mainline`
+(`git diff` against the base identical, zero lines), `checkpatch --strict`
+reports only the MAINTAINERS reminders, `dt_binding_check` passes on the
+five bindings touched, and `dtbs_check` of the board DTB fails only on the
+`panel-lvds` part number. v73 is that tree, running.
 
-Numbering history, since the documents below use the old numbers in places:
+Numbering history, since the documents below use old numbers in places:
 until 2026-09-09 the series was 0001-0007 and 0009-0012 with the config
-fragment as 0008. The renumbering inserted the DT binding as 0002 and moved
-the board DTS to the end as 0012, so old 0002-0007 are now 0003-0008, old
-0010-0012 are 0009-0011, and old 0009 (eMMC and SDIO) lives inside 0012. The
+fragment as 0008. The first renumbering that day inserted the LVDS binding
+as 0002 and moved the board DTS to the end; the second split the remaining
+bindings out and added the vendor prefix and board entry, giving seventeen.
+Old to current: 0001 -> 0001, 0002 -> 0003, 0003 -> 0004, 0004 -> 0005,
+0005 -> 0006, 0006 -> 0008 (binding 0007), 0007 -> 0010 (binding 0009),
+0010 -> 0011, 0011 -> 0012, 0012 -> 0014 (binding 0013), and old 0009 (eMMC
+and SDIO) lives inside 0017 with the vendor prefix as 0015 and the board
+entry as 0016. The
 first reconciliation, on 2026-09-08, had already deleted seven superseded
 drafts after concurrent agents wrote three files numbered 0004 and two
 numbered 0005; they are listed below by their names at the time.

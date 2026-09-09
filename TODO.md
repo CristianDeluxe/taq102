@@ -12,8 +12,8 @@
 > `TODO_LOG.md`.
 
 Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
-v40, vendor 4.4.167), `recovery` = `recovery-taq102-v69-cube-reviewed.img` (mainline
-7.3.0-rc2, the reviewed series, glcube on lima at 148.5 MHz), BCB = `boot-recovery`, so every
+v40, vendor 4.4.167), `recovery` = `recovery-taq102-v73-cube-series-final.img` (mainline
+7.3.0-rc2, the 17-patch series, glcube on lima at 148.5 MHz, touch by name), BCB = `boot-recovery`, so every
 power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
 appliance back. The journal is `README.md` here and
 `~/p/brain/personal/denver-taq102-tablet.md`; images and checksums are in
@@ -109,9 +109,11 @@ appliance back. The journal is `README.md` here and
   which allocates through GBM and lima, but still unexplained.
 - [ ] Send upstream. The series was reviewed and rebuilt as `git am`-able
   patches on 2026-09-09 (`kernel/mainline/FINDINGS.md`, "The series,
-  reviewed"): 0009 (LVDS panel-bridge fix) and 0010 (silead NAK quirk) are
-  ready to post; 0001-0004 (VOP, binding, LVDS, DTS) need a
-  `dt_binding_check` run first, which needs `dtschema` in the VM. The genpd
+  reviewed"): 0011 (LVDS panel-bridge fix) and 0012 (silead NAK quirk) are
+  ready to post; 0001-0004 pass `dt_binding_check` and `dtbs_check`, which
+  now run in the VM. Before posting the board: the panel's part number for
+  `panel-lvds` (needs the case opened) and MAINTAINERS entries for
+  `rk816_charger.c` and the DTS. The genpd
   deadlock goes as a bug report with
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
 - [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write

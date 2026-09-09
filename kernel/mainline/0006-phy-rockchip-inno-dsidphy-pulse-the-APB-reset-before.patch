@@ -1,13 +1,15 @@
-From d4642c4d51b6d6142c21be80269d70d5b259be7f Mon Sep 17 00:00:00 2001
+From aa291811567d8ec6ca5119158270476fa5b20712 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 02:24:28 +0200
-Subject: [PATCH 06/12] phy: rockchip: inno-dsidphy: pulse the APB reset before
+Date: Wed, 9 Sep 2026 03:45:34 +0200
+Subject: [PATCH 06/17] phy: rockchip: inno-dsidphy: pulse the APB reset before
  programming
 
 The driver takes the "apb" reset control in probe and never uses it. Start
-from reset defaults after enabling the clocks and runtime power, rather than
+from reset defaults after enabling the clocks and runtime power, rather
+than
 inheriting whatever register state the bootloader left in the PHY. On the
-RK3126C tablet this project works on, U-Boot has already driven this same PHY
+RK3126C tablet this project works on, U-Boot has already driven this same
+PHY
 in LVDS mode before the kernel touches it.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
@@ -16,7 +18,7 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  1 file changed, 6 insertions(+)
 
 diff --git a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
-index e27fd78b8..c8f7566d4 100644
+index e27fd78b8..25f8dbd08 100644
 --- a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
 +++ b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
 @@ -670,6 +670,12 @@ static int inno_dsidphy_power_on(struct phy *phy)
@@ -25,9 +27,9 @@ index e27fd78b8..c8f7566d4 100644
  
 +	/* Discard the register state the bootloader left behind */
 +	reset_control_assert(inno->rst);
-+	udelay(20);
++	usleep_range(20, 40);
 +	reset_control_deassert(inno->rst);
-+	udelay(20);
++	usleep_range(20, 40);
 +
  	/* Bandgap power on */
  	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x00,

@@ -1,14 +1,15 @@
-From edb19732b58f3d23ae231eda1d24739a2df1726d Mon Sep 17 00:00:00 2001
+From 35ae45dbac092b31fd9832b6ab70247b64414ad2 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 02:24:30 +0200
-Subject: [PATCH 10/12] Input: silead - accept the NAK the GSL3673 gives its
+Date: Wed, 9 Sep 2026 03:45:37 +0200
+Subject: [PATCH 12/17] Input: silead - accept the NAK the GSL3673 gives its
  own reset command
 
 silead_ts_init() and silead_ts_reset() write SILEAD_CMD_RESET to
 SILEAD_REG_RESET and treat any error as fatal: "Registers clear error -6",
 and the probe fails.
 
-On the GSL3673 the write is answered with a NAK on the data byte and applied
+On the GSL3673 the write is answered with a NAK on the data byte and
+applied
 all the same. Measured on a chip reporting ID 0x50910000 (Denver TAQ-102,
 Rockchip RK3126C, rk3x-i2c): the register reads 0x00 after an acknowledged
 SILEAD_CMD_START and 0x80 immediately after the NAKed SILEAD_CMD_RESET
@@ -17,8 +18,10 @@ halts on the command before it acknowledges the byte. The vendor driver,
 like every driver descended from Silead's reference code, never checks the
 return value of that write and so works by accident.
 
-Add SILEAD_QUIRK_RESET_NAK, set it for the gsl3673 entries, and let the reset
-write return success on -ENXIO for chips that carry it. Other chips keep the
+Add SILEAD_QUIRK_RESET_NAK, set it for the gsl3673 entries, and let the
+reset
+write return success on -ENXIO for chips that carry it. Other chips keep
+the
 old behaviour. The chip has already answered the ID read by the time the
 reset is written, so a missing device is not mistaken for the quirk.
 
