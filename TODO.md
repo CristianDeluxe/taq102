@@ -12,8 +12,8 @@
 > `TODO_LOG.md`.
 
 Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
-v40, vendor 4.4.167), `recovery` = `recovery-taq102-v66-cube-auto.img` (mainline
-7.3.0-rc2, variant M kernel, glcube on lima), BCB = `boot-recovery`, so every
+v40, vendor 4.4.167), `recovery` = `recovery-taq102-v68-cube-touch.img` (mainline
+7.3.0-rc2, kernel M plus patch 0011, glcube on lima at 148.5 MHz), BCB = `boot-recovery`, so every
 power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
 appliance back. The journal is `README.md` here and
 `~/p/brain/personal/denver-taq102-tablet.md`; images and checksums are in
@@ -98,20 +98,26 @@ appliance back. The journal is `README.md` here and
   The mainline defconfig should take them from the kernel's `modules_install`,
   and `taq102_mainline_defconfig` should build the kernel from
   `kernel/mainline/` in the first place.
-- [ ] Describe the RK816 regulators in the mainline board DTS and hand lima
-  `vdd_logic` as `mali-supply` so devfreq can run the OPP table; today the GPU
-  runs at the bootloader's 148.5 MHz (`lima: bus rate = 148500000`) and the
-  cube does not need more.
+- [ ] Describe the RK816 regulators in the mainline board DTS, hand lima
+  `vdd_logic` as `mali-supply`, and only then put `operating-points-v2` back
+  on `&gpu`. v66 ran devfreq over the OPP table with the clock alone and the
+  Mali hung at 480 MHz after 73 s, unrecoverable by lima's reset (2026-09-09);
+  v67 deletes the table and runs at the bootloader's 148.5 MHz, which draws
+  the cube at the panel's rate. Vendor figures for the pairing are in
+  `kernel/rk3126-taq102-hybrid.dts` (gpu opp table, phandle 0x19).
 - [ ] `modetest` cannot create a dumb buffer (-EINVAL). Moot for glcube,
   which allocates through GBM and lima, but still unexplained.
 - [ ] Send both patches upstream: the genpd deadlock (with the stack trace in
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`) and
   `0010-drm-rockchip-lvds-do-not-hijack-the-panel-bridge.patch`. Neither is
   board-specific.
-- [ ] Touch does not work on mainline: `glcube` reports `touch open: No such
-  file or directory` (v65). The GSL3673 answers with chip ID 0x50910000 and
-  then fails a register write with -6, so the bus and the chip are alive;
-  the firmware load or the reset sequence is what to read next.
+- [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write
+  (`0xe0 = 0x88`) while applying it, and `silead.c` treated that as a probe
+  failure. Patch 0011 accepts the NAK; v68 probes (`input0 = silead_ts`,
+  firmware loaded in 9 s) and glcube opens the device. Not yet seen: a touch
+  event. The interrupt line (gpio2 15, rising, as the vendor) had fired zero
+  times before I had touched the panel. Owner to touch; if the count
+  stays at zero with a finger on the glass, it is the INT line or its mux.
 - [-] Flash `recovery-taq102-v55-mainline-beacon.img` and read the panel. Built
   and verified 2026-09-08: same kernel and resource image as v54, ramdisk
   carrying the backlight beacon, the ramoops rescue and the userspace marker.
@@ -185,6 +191,9 @@ appliance back. The journal is `README.md` here and
 
 ## Future ideas
 
+- [~] Soak the mainline cube: v67 was healthy at 20 min on 2026-09-09 (see
+  TODO_LOG); the vendor appliance has run for days. Leave v67 running
+  unplugged and plugged and note the first freeze, if any, with `dmesg`.
 - [ ] A real application in place of the `glcube` demo; what the appliance is
   for is still unstated.
 - [ ] Bluetooth: which of the three RTL8723CS firmware variants this board loads

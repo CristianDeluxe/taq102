@@ -6,6 +6,15 @@
 
 ### 2026-09
 
+- [x] 2026-09-09 — **Mainline:** the cube froze after 73 s on v66. lima's
+  devfreq (`simple_ondemand`) drove the Mali from the bootloader's 148.5 MHz
+  up to 480 MHz over the rk3128.dtsi OPP table with no regulator attached;
+  150 transitions, then `pp0 job timeout` every 10 s and no reset recovered
+  it. v67 deletes `operating-points-v2` from `&gpu`; 148.5 MHz, no devfreq,
+  52.8 FPS, 0 timeouts at 2.5 min and at 23 min (soak sampled every
+  5 min).
+  - Evidence: `docs/evidence/2026-09-09-cube/v66-gpu-hang-devfreq-480mhz.txt`,
+    `v67-console-no-devfreq.log`.
 - [x] 2026-09-09 — **Mainline:** the cube runs. v66 boots Linux 7.3.0-rc2 and
   starts `glcube` by itself 14 s after power-on: Mesa 26.0.1 lima on the
   Mali-400 MP2, 1024x600, 52.8 FPS, `glGetError 0x0`.
