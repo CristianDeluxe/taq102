@@ -123,33 +123,28 @@ appliance back. The journal is `README.md` here and
   has an entry in 0008 and the DTS is covered by the Rockchip glob. The genpd
   deadlock goes as a bug report with
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
-- [ ] Wi-Fi on mainline after a warm reboot: `rtw88_8723cs: mac power on
-  failed` (poll of offset 0x6 bit 1), no wlan0, so the panel shows Wi-Fi
-  off. Same chip wedge the vendor kernel has (the [!] item under Bugs);
-  only a full power-off clears it. Every `reboot-loader` flash lands in
-  this state. Tried 2026-09-09: rebinding the SDIO host (`10218000.mmc`,
-  which runs `sdio-pwrseq`, reset on gpio 13 of phandle 0x3a) re-enumerates
-  the card and rtw88 fails the same way, so the reset line does not cut the
-  chip's power. Next: find the rail (an RK816 LDO or a power-enable GPIO in
-  the vendor `wireless-wlan` node) and pulse that. Note `1021c000.mmc` is
-  the eMMC: unbinding it drops `/data`, which then needs
-  `mount -t ext4 /dev/mmcblk1p1 /data` by hand.
-  2026-09-09 later, from the trees alone (tablet off the LAN, so unverified):
-  there is no rail to cut. Neither SDIO host names a supply, the vendor
-  `wireless-wlan` node has no power GPIO, and the vendor pwrseq resets the
-  same gpio2 PB5 line mainline does, so no kernel has ever taken power off
-  the chip; the RK816 LDOs 4-6 are all always-on and unnamed. The line the
-  vendor drives and mainline does not is `BT,reset_gpio` = gpio2 PB1
-  (active high, the RTL8723CS BT enable). The combo chip keeps its core up
-  while either enable is high, which would explain why holding PB5 low for
-  seconds re-enumerated the card without a power cycle. Next, on the wedged
-  tablet: read PB1 (`devmem 0x20084050`, bit 9; iomux GRF `0x200080cc`
-  bits 3:2 must be 0), drive PB1 and PB5 low together for 200 ms through
-  `0x20084000`/`0x20084004`, release, rebind `10218000.mmc`, and see if
-  rtw88 gets past `failed to poll offset=0x6`. If it does, the fix is a BT
-  node with `enable-gpios` held low plus `post-power-on-delay-ms` on the
-  pwrseq. Poll 0x6 bit 1 is the chip's own power-ready flag, so the driver
-  is not the suspect.
+- [~] Wi-Fi on mainline after a warm reboot: `rtw88_8723cs: mac power on
+  failed` (poll of offset 0x6 bit 1, the chip's own power-ready flag), no
+  wlan0. Every `reboot-loader` flash lands in this state; only a full
+  power-off clears it. Measured on the wedged tablet over the USB console,
+  2026-09-09/10, each followed by an SDIO host rebind that re-enumerated
+  the card and failed the same poll: gpio2 PB5 (the pwrseq reset, the same
+  line the vendor pwrseq uses) held low 1 s with the level read back;
+  gpio2 PB1 (vendor `BT,reset_gpio`, the BT enable) already low; RK816
+  clkout2 on (reg 0x20 = 0x01); RK816 LDO4, LDO5 and LDO6 each cut 0.5 s,
+  then all three together 3 s, registers read back. No SDIO host names a
+  supply, the vendor `wireless-wlan` node has no power GPIO, so the chip
+  sits on an unswitched rail and no kernel has ever taken power off it.
+  Cause, then: mainline never powers the MAC off at reboot (`rtw8703b`
+  has no shutdown op, `rtw_sdio_shutdown` did nothing), so the firmware
+  runs through the reboot and the next `rtw_mac_power_on` fails. Patch
+  0018 takes the ifdown path in `rtw_sdio_shutdown`; v76 on `recovery`
+  carries it (build #28, boots, still wedged as expected).
+  Next, owner: unplug USB, hold power for a real power-off, boot v76, see
+  Wi-Fi up, then `reboot` from the console or the panel and see whether
+  Wi-Fi comes back. If it does, a `reboot-loader` cycle is the second
+  check. Note `1021c000.mmc` is the eMMC: unbinding it drops `/data`,
+  which then needs `mount -t ext4 /dev/mmcblk1p1 /data` by hand.
 - [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write
   (`0xe0 = 0x88`) while applying it, and `silead.c` treated that as a probe
   failure. Patch 0011 accepts the NAK; v68 probes (`input0 = silead_ts`,
