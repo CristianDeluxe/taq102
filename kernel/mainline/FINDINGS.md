@@ -278,16 +278,20 @@ v73 is the tree the series reproduces, running on the tablet.
 ### Touch works, once the geometry is told (v74)
 
 Events arrived from v70 on, but the finger and the cube disagreed: a press on
-one side landed on the other. Raw events, corner by corner: top-left reads
-(13, 875), bottom-right (1650, 23), a sweep of the whole edge spans 1..1663
-by 8..888. The GSL3673 reports its own grid, 64 units per electrode on 26 by
-14, with Y running bottom to top; the vendor driver never showed that
+one side landed on the other. Raw events settle the geometry: a sweep of the
+whole edge spans 1..1663 by 8..888, so the GSL3673 reports its own grid, 64
+units per electrode on 26 by 14; the vendor driver never showed that
 because its closed `gsl_alg_id` library rescaled to 1024x600 inside the
-kernel. So `silead.c` was right and the DTS was guessing: it now says
+kernel. The axes cost one wrong image: a cube has no up, so the first corner
+test was done with the tablet turned round and v74 inverted Y. With the
+status bar marking the top, the panel's top-left reads (1654, 22) raw and
+the bottom-right (13, 875): X runs right to left, Y is fine. The DTS says
 `touchscreen-size-x = <1664>`, `touchscreen-size-y = <896>` and
-`touchscreen-inverted-y`, and `glcube` scales the declared range onto the
+`touchscreen-inverted-x` (v75, top-left reads (21, 21) through the
+driver), and `glcube` scales the declared range onto the
 panel (`scale 0.615x0.670`) instead of taking raw units as pixels, which
-the vendor's 1024x600 had let it do. glcube also opens the input nodes by
+the vendor's 1024x600 had let it do. I confirms: the finger and
+the cube agree on v75. glcube also opens the input nodes by
 device name now: mainline registers `silead_ts` first, so the vendor's
 event0/event1 order had it reading the power key as the touch.
 
