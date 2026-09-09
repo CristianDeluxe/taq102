@@ -12,8 +12,8 @@
 > `TODO_LOG.md`.
 
 Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
-v40, vendor 4.4.167), `recovery` = `recovery-taq102-v73-cube-series-final.img` (mainline
-7.3.0-rc2, the 17-patch series, glcube on lima at 148.5 MHz, touch by name), BCB = `boot-recovery`, so every
+v40, vendor 4.4.167), `recovery` = `recovery-taq102-v74-cube-touch-geometry.img` (mainline
+7.3.0-rc2, the 17-patch series, glcube scaled to the touch grid), BCB = `boot-recovery`, so every
 power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
 appliance back. The journal is `README.md` here and
 `~/p/brain/personal/denver-taq102-tablet.md`; images and checksums are in
@@ -123,6 +123,10 @@ appliance back. The journal is `README.md` here and
   has an entry in 0008 and the DTS is covered by the Rockchip glob. The genpd
   deadlock goes as a bug report with
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
+- [ ] Hands-on check on v74: does the finger land where it touches, and does a
+  drag follow it, after the measured geometry (1664x896, Y inverted) and
+  the glcube scaling? If a corner is still off, the remaining error is the
+  grid's edge margin, not the axes.
 - [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write
   (`0xe0 = 0x88`) while applying it, and `silead.c` treated that as a probe
   failure. Patch 0011 accepts the NAK; v68 probes (`input0 = silead_ts`,
@@ -183,6 +187,16 @@ appliance back. The journal is `README.md` here and
   into charger mode instead of switching off (measured 2026-09-03).
   Blocked: needs the tablet unplugged and the power button held by hand; RK816 shutdown path in the kernel to read first.
 ## Infrastructure and tooling
+
+- [ ] Mac side: Pioneer DJ's `FwUpdateManagerd` (LaunchDaemon
+  `com.pioneerdj.FwUpdateManagerd`) can wedge `IOServiceOpen` for every
+  libusb client at boot; `rkdeveloptool ld` then hangs on its first device
+  and `loader-watch.sh` polls forever. Killing the daemon frees it
+  (2026-09-09). Either unload the daemon or make `loader-watch.sh` run
+  `rkdeveloptool` under a per-call timeout and say so.
+- [ ] Mainline `u_serial` warns in `gs_close()` when the host vanishes with
+  the ACM console open (seen when the Mac rebooted). Harmless; a report for
+  the gadget list some day.
 
 ## Pending decisions
 

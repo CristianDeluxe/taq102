@@ -1,14 +1,17 @@
 #include "touch_flip.h"
 
+#include <math.h>
 #include <string.h>
 
 #define FLIP_X 1u
 #define FLIP_Y 2u
 
 int touch_flip_configure(struct touch_flip *config, int width, int height,
-                         const char *mode) {
+                         int declared_x, int declared_y, const char *mode) {
     config->width = width;
     config->height = height;
+    config->scale_x = declared_x > 0 ? (float)width / (float)(declared_x + 1) : 1.f;
+    config->scale_y = declared_y > 0 ? (float)height / (float)(declared_y + 1) : 1.f;
 
     if (!mode || strcmp(mode, "xy") == 0) {
         config->axes = FLIP_X | FLIP_Y;
@@ -38,6 +41,8 @@ int touch_flip_configure(struct touch_flip *config, int width, int height,
 
 int touch_flip_value(const struct touch_flip *config, enum touch_axis axis,
                      int value, int flipped) {
+    value = (int)lroundf((float)value *
+                         (axis == TOUCH_AXIS_X ? config->scale_x : config->scale_y));
     if (!flipped) return value;
     if (axis == TOUCH_AXIS_X && (config->axes & FLIP_X))
         return config->width - value;

@@ -22,15 +22,16 @@
 
 / {
 	model = "Denver TAQ-102 (RK3126C, LVDS)";
-	compatible = "rockchip,rk3126-taq102", "rockchip,rk3126";
+	compatible = "denver,taq102", "rockchip,rk3126";
 
 	/*
 	 * A crash log that survives the reboot, because this board has no console
 	 * a failed boot can reach: no serial pads, and the USB gadget is raised by
-	 * userspace the kernel never gets to. Deliberately NOT 0x68000000, which the vendor tree also uses for
-	 * ramoops: the vendor kernel rewrites that region with its own boot log,
-	 * which destroyed the first capture. 0x68100000 is above it and still
-	 * inside the first bank, which ends at 0x68400000.
+	 * userspace the kernel never gets to. Deliberately NOT 0x68000000, which
+	 * the vendor tree also uses for ramoops: the vendor kernel rewrites that
+	 * region with its own boot log, which destroyed the first capture.
+	 * 0x68100000 is above it and still inside the first bank, which ends at
+	 * 0x68400000.
 	 */
 	reserved-memory {
 		#address-cells = <1>;
@@ -227,11 +228,11 @@
  *    tablet's own stock blob. The array the vendor tree ships untouched is
  *    another panel's.
  *
- *  - touchscreen-size-x/y are unmeasured. They are the resolution word of the
- *    stock configuration array, 0x02580400 = 600 << 16 | 1024, and the
- *    screen_max_x/y of the reconstructed vendor node. The vendor driver's own
- *    ABS range is no evidence: with CONFIG_TOUCHSCREEN_GSL3673 no TP_SIZE_*
- *    macro is defined, so it falls through to 2048x1536.
+ *  - touchscreen-size-x/y and touchscreen-inverted-y were measured on
+ *    2026-09-09, see the node. The stock configuration array's resolution
+ *    word, 0x02580400 = 600 << 16 | 1024, is what the vendor's closed
+ *    gsl_alg_id library scaled to; silead.c reports the controller's own
+ *    1664x896 grid units, so userspace scales.
  */
 &i2c2 {
 	status = "okay";
@@ -248,8 +249,17 @@
 		avdd-supply = <&vcc_tp>;
 
 		firmware-name = "gsl3673.fw";
-		touchscreen-size-x = <1024>;
-		touchscreen-size-y = <600>;
+		/*
+		 * The controller reports in its own units, 64 per electrode on a
+		 * 26 by 14 grid, and its Y runs bottom to top. Measured 2026-09-09
+		 * with silead.c: the top-left corner reads (13, 875), the
+		 * bottom-right (1650, 23), and a sweep of the whole edge spans
+		 * 1..1663 by 8..888. The vendor driver hid this behind its closed
+		 * gsl_alg_id library, which rescaled to 1024x600 in the kernel.
+		 */
+		touchscreen-size-x = <1664>;
+		touchscreen-size-y = <896>;
+		touchscreen-inverted-y;
 	};
 };
 
@@ -261,8 +271,10 @@
 	status = "okay";
 };
 
-/* The ACM gadget is the only console this board has: no CONFIG_VT on the
- * stock kernel, and the UART2 pads have never been located. */
+/*
+ * The ACM gadget is the only console this board has: no CONFIG_VT on the
+ * stock kernel, and the UART2 pads have never been located.
+ */
 &usb_otg {
 	dr_mode = "peripheral";
 	status = "okay";
@@ -424,13 +436,10 @@
 	reboot-mode {
 		compatible = "syscon-reboot-mode";
 		offset = <0x38>;
-		mode-bootloader = <0x5242c301>;
-		mode-charge = <0x5242c30b>;
-		mode-fastboot = <0x5242c309>;
+		mode-bootloader = <0x5242c309>;
 		mode-loader = <0x5242c301>;
 		mode-normal = <0x5242c300>;
 		mode-recovery = <0x5242c303>;
-		mode-ums = <0x5242c30c>;
 	};
 };
 
