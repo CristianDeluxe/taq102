@@ -1,0 +1,96 @@
+# echo ===STATE===; uptime; ps | grep -E "[g]lcube|[t]aq102-app"; tail -4 /data/
+log/taq102-app.log; echo --dmesg; dmesg | tail -15
+===STATE===
+ 23:03:41 up 27 min,  load average: 0.47, 0.49, 0.45
+   94 root     {taq102-app} /bin/sh /usr/bin/taq102-app
+  138 root     /usr/bin/glcube
+0.1 FPS
+0.1 FPS
+0.1 FPS
+0.1 FPS
+--dmesg
+# [ 1654.245056] [drm:lima_sched_timedout_job [lima]] *ERROR* pp0 job timeout
+
+# echo ===DIAG===; dmesg | grep -iE "lima|gpu|drm" | grep -vE "job timeout|task 
+error|bus stop|command 2" | tail -8; echo --first; dmesg | grep -m1 -B4 "job tim
+eout"; echo --count; dmesg | grep -c "job timeout"; echo --power; grep -E "STATU
+S|VOLTAGE_NOW|CURRENT_NOW|CAPACITY=|ONLINE" /sys/class/power_supply/*/uevent; ec
+ho --pm; cat /sys/bus/platform/devices/10090000.gpu/power/runtime_status /sys/bu
+s/platform/devices/10090000.gpu/power/runtime_suspended_time /sys/bus/platform/d
+evices/10090000.gpu/power/runtime_active_time; echo --clk; grep -E "gpu|aclk_gpu
+" /sys/kernel/debug/clk/clk_summary; echo --pd; cat /sys/kernel/debug/pm_genpd/p
+m_genpd_summary 2>/dev/null | head -12; echo --applog; grep -n -m2 "0.1 FPS" /da
+ta/log/taq102-app.log; grep -c "" /data/log/taq102-app.log
+===DIAG===
+[   13.958759] lima 10090000.gpu: pp0 - mali400 version major 1 minor 1
+[   13.975684] lima 10090000.gpu: pp1 - mali400 version major 1 minor 1
+[   13.999866] lima 10090000.gpu: l2_cache0 64K, 4-way, 64byte cache line, 64bit external bus
+[   14.010792] lima 10090000.gpu: bus rate = 148500000
+[   14.018913] lima 10090000.gpu: mod rate = 148500000
+[   14.034714] lima 10090000.gpu: error -ENODEV: _opp_set_regulators: no regulator (mali) found
+[   14.046796] [drm] Initialized lima 1.1.0 for 10090000.gpu on minor 1
+[   14.085673] taq102-cube: ok lima
+--first
+[   14.263192] Console: switching to colour dummy device 80x30
+[   14.264124] taq102-app: fbcon unbound from /sys/class/vtconsole/vtcon1
+[   14.265634] taq102-app: starting /usr/bin/glcube (attempt 1)
+[   33.859643] taq102-wifi: no wlan0. The chip needs power removed -- a full power-off, not a reboot.
+--count
+157
+--power
+/sys/class/power_supply/ac/uevent:POWER_SUPPLY_ONLINE=0
+/sys/class/power_supply/battery/uevent:POWER_SUPPLY_STATUS=Full
+/sys/class/power_supply/battery/uevent:POWER_SUPPLY_VOLTAGE_NOW=4071100
+/sys/class/power_supply/battery/uevent:POWER_SUPPLY_CURRENT_NOW=-200298
+/sys/class/power_supply/battery/uevent:POWER_SUPPLY_CAPACITY=100
+/sys/class/power_supply/usb/uevent:POWER_SUPPLY_ONLINE=1
+--pm
+active
+1266
+1677110
+--clk
+                aclk_gpu             4       5        0        480000000   0          0     50000      Y                  10090000.gpu                    core                     
+                                                                                                                          10090000.gpu                    core                     
+                                                                                                                          10090000.gpu                    bus                      
+                                                                                                                          gpu@10090000                    no_connection_id         
+                                                                                                                          gpu@10090000                    no_connection_id         
+    clk_pvtm_gpu                     0       0        0        24000000    0          0     50000      N      deviceless                      no_connection_id         
+--pd
+domain                          status          children        performance
+    /device                         runtime status                  managed by
+------------------------------------------------------------------------------
+gpu                             on                              0
+    10090000.gpu                    active                      0           SW
+video                           off-0                           0
+    10106800.iommu                  suspended                   0           SW
+vio                             on                              0
+    1010e000.vop                    active                      0           SW
+    20038000.phy                    active                      0           SW
+    lvds                            active                      0           SW
+--applog
+78531:0.1 FPS
+78532:0.1 FPS
+78686
+# [ 1695.205067] [drm:lima_sched_timedout_job [lima]] *ERROR* pp0 job timeout
+
+# echo ===DEVFREQ===; ls /sys/class/devfreq/; for d in /sys/class/devfreq/*; do 
+echo "$d: gov=$(cat $d/governor) cur=$(cat $d/cur_freq) min=$(cat $d/min_freq) m
+ax=$(cat $d/max_freq)"; cat $d/available_frequencies; cat $d/trans_stat | head -
+8; done
+===DEVFREQ===
+10090000.gpu
+/sys/class/devfreq/10090000.gpu: gov=simple_ondemand cur=480000000 min=200000000 max=480000000
+200000000 300000000 400000000 480000000
+     From  :   To
+           : 200000000 300000000 400000000 480000000   time(ms)
+  200000000:         0         0         0        16      1210
+  300000000:         1         0         0        30      1980
+  400000000:         0         8         0        25      3840
+* 480000000:        14        23        33         0   1708530
+Total transition : 150
+# [ 1736.165053] [drm:lima_sched_timedout_job [lima]] *ERROR* pp0 job timeout
+
+# /usr/sbin/reboot-loader
+# [   87.525104] [drm:lima_sched_timedout_job [lima]] *ERROR* pp0 job timeout
+[   87.525420] lima 10090000.gpu: pp0 task error 0 int_state=0 status=5
+[   87.525897] lima 10090000.gpu: pp0 bus stop timeout

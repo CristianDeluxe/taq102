@@ -1,0 +1,64 @@
+diff --git a/drivers/input/touchscreen/silead.c b/drivers/input/touchscreen/silead.c
+index 44d714110..43be03f1d 100644
+--- a/drivers/input/touchscreen/silead.c
++++ b/drivers/input/touchscreen/silead.c
+@@ -312,12 +312,32 @@ static void silead_ts_read_data(struct i2c_client *client)
+ 	input_sync(input);
+ }
+ 
+-static int silead_ts_init(struct i2c_client *client)
++/*
++ * Writing SILEAD_CMD_RESET to SILEAD_REG_RESET halts the controller before it
++ * acknowledges the data byte, so the transfer ends in a NAK (-ENXIO from the
++ * bus driver) although the reset has taken effect. Measured on a GSL3673
++ * (chip ID 0x50910000) on a Rockchip RK3126C: the register reads 0x00 after
++ * an acknowledged SILEAD_CMD_START, and 0x80 immediately after the NAKed
++ * SILEAD_CMD_RESET write. The vendor driver never checks the return value
++ * of that write and so works by accident; here the NAK is expected.
++ */
++static int silead_ts_write_reset(struct i2c_client *client)
+ {
+ 	int error;
+ 
+ 	error = i2c_smbus_write_byte_data(client, SILEAD_REG_RESET,
+ 					  SILEAD_CMD_RESET);
++	if (error == -ENXIO)
++		return 0;
++
++	return error;
++}
++
++static int silead_ts_init(struct i2c_client *client)
++{
++	int error;
++
++	error = silead_ts_write_reset(client);
+ 	if (error)
+ 		goto i2c_write_err;
+ 	usleep_range(SILEAD_CMD_SLEEP_MIN, SILEAD_CMD_SLEEP_MAX);
+@@ -351,8 +371,7 @@ static int silead_ts_reset(struct i2c_client *client)
+ {
+ 	int error;
+ 
+-	error = i2c_smbus_write_byte_data(client, SILEAD_REG_RESET,
+-					  SILEAD_CMD_RESET);
++	error = silead_ts_write_reset(client);
+ 	if (error)
+ 		goto i2c_write_err;
+ 	usleep_range(SILEAD_CMD_SLEEP_MIN, SILEAD_CMD_SLEEP_MAX);
+@@ -779,6 +798,7 @@ static const struct i2c_device_id silead_ts_id[] = {
+ 	{ .name = "gsl1680" },
+ 	{ .name = "gsl1688" },
+ 	{ .name = "gsl3670" },
++	{ .name = "gsl3673" },
+ 	{ .name = "gsl3675" },
+ 	{ .name = "gsl3692" },
+ 	{ .name = "mssl1680" },
+@@ -807,6 +827,7 @@ static const struct of_device_id silead_ts_of_match[] = {
+ 	{ .compatible = "silead,gsl1680" },
+ 	{ .compatible = "silead,gsl1688" },
+ 	{ .compatible = "silead,gsl3670" },
++	{ .compatible = "silead,gsl3673" },
+ 	{ .compatible = "silead,gsl3675" },
+ 	{ .compatible = "silead,gsl3692" },
+ 	{ },

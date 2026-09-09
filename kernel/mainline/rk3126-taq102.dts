@@ -442,4 +442,14 @@
  */
 &gpu {
 	status = "okay";
+	/*
+	 * No devfreq. rk3128.dtsi gives the GPU an OPP table up to 480 MHz, and
+	 * with no mali-supply described lima runs simple_ondemand over it with
+	 * the clock alone: measured 2026-09-09 on v66, 150 transitions in the
+	 * first minute, then a pp0 job timeout at 87 s and a GPU that no reset
+	 * brings back. Without the table lima keeps the clock the bootloader
+	 * left, 148.5 MHz, which draws the cube at full rate. Restore the table
+	 * once the RK816 regulators exist here and vdd_logic is its supply.
+	 */
+	/delete-property/ operating-points-v2;
 };

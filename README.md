@@ -1494,3 +1494,10 @@ display stack into the kernel, once plain and once with the one-line genpd
 not that line, and `fw_devlink=off` with the PHY as a module stays the
 arrangement. Details and evidence in `kernel/mainline/FINDINGS.md` and
 `docs/evidence/2026-09-09-cube/`.
+
+Seventy-three seconds later it froze. lima's devfreq had been driving the
+Mali from 148.5 MHz up to 480 MHz over the SoC's OPP table with no regulator
+to raise the voltage with it, and at 480 MHz the core stopped answering for
+good. v67 removes the OPP table from the GPU node; the clock stays where the
+bootloader left it, the cube draws at the panel's rate, and the table comes
+back when the RK816 regulators are described on mainline.

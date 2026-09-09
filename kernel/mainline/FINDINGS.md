@@ -174,6 +174,40 @@ the archive): VOP, LVDS encoder and panel built in, PHY and Lima as modules,
 yet), so the GPU runs at whatever the bootloader left ACLK_GPU at, 148.5 MHz.
 The cube does not need more.
 
+### And then it stopped: devfreq with no regulator (v66 -> v67)
+
+Seventy-three seconds into the first unattended run the cube froze. `dmesg`:
+`pp0 job timeout`, `pp0 bus stop timeout`, `ppmmu0 command 2 timeout`, every
+ten seconds, 157 times, and lima's reset never brought the core back.
+`clk_summary` said `aclk_gpu 480000000` where the probe had printed
+`bus rate = 148500000`, and `/sys/class/devfreq/10090000.gpu/trans_stat`
+explained it: `simple_ondemand` over the `rk3128.dtsi` OPP table, 150
+transitions between 200 and 480 MHz in the first minute, with no `mali-supply`
+to move the voltage along with the clock. 480 MHz at whatever `vdd_logic` the
+bootloader left is where the Mali gave up.
+
+v67 deletes `operating-points-v2` from `&gpu` and nothing else. lima keeps
+the bootloader's 148.5 MHz, there is no devfreq device, and the cube draws
+52.8 FPS exactly as before -- the panel's 56 Hz is the limit, not the clock.
+Evidence: `docs/evidence/2026-09-09-cube/v66-gpu-hang-devfreq-480mhz.txt` and
+`v67-console-no-devfreq.log`. The OPP table comes back with the regulators.
+
+### Touch: the reset write is NAKed and works anyway (v68)
+
+`silead_ts 2-0040: Silead chip ID: 0x50910000` then `Registers clear error -6`
+on every boot. -6 is ENXIO, the rk3x-i2c driver's word for a NAK. From
+userspace with the driver unbound: reads of every register answer, writes to
+0xe4, 0xbc, 0x80, 0x00 and 0xf0 are acknowledged, and only `0xe0 = 0x88`, the
+reset command, is NAKed -- yet 0xe0 reads 0x00 after an acknowledged
+`0xe0 = 0x00` and 0x80 right after the NAKed 0x88. The controller halts on
+the command before it acknowledges the byte. The vendor driver, like every
+driver descended from Silead's reference code, never checks the return of
+that write. Patch 0011 accepts -ENXIO on that one write, in
+`silead_ts_init()` and `silead_ts_reset()`; the firmware has no 0xe0 entries.
+v68: probe completes, `input0 = silead_ts`, firmware in 9 s at 100 kHz.
+Whether events arrive is my test; evidence so far in
+`docs/evidence/2026-09-09-cube/v68-console-silead-probes.log`.
+
 ## Still open
 
 - Replace `fw_devlink=off`. `GENPD_FLAG_NO_SYNC_STATE` alone does not do it
@@ -186,11 +220,13 @@ The cube does not need more.
   `lima.ko`, `drm_shmem_helper.ko` and `phy-rockchip-inno-dsidphy.ko` copied
   from the kernel build into `rootfs-v55` plus `taq102-cube`. The Buildroot
   mainline image should get them from the kernel's `modules_install`.
-- Describe the RK816 regulators in the board DTS and give lima `vdd_logic` as
-  `mali-supply`, then let devfreq run the OPP table (200-400 MHz on the vendor)
-  instead of the bootloader's 148.5 MHz.
+- Describe the RK816 regulators in the board DTS, give lima `vdd_logic` as
+  `mali-supply`, and only then restore the GPU OPP table: devfreq without a
+  regulator hung the Mali at 480 MHz (v66). 148.5 MHz draws the cube at the
+  panel rate, so this is not urgent.
 - `modetest` cannot create a dumb buffer (-EINVAL). Moot for glcube, which
   allocates through GBM and lima; still worth understanding.
-- Touch: `glcube` reports `touch open: No such file or directory` -- the
+- Touch: probes since v68 (patch 0011). Events not yet seen; the interrupt
+  count was zero before anyone had touched the glass.
   GSL3673 answers with chip ID 0x50910000 and then fails a register write with
   -6. Untouched since.
