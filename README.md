@@ -1508,3 +1508,49 @@ GSL3673 probes. And the mainline series got its first real review: a PHY
 leak, a missing binding, an unscoped quirk, stale messages. It is now twelve
 `git am`-able patches that reproduce the running tree line for line
 (`kernel/mainline/FINDINGS.md`, "The series, reviewed").
+
+## The Wi-Fi wedge is not a rail (2026-09-10)
+
+After a warm reboot on mainline the RTL8723CS enumerates on SDIO and rtw88
+fails its power-on sequence at the chip's own power-ready flag (`failed to
+poll offset=0x6 mask=0x2 value=0x2`, `mac power on failed`), so there is no
+wlan0 and every `reboot-loader` flash lands there. The backlog said "cut the
+chip's rail through the RK816 next". There is no rail to cut, and the night
+over the USB console established that rather than assumed it. Each attempt was
+followed by an unbind and bind of `10218000.mmc`, which re-enumerated the card
+every time and failed the same poll every time:
+
+- gpio2 PB5, the pwrseq reset line, held low for a second through the GPIO2
+  registers at `0x20084000` with the level read back on `EXT_PORTA`. The
+  vendor pwrseq resets the same pin (`wifi-enable-h`), so this is not a
+  mainline omission.
+- gpio2 PB1, the vendor `BT,reset_gpio`, already read low, so the combo chip's
+  BT half was not holding the core up.
+- RK816 clkout2, the pwrseq's `ext_clock`, on: register 0x20 = 0x01 and the
+  clock tree shows it prepared with `sdio-pwrseq` as its consumer.
+- RK816 LDO4, LDO5 and LDO6, the three unnamed 3.3 V LDOs, each cut for half
+  a second through `i2cset -f -y 2 0x1a`, then all three together for three
+  seconds, the enable registers read back before, during and after. The
+  tablet, the console and the display all survived, and the chip did not care.
+
+Neither SDIO host names a supply, the vendor `wireless-wlan` node has no power
+GPIO, and the vendor's own `rkwifi` power node toggles nothing on this board,
+so no kernel has ever taken power off the chip: it sits on an unswitched rail,
+which is why only a real power-off clears it.
+
+What differs between the kernels is what they do at reboot. The vendor driver
+powers the MAC off in its shutdown path; mainline's `rtw_sdio_shutdown` only
+called the chip's shutdown op, and `rtw8703b` has none, so the firmware ran
+straight through the reboot and the next `rtw_mac_power_on` found the MAC on,
+took its already-on branch and never saw power-ready. Patch 0018 takes the
+ifdown path at shutdown when the interface is running, which ends in
+`rtw_power_off` and card-disable state, the same thing `rtw_pci_shutdown` gets
+from `PCI_D3hot`. v76 on `recovery` carries it and boots (build #28); it was
+flashed onto the wedged chip, so it says nothing yet. The verification is the
+owner's: a real power-off with USB unplugged, boot v76 and see Wi-Fi, then
+`reboot` and see whether Wi-Fi comes back.
+
+Two console facts for the next time: log in as `root` with no password after
+a bare carriage return, and send the lines of a script one at a time; joining
+them with `tr '\n' ' '` drops the separators and the shell rejects the lot,
+which is the safe failure but costs a round trip.
