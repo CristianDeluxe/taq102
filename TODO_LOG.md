@@ -6,9 +6,10 @@
 
 ### 2026-09
 
-- [x] 2026-09-09 — **Mainline:** touch geometry measured and applied. The
-  GSL3673 reports a 1664x896 grid with Y inverted; the DTS says so and
-  glcube scales the declared range to the panel (v74). glcube also finds
+- [x] 2026-09-09 — **Mainline:** touch works. The GSL3673 reports a
+  1664x896 grid with X inverted; the DTS says so and glcube scales the
+  declared range to the panel (v75, confirmed at the tablet; v74 had Y inverted
+  from a corner test done with the tablet turned round). glcube also finds
   its input nodes by device name. Evidence: raw captures decoded in
   `kernel/mainline/FINDINGS.md`, "Touch works, once the geometry is told".
 - [x] 2026-09-09 — **Mainline:** MAINTAINERS entry for `rk816_charger.c`

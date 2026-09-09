@@ -251,15 +251,16 @@
 		firmware-name = "gsl3673.fw";
 		/*
 		 * The controller reports in its own units, 64 per electrode on a
-		 * 26 by 14 grid, and its Y runs bottom to top. Measured 2026-09-09
-		 * with silead.c: the top-left corner reads (13, 875), the
-		 * bottom-right (1650, 23), and a sweep of the whole edge spans
-		 * 1..1663 by 8..888. The vendor driver hid this behind its closed
-		 * gsl_alg_id library, which rescaled to 1024x600 in the kernel.
+		 * 26 by 14 grid, and its X runs right to left. Measured 2026-09-09
+		 * with silead.c, the status bar marking the top: the top-left
+		 * corner of the panel reads (1654, 22) raw, the bottom-right
+		 * (13, 875), and a sweep of the whole edge spans 1..1663 by
+		 * 8..888. The vendor driver hid this behind its closed gsl_alg_id
+		 * library, which rescaled to 1024x600 in the kernel.
 		 */
 		touchscreen-size-x = <1664>;
 		touchscreen-size-y = <896>;
-		touchscreen-inverted-y;
+		touchscreen-inverted-x;
 	};
 };
 

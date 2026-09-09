@@ -12,8 +12,8 @@
 > `TODO_LOG.md`.
 
 Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
-v40, vendor 4.4.167), `recovery` = `recovery-taq102-v74-cube-touch-geometry.img` (mainline
-7.3.0-rc2, the 17-patch series, glcube scaled to the touch grid), BCB = `boot-recovery`, so every
+v40, vendor 4.4.167), `recovery` = `recovery-taq102-v75-cube-touch-x.img` (mainline
+7.3.0-rc2, the 17-patch series, touch geometry measured, glcube scaled), BCB = `boot-recovery`, so every
 power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
 appliance back. The journal is `README.md` here and
 `~/p/brain/personal/denver-taq102-tablet.md`; images and checksums are in
@@ -123,10 +123,11 @@ appliance back. The journal is `README.md` here and
   has an entry in 0008 and the DTS is covered by the Rockchip glob. The genpd
   deadlock goes as a bug report with
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
-- [ ] Hands-on check on v74: does the finger land where it touches, and does a
-  drag follow it, after the measured geometry (1664x896, Y inverted) and
-  the glcube scaling? If a corner is still off, the remaining error is the
-  grid's edge margin, not the axes.
+- [ ] Wi-Fi on mainline after a warm reboot: `rtw88_8723cs: mac power on
+  failed` (poll of offset 0x6 bit 1), no wlan0, so the panel shows Wi-Fi
+  off. Same chip wedge the vendor kernel has (the [!] item under Bugs);
+  only a full power-off clears it. Every `reboot-loader` flash lands in
+  this state.
 - [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write
   (`0xe0 = 0x88`) while applying it, and `silead.c` treated that as a probe
   failure. Patch 0011 accepts the NAK; v68 probes (`input0 = silead_ts`,
