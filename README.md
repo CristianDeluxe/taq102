@@ -1501,3 +1501,10 @@ to raise the voltage with it, and at 480 MHz the core stopped answering for
 good. v67 removes the OPP table from the GPU node; the clock stays where the
 bootloader left it, the cube draws at the panel's rate, and the table comes
 back when the RK816 regulators are described on mainline.
+
+The touch controller then turned out to NAK its own reset command while
+obeying it, which `silead.c` took for a dead chip; one scoped quirk and the
+GSL3673 probes. And the mainline series got its first real review: a PHY
+leak, a missing binding, an unscoped quirk, stale messages. It is now twelve
+`git am`-able patches that reproduce the running tree line for line
+(`kernel/mainline/FINDINGS.md`, "The series, reviewed").

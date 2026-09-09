@@ -1,4 +1,8 @@
-drm/rockchip: lvds: do not take over a panel bridge's funcs
+From c220cc0e24e54b80af122f61d428659ad24d3741 Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 02:24:29 +0200
+Subject: [PATCH 09/12] drm/rockchip: lvds: do not take over a panel bridge's
+ funcs
 
 rockchip_lvds_bind() wraps a panel with drm_panel_bridge_add_typed(), then
 sets lvds->panel to NULL because the bridge owns it now. Immediately after,
@@ -29,11 +33,16 @@ A panel wrapped by drm_panel_bridge_add_typed() already answers get_modes
 from the panel, so leave its funcs alone; only claim them for a bridge this
 driver found in the device tree itself.
 
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ drivers/gpu/drm/rockchip/rockchip_lvds.c | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
 diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
-index 6baa25f97..79d19966a 100644
+index fe02ebbee..8736933df 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
-@@ -664,6 +664,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+@@ -672,6 +672,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
  	int ret = 0, child_count = 0;
  	const char *name;
  	u32 endpoint_id = 0;
@@ -41,7 +50,7 @@ index 6baa25f97..79d19966a 100644
  
  	lvds->drm_dev = drm_dev;
  	port = of_graph_get_port_by_id(dev->of_node, 1);
-@@ -731,6 +732,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+@@ -739,6 +740,7 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
  	drm_encoder_helper_add(encoder, lvds->soc_data->helper_funcs);
  
  	if (lvds->panel) {
@@ -49,7 +58,7 @@ index 6baa25f97..79d19966a 100644
  		lvds->bridge = drm_panel_bridge_add_typed(lvds->panel, DRM_MODE_CONNECTOR_LVDS);
  		drm_panel_put(lvds->panel);
  		lvds->panel = NULL;
-@@ -741,9 +743,20 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
+@@ -749,9 +751,20 @@ static int rockchip_lvds_bind(struct device *dev, struct device *master,
  	}
  
  	if (lvds->bridge) {
@@ -73,3 +82,6 @@ index 6baa25f97..79d19966a 100644
  
  		ret = drm_bridge_attach(encoder, lvds->bridge, NULL, DRM_BRIDGE_ATTACH_NO_CONNECTOR);
  		if (ret)
+-- 
+2.53.0
+

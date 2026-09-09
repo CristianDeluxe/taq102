@@ -1,4 +1,8 @@
-Subject: phy: rockchip: inno-dsidphy: enable the MIPI host pclk and the VIO h2p bridge clock
+From 4d83f6355893e3c0b36cd5bbec265c055894e1ba Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 02:24:30 +0200
+Subject: [PATCH 11/12] phy: rockchip: inno-dsidphy: enable the MIPI host pclk
+ and the VIO h2p bridge clock
 
 The vendor driver enables four clocks before it touches a PHY register where
 mainline names two. HCLK_VIO_H2P is the AHB-to-APB bridge the PHY registers
@@ -10,6 +14,11 @@ unaffected; rk3128.dtsi names them in 0003.
 Measured on the TAQ-102 (kernel/mainline/FINDINGS.md): this was not the cause
 of the display hang, which was a genpd deadlock. Kept because the PHY module
 that runs on the tablet was built with it and it is correct on its own terms.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ .../phy/rockchip/phy-rockchip-inno-dsidphy.c  | 20 +++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
 diff --git a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
 index c8f7566d4..53eb7cd6b 100644
@@ -63,3 +72,6 @@ index c8f7566d4..53eb7cd6b 100644
  	inno->rst = devm_reset_control_get(dev, "apb");
  	if (IS_ERR(inno->rst)) {
  		ret = PTR_ERR(inno->rst);
+-- 
+2.53.0
+

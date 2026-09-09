@@ -1,3 +1,21 @@
+From a0bdd989a9c9f7b08dbc3f7090b2dab2569e957d Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 02:24:26 +0200
+Subject: [PATCH 04/12] ARM: dts: rk3128: add the LVDS transmitter and its VOP
+ endpoint
+
+Add the lvds node and a third VOP output endpoint for it, shaped like the
+PX30 one. The output port carries #address-cells and #size-cells so a board
+can add an endpoint@0 with a reg, which the of_graph walk in
+rockchip_lvds_bind() needs to find the panel. Give the D-PHY the two extra
+gates the driver takes as optional, the MIPI host pclk and the VIO h2p
+bridge clock.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ arch/arm/boot/dts/rockchip/rk3128.dtsi | 39 ++++++++++++++++++++++++--
+ 1 file changed, 37 insertions(+), 2 deletions(-)
+
 diff --git a/arch/arm/boot/dts/rockchip/rk3128.dtsi b/arch/arm/boot/dts/rockchip/rk3128.dtsi
 index c49099954..f481430e1 100644
 --- a/arch/arm/boot/dts/rockchip/rk3128.dtsi
@@ -55,3 +73,6 @@ index c49099954..f481430e1 100644
  		#phy-cells = <0>;
  		power-domains = <&power RK3128_PD_VIO>;
  		resets = <&cru SRST_MIPIPHY_P>;
+-- 
+2.53.0
+

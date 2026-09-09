@@ -1,4 +1,8 @@
-phy: rockchip: inno-dsidphy: power up the common analog block in LVDS mode
+From 3aed52f3cfbcd35716332b7aa9ce744cd4576b6b Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 02:24:27 +0200
+Subject: [PATCH 05/12] phy: rockchip: inno-dsidphy: power up the common analog
+ block in LVDS mode
 
 The LVDS path programs the PLL dividers into REGISTER_PART_ANALOG 0x03/0x04
 and then powers on only the LVDS-side PLL and bandgap. It never powers on the
@@ -19,9 +23,16 @@ reset defaults either way. It is kept there because it matches the state the
 vendor bootloader leaves, and it is carried here for the same reason plus the
 power_off asymmetry, which the vendor driver does not have.
 
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
+index 30d5e5ddf..e27fd78b8 100644
 --- a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
 +++ b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
-@@ -618,6 +618,15 @@ static void inno_dsidphy_lvds_mode_enable(struct inno_dsidphy *inno)
+@@ -619,6 +619,15 @@ static void inno_dsidphy_lvds_mode_enable(struct inno_dsidphy *inno)
  	phy_update_bits(inno, REGISTER_PART_ANALOG, 0x04,
  			REG_FBDIV_LO_MASK, REG_FBDIV_LO(fbdiv));
  	phy_update_bits(inno, REGISTER_PART_LVDS, 0x08, 0xff, 0xfc);
@@ -37,7 +48,7 @@ power_off asymmetry, which the vendor driver does not have.
  	/* Enable PLL and Bandgap */
  	phy_update_bits(inno, REGISTER_PART_LVDS, 0x0b,
  			LVDS_PLL_POWER_MASK | LVDS_BANDGAP_POWER_MASK,
-@@ -646,6 +655,10 @@ static void inno_dsidphy_lvds_mode_enable(struct inno_dsidphy *inno)
+@@ -647,6 +656,10 @@ static void inno_dsidphy_lvds_mode_enable(struct inno_dsidphy *inno)
  			LVDS_LANE_EN_MASK, LVDS_CLK_LANE_EN |
  			LVDS_DATA_LANE0_EN | LVDS_DATA_LANE1_EN |
  			LVDS_DATA_LANE2_EN | LVDS_DATA_LANE3_EN);
@@ -48,3 +59,6 @@ power_off asymmetry, which the vendor driver does not have.
  }
  
  static int inno_dsidphy_power_on(struct phy *phy)
+-- 
+2.53.0
+

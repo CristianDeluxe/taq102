@@ -1,0 +1,497 @@
+From 4ca27e0ff8bd311ac0c7efdbffb322d77fbe6129 Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 02:24:30 +0200
+Subject: [PATCH 12/12] ARM: dts: rk3126-taq102: add the Denver TAQ-102
+
+The board file, whole, as it runs on the tablet: RK3126C, 1 GB, the
+1024x600 LVDS panel on the D-PHY at its measured 56 Hz, the GSL3673 touch
+controller and the RK816 PMIC on i2c2, eMMC, the RTL8723CS on SDIO, and the
+ACM gadget as console. Every number comes from the vendor board file or the
+stock tree recovered off the tablet. Beyond what the driver patches in this
+series describe, it carries:
+
+- a simple-framebuffer on the buffer U-Boot leaves scanning out
+  (uboot_logo=0x02000000@0x9dc00000), reserved so the allocator never hands
+  it out. It is the console of last resort: printk on the panel from early
+  boot, needing nothing from the kernel, which is what finally showed a
+  mainline boot after six silent ones;
+- a ramoops region at 0x68100000;
+- syscon-reboot-mode on the PMU so `reboot loader` reaches the Rockchip
+  loader without the two-button dance;
+- the LVDS output endpoint with a reg, as the transmitter's of_graph walk
+  needs it;
+- the Mali-400 enabled, and its OPP table removed: with no mali-supply
+  described, lima's devfreq drove the clock alone from 148.5 MHz to 480 MHz
+  and the GPU hung 73 s into the first run. At the bootloader's 148.5 MHz it
+  draws at the panel's rate. The table comes back with the RK816 regulators.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ arch/arm/boot/dts/rockchip/rk3126-taq102.dts | 455 +++++++++++++++++++
+ 1 file changed, 455 insertions(+)
+ create mode 100644 arch/arm/boot/dts/rockchip/rk3126-taq102.dts
+
+diff --git a/arch/arm/boot/dts/rockchip/rk3126-taq102.dts b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
+new file mode 100644
+index 000000000..248a44c59
+--- /dev/null
++++ b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
+@@ -0,0 +1,455 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Denver TAQ-102 on mainline: RK3126C, 1 GB, LVDS 1024x600, GSL3673 touch.
++ *
++ * The vendor 4.4 board file is kernel/rk3126-taq102.dts and the tree the
++ * tablet actually shipped with is kernel/rk3126-taq102-hybrid.dts. Every
++ * number below was taken from one of those two, not from a sibling board:
++ * the panel timing is the one modetest reports on the hardware, 1024x600 at
++ * 56.14 Hz, and the backlight is the vendor's pwm0 at 25 us.
++ *
++ * rk3128.dtsi is the right base even though this is an RK3126C: its VOP is
++ * already "rockchip,rk3126-vop" upstream. The LVDS node it gains here needs
++ * the two patches in this directory.
++ */
++
++/dts-v1/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++#include "rk3128.dtsi"
++
++/ {
++	model = "Denver TAQ-102 (RK3126C, LVDS)";
++	compatible = "rockchip,rk3126-taq102", "rockchip,rk3126";
++
++	/*
++	 * A crash log that survives the reboot, because this board has no console
++	 * a failed boot can reach: no serial pads, and the USB gadget is raised by
++	 * userspace the kernel never gets to. Deliberately NOT 0x68000000, which the vendor tree also uses for
++	 * ramoops: the vendor kernel rewrites that region with its own boot log,
++	 * which destroyed the first capture. 0x68100000 is above it and still
++	 * inside the first bank, which ends at 0x68400000.
++	 */
++	reserved-memory {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges;
++
++		/* The buffer the panel is scanning out; never hand it to the allocator. */
++		uboot_fb: framebuffer@9dc00000 {
++			reg = <0x9dc00000 (600 * 4096)>;
++			no-map;
++		};
++
++		ramoops@68100000 {
++			compatible = "ramoops";
++			reg = <0x68100000 0xf0000>;
++			record-size = <0x20000>;
++			console-size = <0x80000>;
++			pmsg-size = <0x50000>;
++		};
++	};
++
++	/*
++	 * The console of last resort: the framebuffer U-Boot is already scanning
++	 * out. Its command line names it -- uboot_logo=0x02000000@0x9dc00000 --
++	 * and the lit panel with no picture, the white screen this project has
++	 * been staring at, IS that buffer. Pointing simple-framebuffer at it puts
++	 * printk on the panel from very early, with no USB, no DRM driver, and
++	 * nothing that has to survive a power cycle; the previous attempt at a
++	 * diagnostic channel lived in RAM and the recovery procedure, which holds
++	 * power until the PMIC drops the rails, erased it every time.
++	 *
++	 * 1024x600, XR24 with a 4096-byte pitch: the format the vendor kernel
++	 * reports for the live scanout in /sys/kernel/debug/dri/0/summary.
++	 */
++	framebuffer: framebuffer@9dc00000 {
++		compatible = "simple-framebuffer";
++		reg = <0x9dc00000 (600 * 4096)>;
++		width = <1024>;
++		height = <600>;
++		stride = <4096>;
++		format = "x8r8g8b8";
++		status = "okay";
++	};
++
++	aliases {
++		mmc0 = &sdmmc;
++		mmc1 = &emmc;
++		mmc2 = &sdio;
++	};
++
++	/*
++	 * The RTL8723CS needs its 32 kHz clock and its reset released before
++	 * the SDIO function can be probed at all. Values from the tablet own
++	 * stock tree: the clock is the PMIC clkout2, the reset is GPIO2_B5.
++	 */
++	sdio_pwrseq: sdio-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		clocks = <&rk816 1>;
++		clock-names = "ext_clock";
++		reset-gpios = <&gpio2 RK_PB5 GPIO_ACTIVE_LOW>;
++	};
++
++	/*
++	 * Two banks with a 14 MB hole between them, not one contiguous gigabyte.
++	 * Read off the running vendor kernel on this tablet: /proc/iomem shows
++	 * 60000000-683fffff and 69200000-9fffffff, and its own device tree says
++	 * reg = <0x60000000 0x08400000>, <0x69200000 0x36e00000>. Declaring the
++	 * hole as memory kills the kernel during memblock init, long before any
++	 * console exists, which is exactly the silent black boot this cost.
++	 */
++	memory@60000000 {
++		device_type = "memory";
++		reg = <0x60000000 0x08400000>,
++		      <0x69200000 0x36e00000>;
++	};
++
++	/*
++	 * The touch controller's two rails. Nothing on this board switches
++	 * them: they are up before the kernel starts, the vendor node
++	 * describes no supply at all, and the RK816 that really feeds them
++	 * has no node in this file yet. They exist because silead.c takes
++	 * both with a plain devm_regulator_bulk_get() and refuses to probe
++	 * without them. Replace them with the real RK816 outputs when a PMIC
++	 * node lands here.
++	 */
++	vcc_io: regulator-vcc-io {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_io";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	vcc_tp: regulator-vcc-tp {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc_tp";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
++	backlight: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm0 0 25000 0>;
++		brightness-levels = <0 255>;
++		num-interpolated-steps = <255>;
++		default-brightness-level = <128>;
++	};
++
++	panel: panel {
++		compatible = "panel-lvds";
++		backlight = <&backlight>;
++		enable-gpios = <&gpio2 12 GPIO_ACTIVE_HIGH>;
++		data-mapping = "jeida-24";
++		width-mm = <125>;
++		height-mm = <223>;
++
++		panel-timing {
++			clock-frequency = <51200000>;
++			hactive = <1024>;
++			vactive = <600>;
++			hback-porch = <160>;
++			hfront-porch = <160>;
++			hsync-len = <70>;
++			vback-porch = <23>;
++			vfront-porch = <12>;
++			vsync-len = <10>;
++			hsync-active = <0>;
++			vsync-active = <0>;
++			de-active = <0>;
++			pixelclk-active = <0>;
++		};
++
++		port {
++			panel_in_lvds: endpoint {
++				remote-endpoint = <&lvds_out_panel>;
++			};
++		};
++	};
++};
++
++&display_subsystem {
++	status = "okay";
++};
++
++&dphy {
++	status = "okay";
++};
++
++&lvds {
++	status = "okay";
++};
++
++&lvds_out {
++	lvds_out_panel: endpoint@0 {
++		reg = <0>;
++		remote-endpoint = <&panel_in_lvds>;
++	};
++};
++
++/*
++ * GSL3673 capacitive touch, 0x40 on i2c2.
++ *
++ * i2c2, not i2c0: in the device tree the tablet actually runs
++ * (kernel/rk3126-taq102-hybrid.dts, decompiled from the live DTB) ts@40 is a
++ * child of i2c@2005a000, beside the RK816 at 0x1a and the accelerometer at
++ * 0x18, and i2c@20072000 is enabled with no children at all. rk3128.dtsi
++ * labels 0x2005a000 as i2c2, and so does the vendor rk312x.dtsi. The
++ * hand-written kernel/rk3126-taq102.dts in this repository puts the node
++ * under &i2c0; that file is a reconstruction and it is wrong on this point.
++ *
++ * No clock-frequency: the live node has none either, so the bus runs at the
++ * 100 kHz default i2c_parse_fw_timings() supplies. The 400 kHz in the sibling
++ * board's rk3126-bnd-d708.dtsi belongs to a different bus on a different
++ * board. At 100 kHz the firmware upload -- 4719 single-word SMBus writes
++ * where the vendor batched 32 words per transfer -- costs a few seconds once,
++ * at probe.
++ *
++ *  - interrupts is EDGE_RISING, not the LEVEL_LOW the vendor node prints.
++ *    gsl3673_init() reads irq_gpio_number only for the GPIO number and throws
++ *    the flags away; probe then calls devm_request_irq() with
++ *    IRQF_TRIGGER_RISING. Rising is the trigger this hardware was proved on.
++ *
++ *  - power-gpios is the vendor's rst_gpio_number, gpio2 14 active high.
++ *    silead.c has no separate reset: silead_ts_set_power() drives this pin
++ *    low to stop the chip and high to run it, then sleeps 20 ms, which is
++ *    exactly gsl3673_shutdown_low()/_high() and their msleep(20).
++ *
++ *  - firmware-name resolves to /lib/firmware/silead/gsl3673.fw, produced by
++ *    kernel/mainline/taq102-gsl3673-firmware.py from the GSL3673_FW array of
++ *    the vendor header after kernel/patches/0005-* has replaced it with the
++ *    tablet's own stock blob. The array the vendor tree ships untouched is
++ *    another panel's.
++ *
++ *  - touchscreen-size-x/y are unmeasured. They are the resolution word of the
++ *    stock configuration array, 0x02580400 = 600 << 16 | 1024, and the
++ *    screen_max_x/y of the reconstructed vendor node. The vendor driver's own
++ *    ABS range is no evidence: with CONFIG_TOUCHSCREEN_GSL3673 no TP_SIZE_*
++ *    macro is defined, so it falls through to 2048x1536.
++ */
++&i2c2 {
++	status = "okay";
++
++	touchscreen@40 {
++		compatible = "silead,gsl3673";
++		reg = <0x40>;
++
++		interrupt-parent = <&gpio2>;
++		interrupts = <15 IRQ_TYPE_EDGE_RISING>;
++		power-gpios = <&gpio2 14 GPIO_ACTIVE_HIGH>;
++
++		vddio-supply = <&vcc_io>;
++		avdd-supply = <&vcc_tp>;
++
++		firmware-name = "gsl3673.fw";
++		touchscreen-size-x = <1024>;
++		touchscreen-size-y = <600>;
++	};
++};
++
++&pwm0 {
++	status = "okay";
++};
++
++&vop {
++	status = "okay";
++};
++
++/* The ACM gadget is the only console this board has: no CONFIG_VT on the
++ * stock kernel, and the UART2 pads have never been located. */
++&usb_otg {
++	dr_mode = "peripheral";
++	status = "okay";
++};
++
++/*
++ * The RK816 PMIC and the battery behind it.
++ *
++ * These two headers are re-included here rather than at the top of the file
++ * so that this is one self-contained block; both carry include guards, so a
++ * second include costs nothing.
++ */
++#include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/pinctrl/rockchip.h>
++
++/*
++ * The PMIC sits on i2c2 at 0x1a, beside the GSL3673 touch controller at 0x40
++ * on the same bus; i2c0 is enabled with no children at all on this board.
++ * Its interrupt is GPIO0_A2, active low.
++ * Checked against the decompiled vendor DTB, where the same node reads
++ * interrupts = <0x02 0x08>.
++ *
++ * The regulators are deliberately not described. Nothing here needs them,
++ * and transcribing a rail constraint wrong is how a board stops booting;
++ * the vendor's DCDC and LDO constraints are a separate change with its own
++ * risk. "rockchip,system-power-controller" is left off for the same reason:
++ * it changes what happens on poweroff.
++ */
++&i2c2 {
++	status = "okay";
++
++	rk816: pmic@1a {
++		compatible = "rockchip,rk816";
++		reg = <0x1a>;
++		interrupt-parent = <&gpio0>;
++		interrupts = <RK_PA2 IRQ_TYPE_LEVEL_LOW>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&pmic_int_l>;
++		#clock-cells = <1>;
++		clock-output-names = "xin32k", "rk816-clkout2";
++		gpio-controller;
++		#gpio-cells = <2>;
++		extcon = <&usb2phy>;
++		wakeup-source;
++
++		charger {
++			monitored-battery = <&battery>;
++			rockchip,resistor-sense-micro-ohms = <20000>;
++			rockchip,sleep-enter-current-microamp = <300000>;
++			rockchip,sleep-filter-current-microamp = <100000>;
++			input-current-limit-microamp = <1600000>;
++		};
++	};
++};
++
++&pinctrl {
++	pmic {
++		pmic_int_l: pmic-int-l {
++			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_default>;
++		};
++	};
++};
++
++/*
++ * The OTG PHY is disabled in rk3128.dtsi, so the ACM gadget above cannot
++ * probe without this either. It is also what performs BC1.2 detection,
++ * which is the only way the charger can tell a wall adapter from a 450 mA
++ * port.
++ */
++&usb2phy {
++	status = "okay";
++};
++
++&usb2phy_otg {
++	status = "okay";
++};
++
++/ {
++	/*
++	 * Every number here comes from the battery node of the vendor board
++	 * file, converted out of its hexadecimal millivolts and milliamp
++	 * hours: design_capacity 0x10af, max_chrg_current 0x578,
++	 * max_chrg_voltage 0x1068, max_input_current 0x640, bat_res 0x64,
++	 * power_off_thresd 0xd7a, sleep_enter_current 0x12c,
++	 * sleep_filter_current 0x64. The termination current is not in the
++	 * vendor DTS at all: rk816_bat_finish_ma() derives 200 mA from a pack
++	 * of 4000 mAh or more.
++	 *
++	 * The OCV table is the vendor's ocv_table read backwards, because the
++	 * vendor lists 0 % first and the power supply core wants the highest
++	 * voltage first. There is no thermistor on this board, so one table
++	 * at 20 C is all there is.
++	 */
++	battery: battery {
++		compatible = "simple-battery";
++		charge-full-design-microamp-hours = <4271000>;
++		charge-term-current-microamp = <200000>;
++		constant-charge-current-max-microamp = <1400000>;
++		constant-charge-voltage-max-microvolt = <4200000>;
++		voltage-max-design-microvolt = <4200000>;
++		voltage-min-design-microvolt = <3450000>;
++		factory-internal-resistance-micro-ohms = <100000>;
++		ocv-capacity-celsius = <20>;
++		ocv-capacity-table-0 = <4200000 100>, <4139000 95>,
++				       <4093000 90>, <4056000 85>,
++				       <4005000 80>, <3975000 75>,
++				       <3943000 70>, <3897000 65>,
++				       <3858000 60>, <3836000 55>,
++				       <3817000 50>, <3802000 45>,
++				       <3789000 40>, <3777000 35>,
++				       <3762000 30>, <3746000 25>,
++				       <3731000 20>, <3706000 15>,
++				       <3686000 10>, <3671000 5>,
++				       <3450000 0>;
++	};
++};
++
++/*
++ * Storage and SDIO. Without the eMMC there is no /data, so no settings and no
++ * wifi.conf; without the SDIO there is no wlan0 whatever rtw88 is built with.
++ * Every capability below is the one the stock tree sets for this board.
++ * The SD slot is left disabled on purpose: nothing here uses it, and it would
++ * only add a controller that can fail to probe.
++ */
++&emmc {
++	bus-width = <8>;
++	cap-mmc-highspeed;
++	disable-wp;
++	non-removable;
++	pinctrl-names = "default";
++	pinctrl-0 = <&emmc_clk &emmc_cmd &emmc_bus8>;
++	status = "okay";
++};
++
++&sdio {
++	bus-width = <4>;
++	cap-sd-highspeed;
++	keep-power-in-suspend;
++	max-frequency = <50000000>;
++	mmc-pwrseq = <&sdio_pwrseq>;
++	non-removable;
++	pinctrl-names = "default";
++	pinctrl-0 = <&sdio_clk &sdio_cmd &sdio_bus4>;
++	status = "okay";
++};
++
++/*
++ * Let `reboot loader` work under mainline. The vendor kernel has a notifier
++ * that turns the reboot command string into a magic in the PMU register
++ * U-Boot checks on the next start; mainline does the same thing through
++ * syscon-reboot-mode, but only if the DT says so -- and without it the only
++ * way into loader mode is the two-button dance, which is unreliable on this
++ * board and has been done by hand a dozen times.
++ *
++ * Offset and magics transcribed from the tablet's own stock tree.
++ */
++
++&pmu {
++	reboot-mode {
++		compatible = "syscon-reboot-mode";
++		offset = <0x38>;
++		mode-bootloader = <0x5242c301>;
++		mode-charge = <0x5242c30b>;
++		mode-fastboot = <0x5242c309>;
++		mode-loader = <0x5242c301>;
++		mode-normal = <0x5242c300>;
++		mode-recovery = <0x5242c303>;
++		mode-ums = <0x5242c30c>;
++	};
++};
++
++/*
++ * The Mali-400 MP2, for lima. rk3128.dtsi leaves it disabled; clocks,
++ * reset, OPPs and RK3128_PD_GPU all come from there. The vendor tree also
++ * hands it vdd_logic as mali-supply; that regulator is not described on
++ * mainline yet, and lima treats the supply as optional.
++ */
++&gpu {
++	status = "okay";
++	/*
++	 * No devfreq. rk3128.dtsi gives the GPU an OPP table up to 480 MHz, and
++	 * with no mali-supply described lima runs simple_ondemand over it with
++	 * the clock alone: measured 2026-09-09 on v66, 150 transitions in the
++	 * first minute, then a pp0 job timeout at 87 s and a GPU that no reset
++	 * brings back. Without the table lima keeps the clock the bootloader
++	 * left, 148.5 MHz, which draws the cube at full rate. Restore the table
++	 * once the RK816 regulators exist here and vdd_logic is its supply.
++	 */
++	/delete-property/ operating-points-v2;
++};
+-- 
+2.53.0
+

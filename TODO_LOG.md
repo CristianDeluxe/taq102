@@ -6,6 +6,15 @@
 
 ### 2026-09
 
+- [x] 2026-09-09 — **Mainline:** patch series reviewed and rebuilt. Findings
+  acted on: 0011 conflicted with 0007; no messages or Signed-off-by on most
+  patches; PHY leak on the rk312x LVDS probe error paths; no DT binding for
+  `rockchip,rk3126-lvds`; silead NAK tolerance unscoped; RK816 message
+  stale and a division that could reach zero; stale numbering in README and
+  config. Series is now `git format-patch` output, 12 patches, `git am`
+  applies all twelve onto `28924df2a` and the tree equals the VM's (0 diff
+  lines). v69 built from it runs on the tablet.
+  - Evidence: `docs/evidence/2026-09-09-cube/v69-console-reviewed-series.log`.
 - [x] 2026-09-09 — **Mainline:** the cube froze after 73 s on v66. lima's
   devfreq (`simple_ondemand`) drove the Mali from the bootloader's 148.5 MHz
   up to 480 MHz over the rk3128.dtsi OPP table with no regulator attached;

@@ -1,5 +1,25 @@
+From 1489c613133b32e66dbcee196887330f344f408d Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 02:24:25 +0200
+Subject: [PATCH 03/12] drm/rockchip: lvds: add RK3126/RK3128 support
+
+The PX30 path is the model: the D-PHY does the work and the GRF only selects
+LVDS mode, the MSB order and the format. RK312x keeps all of it in one
+register, GRF_LVDS_CON0 at 0x150, with P2S_EN at bit 9, MODE_EN at bit 6,
+MSBSEL at bit 3 and the format at bits 2:1, read off the vendor driver. There
+is no VOP selector because this SoC has one VOP.
+
+Proved on a Denver TAQ-102 (RK3126C): the panel scans out 1024x600 at its
+native 56 Hz and the connector reports the right physical size.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ drivers/gpu/drm/rockchip/rockchip_lvds.c | 130 +++++++++++++++++++++++
+ drivers/gpu/drm/rockchip/rockchip_lvds.h |   6 ++
+ 2 files changed, 136 insertions(+)
+
 diff --git a/drivers/gpu/drm/rockchip/rockchip_lvds.c b/drivers/gpu/drm/rockchip/rockchip_lvds.c
-index 505c6c567..6baa25f97 100644
+index 505c6c567..fe02ebbee 100644
 --- a/drivers/gpu/drm/rockchip/rockchip_lvds.c
 +++ b/drivers/gpu/drm/rockchip/rockchip_lvds.c
 @@ -426,6 +426,84 @@ static void px30_lvds_encoder_disable(struct drm_encoder *encoder)
@@ -101,7 +121,7 @@ index 505c6c567..6baa25f97 100644
  static const
  struct drm_encoder_helper_funcs px30_lvds_encoder_helper_funcs = {
  	.enable = px30_lvds_encoder_enable,
-@@ -507,6 +592,39 @@ static int px30_lvds_probe(struct platform_device *pdev,
+@@ -507,6 +592,47 @@ static int px30_lvds_probe(struct platform_device *pdev,
  	return phy_power_on(lvds->dphy);
  }
  
@@ -128,9 +148,17 @@ index 505c6c567..6baa25f97 100644
 +
 +	ret = phy_set_mode(lvds->dphy, PHY_MODE_LVDS);
 +	if (ret)
-+		return ret;
++		goto err_phy_exit;
 +
-+	return phy_power_on(lvds->dphy);
++	ret = phy_power_on(lvds->dphy);
++	if (ret)
++		goto err_phy_exit;
++
++	return 0;
++
++err_phy_exit:
++	phy_exit(lvds->dphy);
++	return ret;
 +}
 +
 +static const struct rockchip_lvds_soc_data rk312x_lvds_data = {
@@ -141,7 +169,7 @@ index 505c6c567..6baa25f97 100644
  static const struct rockchip_lvds_soc_data rk3288_lvds_data = {
  	.probe = rk3288_lvds_probe,
  	.helper_funcs = &rk3288_lvds_encoder_helper_funcs,
-@@ -526,6 +644,10 @@ static const struct of_device_id rockchip_lvds_dt_ids[] = {
+@@ -526,6 +652,10 @@ static const struct of_device_id rockchip_lvds_dt_ids[] = {
  		.compatible = "rockchip,px30-lvds",
  		.data = &px30_lvds_data
  	},
@@ -169,3 +197,6 @@ index 2d92447d8..db48b5c6f 100644
  #define PX30_LVDS_GRF_PD_VO_CON0		0x434
  #define   PX30_LVDS_TIE_CLKS(val)		FIELD_PREP_WM16(BIT(8), (val))
  #define   PX30_LVDS_INVERT_CLKS(val)		FIELD_PREP_WM16(BIT(9), (val))
+-- 
+2.53.0
+
