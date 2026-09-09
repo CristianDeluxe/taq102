@@ -112,7 +112,14 @@ appliance back. The journal is `README.md` here and
   reviewed"): 0011 (LVDS panel-bridge fix) and 0012 (silead NAK quirk) are
   ready to post; 0001-0004 pass `dt_binding_check` and `dtbs_check`, which
   now run in the VM. Before posting the board: the panel's part number for
-  `panel-lvds` (needs the case opened). MAINTAINERS is done: the charger
+  `panel-lvds`. Tried without opening the case (2026-09-09): no name in
+  the vendor DTB, U-Boot, kernel, vendor or system partitions (`strings`,
+  the only panel names there are panel-simple's own table); the measured
+  timing (51.2 MHz, 160/160/23/12) is the generic 1344x645 convention and
+  matches two 7" SPWG panels in panel-simple, not ours (10.1", JEIDA-24,
+  125x223 mm); no 1024x600 JEIDA panel exists in panel-simple; web listings
+  of replacement screens for the TAQ-101xx/102xx family are behind 403s
+  for a script but may show the label in their photos. Otherwise the case. MAINTAINERS is done: the charger
   has an entry in 0008 and the DTS is covered by the Rockchip glob. The genpd
   deadlock goes as a bug report with
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
