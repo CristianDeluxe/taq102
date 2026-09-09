@@ -1,12 +1,14 @@
-From 3aed52f3cfbcd35716332b7aa9ce744cd4576b6b Mon Sep 17 00:00:00 2001
+From e391c10f3cc781c012e87e3a495030acf54effbc Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 02:24:27 +0200
-Subject: [PATCH 05/12] phy: rockchip: inno-dsidphy: power up the common analog
+Date: Wed, 9 Sep 2026 03:45:33 +0200
+Subject: [PATCH 05/17] phy: rockchip: inno-dsidphy: power up the common analog
  block in LVDS mode
 
 The LVDS path programs the PLL dividers into REGISTER_PART_ANALOG 0x03/0x04
-and then powers on only the LVDS-side PLL and bandgap. It never powers on the
-common analog LDO and PLL (ANALOG 0x01 REG_LDOPD/REG_PLLPD), never pulses the
+and then powers on only the LVDS-side PLL and bandgap. It never powers on
+the
+common analog LDO and PLL (ANALOG 0x01 REG_LDOPD/REG_PLLPD), never pulses
+the
 analog sync reset after loading the dividers, and never enables the analog
 lanes behind the LVDS drivers (ANALOG 0x00 LANE_EN). The MIPI path does all
 three.
@@ -16,11 +18,14 @@ omission is also asymmetric: after one power_off/power_on cycle the block
 stays down.
 
 The evidence for this on the vendor 4.4 driver is weaker than the asymmetry
-above, and should not be overstated: kernel/patches/0002 makes the equivalent
+above, and should not be overstated: kernel/patches/0002 makes the
+equivalent
 change on a Rockchip RK3126C with a 1024x600 LVDS panel, and that panel is
 lit and correct both with it and without it -- the analog block reads its
-reset defaults either way. It is kept there because it matches the state the
-vendor bootloader leaves, and it is carried here for the same reason plus the
+reset defaults either way. It is kept there because it matches the state
+the
+vendor bootloader leaves, and it is carried here for the same reason plus
+the
 power_off asymmetry, which the vendor driver does not have.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>

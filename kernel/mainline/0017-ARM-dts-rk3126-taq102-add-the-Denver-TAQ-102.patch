@@ -1,7 +1,7 @@
-From 4ca27e0ff8bd311ac0c7efdbffb322d77fbe6129 Mon Sep 17 00:00:00 2001
+From 8e70b479ccd6a1e31e7c55934cc3360333a4b8bd Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 02:24:30 +0200
-Subject: [PATCH 12/12] ARM: dts: rk3126-taq102: add the Denver TAQ-102
+Date: Wed, 9 Sep 2026 03:45:39 +0200
+Subject: [PATCH 17/17] ARM: dts: rk3126-taq102: add the Denver TAQ-102
 
 The board file, whole, as it runs on the tablet: RK3126C, 1 GB, the
 1024x600 LVDS panel on the D-PHY at its measured 56 Hz, the GSL3673 touch
@@ -17,7 +17,8 @@ series describe, it carries:
   mainline boot after six silent ones;
 - a ramoops region at 0x68100000;
 - syscon-reboot-mode on the PMU so `reboot loader` reaches the Rockchip
-  loader without the two-button dance;
+  loader without the two-button dance, with the four modes the PMU binding
+  allows and the magics from the vendor tree;
 - the LVDS output endpoint with a reg, as the transmitter's of_graph walk
   needs it;
 - the Mali-400 enabled, and its OPP table removed: with no mali-supply
@@ -33,7 +34,7 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
 
 diff --git a/arch/arm/boot/dts/rockchip/rk3126-taq102.dts b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
 new file mode 100644
-index 000000000..248a44c59
+index 000000000..28f1e363e
 --- /dev/null
 +++ b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
 @@ -0,0 +1,455 @@
@@ -61,15 +62,16 @@ index 000000000..248a44c59
 +
 +/ {
 +	model = "Denver TAQ-102 (RK3126C, LVDS)";
-+	compatible = "rockchip,rk3126-taq102", "rockchip,rk3126";
++	compatible = "denver,taq102", "rockchip,rk3126";
 +
 +	/*
 +	 * A crash log that survives the reboot, because this board has no console
 +	 * a failed boot can reach: no serial pads, and the USB gadget is raised by
-+	 * userspace the kernel never gets to. Deliberately NOT 0x68000000, which the vendor tree also uses for
-+	 * ramoops: the vendor kernel rewrites that region with its own boot log,
-+	 * which destroyed the first capture. 0x68100000 is above it and still
-+	 * inside the first bank, which ends at 0x68400000.
++	 * userspace the kernel never gets to. Deliberately NOT 0x68000000, which
++	 * the vendor tree also uses for ramoops: the vendor kernel rewrites that
++	 * region with its own boot log, which destroyed the first capture.
++	 * 0x68100000 is above it and still inside the first bank, which ends at
++	 * 0x68400000.
 +	 */
 +	reserved-memory {
 +		#address-cells = <1>;
@@ -300,8 +302,10 @@ index 000000000..248a44c59
 +	status = "okay";
 +};
 +
-+/* The ACM gadget is the only console this board has: no CONFIG_VT on the
-+ * stock kernel, and the UART2 pads have never been located. */
++/*
++ * The ACM gadget is the only console this board has: no CONFIG_VT on the
++ * stock kernel, and the UART2 pads have never been located.
++ */
 +&usb_otg {
 +	dr_mode = "peripheral";
 +	status = "okay";
@@ -463,13 +467,10 @@ index 000000000..248a44c59
 +	reboot-mode {
 +		compatible = "syscon-reboot-mode";
 +		offset = <0x38>;
-+		mode-bootloader = <0x5242c301>;
-+		mode-charge = <0x5242c30b>;
-+		mode-fastboot = <0x5242c309>;
++		mode-bootloader = <0x5242c309>;
 +		mode-loader = <0x5242c301>;
 +		mode-normal = <0x5242c300>;
 +		mode-recovery = <0x5242c303>;
-+		mode-ums = <0x5242c30c>;
 +	};
 +};
 +

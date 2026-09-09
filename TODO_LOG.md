@@ -6,6 +6,13 @@
 
 ### 2026-09
 
+- [x] 2026-09-09 — **Mainline:** series taken through the tools. `checkpatch
+  --strict`, `dt_binding_check` and `dtbs_check` (dtschema installed in the
+  VM) found: no schema for the board compatible, forbidden reboot modes
+  under the PMU, the D-PHY's extra clocks outside their binding, bindings
+  inside driver patches, and four style nits. All fixed in the tree; the
+  series is 17 `git am`-able patches reproducing it (0 diff lines); v72
+  and v73 run it on the tablet. Left: the panel part number and MAINTAINERS.
 - [x] 2026-09-09 — **Mainline:** patch series reviewed and rebuilt. Findings
   acted on: 0011 conflicted with 0007; no messages or Signed-off-by on most
   patches; PHY leak on the rk312x LVDS probe error paths; no DT binding for

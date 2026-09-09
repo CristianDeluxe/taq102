@@ -1,0 +1,29 @@
+From 3a6a90e427116922be761dec85219b9fba6abb1c Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 03:45:38 +0200
+Subject: [PATCH 15/17] dt-bindings: vendor-prefixes: add Denver Electronics
+
+Denver Electronics A/S sells consumer tablets and audio under the Denver
+brand.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index ba2002969..ba83e72e1 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -421,6 +421,8 @@ patternProperties:
+     description: Dell Inc.
+   "^delta,.*":
+     description: Delta Electronics, Inc.
++  "^denver,.*":
++    description: Denver Electronics A/S
+   "^densitron,.*":
+     description: Densitron Technologies Ltd
+   "^denx,.*":
+-- 
+2.53.0
+

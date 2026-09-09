@@ -1,0 +1,93 @@
+From 9919abb77b019f6de0dd3733097f9f20809909ff Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 03:45:34 +0200
+Subject: [PATCH 07/17] dt-bindings: mfd: rockchip,rk816: describe the charger
+ cell and the extcon
+
+The RK816 has a fuel gauge and a charger that the binding did not mention.
+Add the charger child, with the monitored-battery it needs and the three
+Rockchip-specific tuning properties the vendor tree exposes, and an extcon
+phandle: the RK816 can tell that VBUS is present but not what is supplying
+it, so without BC1.2 detection from the USB PHY every charger is treated as
+a 450 mA port.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ .../bindings/mfd/rockchip,rk816.yaml          | 54 +++++++++++++++++++
+ 1 file changed, 54 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml b/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
+index a58d9455a..39fbc7991 100644
+--- a/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
++++ b/Documentation/devicetree/bindings/mfd/rockchip,rk816.yaml
+@@ -78,6 +78,14 @@ properties:
+     description:
+       The input supply for otg-switch.
+ 
++  extcon:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description:
++      Phandle to an extcon device, usually the SoC USB PHY, that performs
++      BC1.2 charger detection. The RK816 can tell that VBUS is present but
++      not what is supplying it, so without this every charger is treated as
++      a 450 mA USB port.
++
+   regulators:
+     type: object
+     patternProperties:
+@@ -87,6 +95,52 @@ properties:
+         unevaluatedProperties: false
+     additionalProperties: false
+ 
++  charger:
++    type: object
++    $ref: /schemas/power/supply/power-supply.yaml
++
++    properties:
++      monitored-battery:
++        description: |
++          A phandle to a monitored battery node that carries a valid value
++          for charge-full-design-microamp-hours,
++          charge-term-current-microamp,
++          constant-charge-current-max-microamp,
++          constant-charge-voltage-max-microvolt,
++          voltage-max-design-microvolt, voltage-min-design-microvolt,
++          and a valid ocv-capacity table.
++
++      rockchip,resistor-sense-micro-ohms:
++        description:
++          Value in microohms of the battery sense resistor. The gauge's ADC
++          scaling constants are defined for 20 mOhm; the driver corrects for
++          the other supported value.
++        enum: [10000, 20000]
++
++      rockchip,sleep-enter-current-microamp:
++        description:
++          Value in microamps of the sleep enter current, which sets the
++          relax mode entry and exit thresholds.
++
++      rockchip,sleep-filter-current-microamp:
++        description:
++          Value in microamps of the sleep filter current, which sets the
++          sleep sample current.
++
++      input-current-limit-microamp:
++        description:
++          Maximum current the board may draw from a dedicated charging
++          port. Standard and charging downstream ports are held to their
++          BC1.2 values instead.
++
++    required:
++      - monitored-battery
++      - rockchip,resistor-sense-micro-ohms
++      - rockchip,sleep-enter-current-microamp
++      - rockchip,sleep-filter-current-microamp
++
++    additionalProperties: false
++
+ patternProperties:
+   '-pins$':
+     type: object
+-- 
+2.53.0
+

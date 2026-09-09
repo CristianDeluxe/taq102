@@ -1,13 +1,14 @@
-From e25070c9d2430efda271c38af5644d08edfdab28 Mon Sep 17 00:00:00 2001
+From 7f3aa152a6c708b17b8b92612928766192b3c7b3 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 02:24:24 +0200
-Subject: [PATCH 02/12] dt-bindings: display: rockchip: add
+Date: Wed, 9 Sep 2026 03:45:32 +0200
+Subject: [PATCH 02/17] dt-bindings: display: rockchip: add
  rockchip,rk3126-lvds
 
 The RK3126/RK3128 LVDS transmitter is shaped like the PX30 one: the
 Innosilicon MIPI/LVDS/TTL D-PHY drives the pins and the block itself has no
 register window and no clock of its own, only a GRF phandle. Add the
-compatible to the enum and to the PX30 clause that requires phys and forbids
+compatible to the enum and to the PX30 clause that requires phys and
+forbids
 reg and clocks.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>

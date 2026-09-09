@@ -205,7 +205,7 @@ owns it now, and then overwrites *that bridge's* funcs with its own -- whose
 `get_modes()` reads `lvds->panel`. The connector asks the bridge, the bridge
 asks for a pointer that was just cleared, and the panel is unreachable.
 
-patch 0009 (drm/rockchip: lvds: do not take over a panel bridge's funcs) only claims the
+patch 0011 (drm/rockchip: lvds: do not take over a panel bridge's funcs) only claims the
 bridge's ops when the driver found a real bridge in the DT; a panel bridge
 already answers `get_modes` correctly on its own. After it, the connector
 offers exactly one mode:

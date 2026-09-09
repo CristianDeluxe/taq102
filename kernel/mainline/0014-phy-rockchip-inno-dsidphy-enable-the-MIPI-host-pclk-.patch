@@ -1,19 +1,23 @@
-From 4d83f6355893e3c0b36cd5bbec265c055894e1ba Mon Sep 17 00:00:00 2001
+From 2e21fb51f95cd76f6e86cd744ab7020f63629334 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 02:24:30 +0200
-Subject: [PATCH 11/12] phy: rockchip: inno-dsidphy: enable the MIPI host pclk
+Date: Wed, 9 Sep 2026 03:45:38 +0200
+Subject: [PATCH 14/17] phy: rockchip: inno-dsidphy: enable the MIPI host pclk
  and the VIO h2p bridge clock
 
-The vendor driver enables four clocks before it touches a PHY register where
+The vendor driver enables four clocks before it touches a PHY register
+where
 mainline names two. HCLK_VIO_H2P is the AHB-to-APB bridge the PHY registers
 sit behind; it is an ordinary gate with neither CLK_IS_CRITICAL nor
 CLK_IGNORE_UNUSED in clk-rk3128.c, so it comes out of reset off and nothing
 turns it on. Both are taken as optional, so a DT that does not name them is
 unaffected; rk3128.dtsi names them in 0003.
 
-Measured on the TAQ-102 (kernel/mainline/FINDINGS.md): this was not the cause
-of the display hang, which was a genpd deadlock. Kept because the PHY module
-that runs on the tablet was built with it and it is correct on its own terms.
+Measured on the TAQ-102 (kernel/mainline/FINDINGS.md): this was not the
+cause
+of the display hang, which was a genpd deadlock. Kept because the PHY
+module
+that runs on the tablet was built with it and it is correct on its own
+terms.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
 ---
@@ -21,7 +25,7 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  1 file changed, 20 insertions(+)
 
 diff --git a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
-index c8f7566d4..53eb7cd6b 100644
+index 25f8dbd08..af2e173b3 100644
 --- a/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
 +++ b/drivers/phy/rockchip/phy-rockchip-inno-dsidphy.c
 @@ -228,6 +228,16 @@ struct inno_dsidphy {

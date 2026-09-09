@@ -1,0 +1,32 @@
+From c16806d8dc5e8b57a2b3e36e949590cfca4adfc2 Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Wed, 9 Sep 2026 03:45:39 +0200
+Subject: [PATCH 16/17] dt-bindings: arm: rockchip: add the Denver TAQ-102
+
+A 10.1" RK3126C tablet with a 1024x600 LVDS panel, sold by Denver
+Electronics.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ Documentation/devicetree/bindings/arm/rockchip.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/arm/rockchip.yaml b/Documentation/devicetree/bindings/arm/rockchip.yaml
+index a799bb843..bde7a224d 100644
+--- a/Documentation/devicetree/bindings/arm/rockchip.yaml
++++ b/Documentation/devicetree/bindings/arm/rockchip.yaml
+@@ -182,6 +182,11 @@ properties:
+           - const: alientek,clrv1126f
+           - const: rockchip,rv1126
+ 
++      - description: Denver TAQ-102 tablet
++        items:
++          - const: denver,taq102
++          - const: rockchip,rk3126
++
+       - description: Edgeble Neural Compute Module 2(Neu2) SoM based boards
+         items:
+           - const: edgeble,neural-compute-module-2-io   # Edgeble Neural Compute Module 2 IO Board
+-- 
+2.53.0
+
