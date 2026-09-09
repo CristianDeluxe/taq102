@@ -1,6 +1,6 @@
-From 5be027e87db76935f47627418f08317402ca2ce8 Mon Sep 17 00:00:00 2001
+From bdac92a25ddbd74f46f915c4c71fe46fec266a45 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:32 +0200
+Date: Wed, 9 Sep 2026 03:53:36 +0200
 Subject: [PATCH 03/17] drm/rockchip: lvds: add RK3126/RK3128 support
 
 The PX30 path is the model: the D-PHY does the work and the GRF only

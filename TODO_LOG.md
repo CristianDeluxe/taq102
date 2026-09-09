@@ -6,6 +6,11 @@
 
 ### 2026-09
 
+- [x] 2026-09-09 — **Mainline:** MAINTAINERS entry for `rk816_charger.c`
+  (in 0008); the board DTS needs none, `get_maintainer.pl` already routes
+  it to the ARM/Rockchip entry. Series re-verified: `git am` 17/17, tree
+  equal to the VM's, `checkpatch --strict` clean bar the added-file
+  reminder on 0017.
 - [x] 2026-09-09 — **Mainline:** series taken through the tools. `checkpatch
   --strict`, `dt_binding_check` and `dtbs_check` (dtschema installed in the
   VM) found: no schema for the board compatible, forbidden reboot modes

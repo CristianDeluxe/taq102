@@ -270,7 +270,9 @@ fixed in the tree and rebuilt into a 17-patch series:
   positive of the two-line `static const` style the file uses; the RK312x
   one is on one line now.
 
-Left: `panel-lvds` without a part number, and MAINTAINERS. Both in TODO.md.
+Left: `panel-lvds` without a part number, in TODO.md. MAINTAINERS is done:
+an entry for `rk816_charger.c` rides in 0008, and the board DTS is covered
+by the ARM/Rockchip glob.
 v73 is the tree the series reproduces, running on the tablet.
 
 ## Still open
@@ -286,8 +288,10 @@ v73 is the tree the series reproduces, running on the tablet.
 - The panel node says `panel-lvds` alone, which `panel-lvds.yaml` rejects: it
   wants the panel's own part number first, and nobody has opened the tablet
   to read it. The last `dtbs_check` finding.
-- MAINTAINERS entries for `rk816_charger.c` and the board DTS, which
-  checkpatch asks for.
+- (done 2026-09-09) MAINTAINERS: `rk816_charger.c` has its own entry in
+  0008; the board DTS is already covered by the ARM/Rockchip entry's
+  `arch/arm/boot/dts/rockchip/` glob, which `get_maintainer.pl` confirms,
+  so checkpatch's reminder on 0017 is just that, a reminder.
 - Package the modules. The v66 ramdisk is hand-assembled: `gpu-sched.ko`,
   `lima.ko`, `drm_shmem_helper.ko` and `phy-rockchip-inno-dsidphy.ko` copied
   from the kernel build into `rootfs-v55` plus `taq102-cube`. The Buildroot

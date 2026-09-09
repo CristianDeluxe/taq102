@@ -112,8 +112,8 @@ appliance back. The journal is `README.md` here and
   reviewed"): 0011 (LVDS panel-bridge fix) and 0012 (silead NAK quirk) are
   ready to post; 0001-0004 pass `dt_binding_check` and `dtbs_check`, which
   now run in the VM. Before posting the board: the panel's part number for
-  `panel-lvds` (needs the case opened) and MAINTAINERS entries for
-  `rk816_charger.c` and the DTS. The genpd
+  `panel-lvds` (needs the case opened). MAINTAINERS is done: the charger
+  has an entry in 0008 and the DTS is covered by the Rockchip glob. The genpd
   deadlock goes as a bug report with
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
 - [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write

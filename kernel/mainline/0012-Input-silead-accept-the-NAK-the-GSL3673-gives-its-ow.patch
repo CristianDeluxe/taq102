@@ -1,6 +1,6 @@
-From 35ae45dbac092b31fd9832b6ab70247b64414ad2 Mon Sep 17 00:00:00 2001
+From bc84b63dcc7bf77ae0583483d642526da2c0ca62 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:37 +0200
+Date: Wed, 9 Sep 2026 03:53:40 +0200
 Subject: [PATCH 12/17] Input: silead - accept the NAK the GSL3673 gives its
  own reset command
 

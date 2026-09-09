@@ -1,6 +1,6 @@
-From 7828a86db3b4370387e11dcd639cf89d11301265 Mon Sep 17 00:00:00 2001
+From 46cdcb4c449fe110926e99fc0e0a70a24d15d829 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:37 +0200
+Date: Wed, 9 Sep 2026 03:53:41 +0200
 Subject: [PATCH 13/17] dt-bindings: phy: rockchip,px30-dsi-dphy: allow the
  host pclk and the h2p bridge clock
 

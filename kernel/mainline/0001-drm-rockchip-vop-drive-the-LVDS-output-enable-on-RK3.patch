@@ -1,6 +1,6 @@
-From cfc1fc86d28a03310b8b0e25259c1996147c3ee7 Mon Sep 17 00:00:00 2001
+From e06c6f67fb235043a9e12987a48055b78d1e07c7 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:31 +0200
+Date: Wed, 9 Sep 2026 03:53:35 +0200
 Subject: [PATCH 01/17] drm/rockchip: vop: drive the LVDS output enable on
  RK312x
 

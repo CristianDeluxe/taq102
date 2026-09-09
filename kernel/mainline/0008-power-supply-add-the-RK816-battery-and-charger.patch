@@ -1,6 +1,6 @@
-From 1ca0c111928ae298f191e7d85fd49745636455ed Mon Sep 17 00:00:00 2001
+From c894223950eaebfb1405074c649416e49e6d82a4 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:34 +0200
+Date: Wed, 9 Sep 2026 03:53:38 +0200
 Subject: [PATCH 08/17] power: supply: add the RK816 battery and charger
 
 /sys/class/power_supply/battery does not exist on an RK816 board under
@@ -57,22 +57,28 @@ Three other things fall out of the hardware and are worth naming:
   - The volatile register range for the RK816 began at RK816_GASCNT_REG(0),
     which is 0xbb - 0, the *low* byte of the coulomb counter. Under
     REGCACHE_MAPLE that froze the counter's three high bytes, the relax
-    voltages and currents, the ADC offset calibration and the power off minute
+    voltages and currents, the ADC offset calibration and the power off
+    minute
     counter at their first post-boot value. A gauge reading a 32 bit
-    accumulator through that cache reads the same number for ever, silently.
+    accumulator through that cache reads the same number for ever,
+    silently.
     The range now covers the whole hardware updated block, 0xb8..0xdf.
 
-  - The part cannot tell a wall adapter from a USB port. USB_EXIST and USB_EFF
+  - - The part cannot tell a wall adapter from a USB port. USB_EXIST and
+    USB_EFF
     exist in the vendor header but are never read for presence; their only
     occurrences are two case labels in a switch on SUP_STS bits 6:4, which
-    those bits cannot match. Presence is PLUG_IN_STS in RK808_VB_MON_REG, and
-    the SDP/CDP/DCP split comes from the SoC USB PHY through extcon, exactly as
+    those bits cannot match. Presence is PLUG_IN_STS in RK808_VB_MON_REG,
+    and
+    the SDP/CDP/DCP split comes from the SoC USB PHY through extcon,
+    exactly as
     the vendor's usb_in/ac_in do. Without extcon every charger is a 450 mA
     port and "ac" stays offline: slow, but honest.
 
   - The three supplies are named "battery", "usb" and "ac" rather than
     rk817-charger's "rk817-battery" and "rk817-charger". Those three names
-    under /sys/class/power_supply are the userspace ABI on this class of board.
+    under /sys/class/power_supply are the userspace ABI on this class of
+    board.
 
 Every register offset, bit position, scaling constant, table and default
 was
@@ -84,15 +90,33 @@ charging and discharging across reboots.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
 ---
+ MAINTAINERS                          |    6 +
  arch/arm/boot/dts/rockchip/Makefile  |    1 +
  drivers/mfd/rk8xx-core.c             |   10 +
  drivers/mfd/rk8xx-i2c.c              |   11 +-
  drivers/power/supply/Kconfig         |    9 +
  drivers/power/supply/Makefile        |    1 +
  drivers/power/supply/rk816_charger.c | 1209 ++++++++++++++++++++++++++
- 6 files changed, 1240 insertions(+), 1 deletion(-)
+ 7 files changed, 1246 insertions(+), 1 deletion(-)
  create mode 100644 drivers/power/supply/rk816_charger.c
 
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 6215fcb07..7e2ac3230 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -23714,6 +23714,12 @@ S:	Maintained
+ F:	Documentation/devicetree/bindings/media/rockchip-rga.yaml
+ F:	drivers/media/platform/rockchip/rga/
+ 
++ROCKCHIP RK816 BATTERY AND CHARGER DRIVER
++M:	Cristian Deluxe <info@busirocket.com>
++L:	linux-pm@vger.kernel.org
++S:	Maintained
++F:	drivers/power/supply/rk816_charger.c
++
+ ROCKCHIP RKVDEC VIDEO DECODER DRIVER
+ M:	Detlev Casanova <detlev.casanova@collabora.com>
+ M:	Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>
 diff --git a/arch/arm/boot/dts/rockchip/Makefile b/arch/arm/boot/dts/rockchip/Makefile
 index e9f9e0ac3..5041ee632 100644
 --- a/arch/arm/boot/dts/rockchip/Makefile

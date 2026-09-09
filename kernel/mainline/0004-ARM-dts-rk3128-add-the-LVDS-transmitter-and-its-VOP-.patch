@@ -1,6 +1,6 @@
-From 7d214f9c571f470190db8691b4ac2e1e1725a3cf Mon Sep 17 00:00:00 2001
+From 784d5650d6a2ae98ec22891a9a8c033eaeafe1a5 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:33 +0200
+Date: Wed, 9 Sep 2026 03:53:37 +0200
 Subject: [PATCH 04/17] ARM: dts: rk3128: add the LVDS transmitter and its VOP
  endpoint
 
