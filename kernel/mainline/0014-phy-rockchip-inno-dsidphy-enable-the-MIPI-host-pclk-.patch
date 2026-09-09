@@ -1,6 +1,6 @@
-From 2e21fb51f95cd76f6e86cd744ab7020f63629334 Mon Sep 17 00:00:00 2001
+From ea52b8b6bca25f8c886a6b5eae02815c0c4dbed9 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:38 +0200
+Date: Wed, 9 Sep 2026 03:53:41 +0200
 Subject: [PATCH 14/17] phy: rockchip: inno-dsidphy: enable the MIPI host pclk
  and the VIO h2p bridge clock
 

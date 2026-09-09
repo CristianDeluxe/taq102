@@ -1,6 +1,6 @@
-From 9919abb77b019f6de0dd3733097f9f20809909ff Mon Sep 17 00:00:00 2001
+From a8048dcad247f80452957f6225534b89ad7c55ce Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:34 +0200
+Date: Wed, 9 Sep 2026 03:53:38 +0200
 Subject: [PATCH 07/17] dt-bindings: mfd: rockchip,rk816: describe the charger
  cell and the extcon
 

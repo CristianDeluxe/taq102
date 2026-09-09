@@ -1,6 +1,6 @@
-From 3a6a90e427116922be761dec85219b9fba6abb1c Mon Sep 17 00:00:00 2001
+From a3ce7fb9da515ac2d9335e855c9fef4055e3cd3c Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:38 +0200
+Date: Wed, 9 Sep 2026 03:53:41 +0200
 Subject: [PATCH 15/17] dt-bindings: vendor-prefixes: add Denver Electronics
 
 Denver Electronics A/S sells consumer tablets and audio under the Denver

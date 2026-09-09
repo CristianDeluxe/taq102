@@ -1,6 +1,6 @@
-From 8e70b479ccd6a1e31e7c55934cc3360333a4b8bd Mon Sep 17 00:00:00 2001
+From 4ffe5c0d42b6b32d3ea1619acd9e180a72896510 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:39 +0200
+Date: Wed, 9 Sep 2026 03:53:42 +0200
 Subject: [PATCH 17/17] ARM: dts: rk3126-taq102: add the Denver TAQ-102
 
 The board file, whole, as it runs on the tablet: RK3126C, 1 GB, the
@@ -23,8 +23,10 @@ series describe, it carries:
   needs it;
 - the Mali-400 enabled, and its OPP table removed: with no mali-supply
   described, lima's devfreq drove the clock alone from 148.5 MHz to 480 MHz
-  and the GPU hung 73 s into the first run. At the bootloader's 148.5 MHz it
-  draws at the panel's rate. The table comes back with the RK816 regulators.
+  and the GPU hung 73 s into the first run. At the bootloader's 148.5 MHz
+  it
+  draws at the panel's rate. The table comes back with the RK816
+  regulators.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
 ---

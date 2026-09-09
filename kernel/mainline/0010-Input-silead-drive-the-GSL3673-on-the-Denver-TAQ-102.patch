@@ -1,6 +1,6 @@
-From 2e63fba3adc58902737d85855568c8ecbff42b5d Mon Sep 17 00:00:00 2001
+From 297a9d4aa05a5ee29d3de7778ad6947ff9929657 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:35 +0200
+Date: Wed, 9 Sep 2026 03:53:39 +0200
 Subject: [PATCH 10/17] Input: silead - drive the GSL3673 on the Denver TAQ-102
 
 Route: mainline silead.c, not a port of the vendor driver. This patch adds
@@ -12,13 +12,16 @@ needed: silead.c and the vendor's gsl3673.c speak the same chip.
 
 Proved by reading both, not by the part number:
 
-  - Register map. The vendor writes 0xE0 = 0x88 to reset, 0xE4 = 0x04 for the
+  - - Register map. The vendor writes 0xE0 = 0x88 to reset, 0xE4 = 0x04 for
+    the
     clock, powers through 0xBC, starts with 0xE0 = 0x00, polls 0xB0 for
-    0x5A5A5A5A and reads the id at 0xFC. Every one of those is a SILEAD_REG_*
+    0x5A5A5A5A and reads the id at 0xFC. Every one of those is a
+    SILEAD_REG_*
     in silead.c with the same value.
 
   - Frame layout. The vendor's data_size is MAX_FINGERS * touch_bytes +
-    touch_meta_data = 10 * 4 + 4 = 44, read from 0x80: SILEAD_TS_DATA_LEN. Its
+    touch_meta_data = 10 * 4 + 4 = 44, read from 0x80: SILEAD_TS_DATA_LEN.
+    Its
     x_index = 6 / y_index = 4 / touch_bytes = 4 put point i at bytes
     4 + 4i .. 7 + 4i with y at +0, x at +2 and the hardware id in the high
     nibble of x's MSB -- byte for byte silead's SILEAD_POINT_Y_OFF 0,
@@ -30,10 +33,12 @@ Proved by reading both, not by the part number:
 
     where the anonymous zero-width bitfield closes the storage unit, so the
     record is eight bytes with the offset in the low byte of word 0 and the
-    value in word 1. Compiled with arm-buildroot-linux-gnueabihf-gcc: sizeof
+    value in word 1. Compiled with arm-buildroot-linux-gnueabihf-gcc:
+    sizeof
     == 8, offsetof(val) == 4. That is struct silead_fw_data. So the blob
     silead_ts_load_fw() wants is the vendor's GSL3673_FW array dumped
-    little-endian in source order, and kernel/mainline/taq102-gsl3673-firmware.py
+    little-endian in source order, and
+    kernel/mainline/taq102-gsl3673-firmware.py
     dumps it: 4719 records, 37752 bytes, every offset one of 0x00, 0x04 ...
     0x7c or 0xf0, so no record needs a special case. The only difference in
     the upload is batching -- silead writes one word per transfer where the
@@ -54,23 +59,33 @@ reports the chip's own output and never writes back.
 Not proved, because it cannot be proved without the tablet:
 
   - The chip's unaided output has never been seen on this board. The vendor
-    defines GSL_NOID_VERSION in gsl3673.h, so every touch this tablet has ever
+    defines GSL_NOID_VERSION in gsl3673.h, so every touch this tablet has
+    ever
     reported went through gsl_alg_id_main() first. The vendor's own
-    #ifndef GSL_NOID_VERSION path reads x, y and id straight out of the same
-    44-byte frame, which proves the frame carries them; it does not prove they
+    #ifndef GSL_NOID_VERSION path reads x, y and id straight out of the
+    same
+    44-byte frame, which proves the frame carries them; it does not prove
+    they
     are steady enough to use. Watch for jitter, wandering contacts and
-    drop-outs with the charger plugged in, which is where a missing frequency
+    drop-outs with the charger plugged in, which is where a missing
+    frequency
     hop shows first.
 
   - touchscreen-size-x/y are inferred. The vendor driver's ABS range is not
-    evidence: with CONFIG_TOUCHSCREEN_GSL3673 no TP_SIZE_* macro is defined,
-    so it falls through to 2048x1536. The 1024x600 here is the resolution word
-    of the stock configuration array (0x02580400 = 600 << 16 | 1024) and the
-    screen_max_x/y of the reconstructed vendor node. Correcting it is two DTS
+    evidence: with CONFIG_TOUCHSCREEN_GSL3673 no TP_SIZE_* macro is
+    defined,
+    so it falls through to 2048x1536. The 1024x600 here is the resolution
+    word
+    of the stock configuration array (0x02580400 = 600 << 16 | 1024) and
+    the
+    screen_max_x/y of the reconstructed vendor node. Correcting it is two
+    DTS
     numbers, but a wrong range looks skewed rather than broken.
 
-  - silead masks x and y to 12 bits and reads a non-zero high nibble of the y
-    MSB as a soft button: the contact is dropped and KEY_LEFTMETA is emitted.
+  - - silead masks x and y to 12 bits and reads a non-zero high nibble of
+    the y
+    MSB as a soft button: the contact is dropped and KEY_LEFTMETA is
+    emitted.
     The vendor code uses the full 16-bit y and interprets nothing. Harmless
     while y < 0x258, as it must be on a 600-line panel, but if the stock
     firmware puts anything in those bits the touch vanishes silently.
@@ -78,11 +93,13 @@ Not proved, because it cannot be proved without the tablet:
   - The DTS compiles but has never been booted. cpp resolves it and the
     in-tree scripts/dtc turns it into a DTB with no warnings, in which
     touchscreen@40 sits under i2c@2005a000 with interrupts <15 1> and
-    touchscreen-size 0x400 x 0x258. Nothing about that says the node is right,
+    touchscreen-size 0x400 x 0x258. Nothing about that says the node is
+    right,
     only that it is well formed.
 
   - The two regulators are fictions of convenience. Nothing on this board
-    switches those rails; they exist because silead_ts_probe() takes "vddio"
+    switches those rails; they exist because silead_ts_probe() takes
+    "vddio"
     and "avdd" with devm_regulator_bulk_get(), not the _optional form, and
     returns the error. Replace them with the real RK816 outputs when a PMIC
     node lands in this DTS.

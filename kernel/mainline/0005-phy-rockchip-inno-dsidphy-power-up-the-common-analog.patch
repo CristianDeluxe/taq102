@@ -1,6 +1,6 @@
-From e391c10f3cc781c012e87e3a495030acf54effbc Mon Sep 17 00:00:00 2001
+From 7caf2c0110ef31efe83f2730722560cf9b86cff6 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:33 +0200
+Date: Wed, 9 Sep 2026 03:53:37 +0200
 Subject: [PATCH 05/17] phy: rockchip: inno-dsidphy: power up the common analog
  block in LVDS mode
 

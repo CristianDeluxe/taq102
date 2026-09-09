@@ -120,7 +120,8 @@ needs it. 0017 adds the board DTS whole, so `rk3126-taq102.dts` in this
 directory is the same file, kept for reading. Checked: `git am` of the
 seventeen onto `28924df2a` gives a tree equal to `/work/linux-mainline`
 (`git diff` against the base identical, zero lines), `checkpatch --strict`
-reports only the MAINTAINERS reminders, `dt_binding_check` passes on the
+reports only its reminder that 0017 adds a file (the DTS directory is
+already in the ARM/Rockchip MAINTAINERS entry), `dt_binding_check` passes on the
 five bindings touched, and `dtbs_check` of the board DTB fails only on the
 `panel-lvds` part number. v73 is that tree, running.
 

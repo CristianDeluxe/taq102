@@ -1,6 +1,6 @@
-From c16806d8dc5e8b57a2b3e36e949590cfca4adfc2 Mon Sep 17 00:00:00 2001
+From 8ba0d18632a682e6f990d0630f4f6dc2e0d21891 Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:39 +0200
+Date: Wed, 9 Sep 2026 03:53:42 +0200
 Subject: [PATCH 16/17] dt-bindings: arm: rockchip: add the Denver TAQ-102
 
 A 10.1" RK3126C tablet with a 1024x600 LVDS panel, sold by Denver

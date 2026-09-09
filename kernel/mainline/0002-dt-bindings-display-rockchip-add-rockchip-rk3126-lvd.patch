@@ -1,6 +1,6 @@
-From 7f3aa152a6c708b17b8b92612928766192b3c7b3 Mon Sep 17 00:00:00 2001
+From f1aee78b2d8a2f4876ae50501ddaf12ecfb3358c Mon Sep 17 00:00:00 2001
 From: Cristian Deluxe <info@busirocket.com>
-Date: Wed, 9 Sep 2026 03:45:32 +0200
+Date: Wed, 9 Sep 2026 03:53:36 +0200
 Subject: [PATCH 02/17] dt-bindings: display: rockchip: add
  rockchip,rk3126-lvds
 
