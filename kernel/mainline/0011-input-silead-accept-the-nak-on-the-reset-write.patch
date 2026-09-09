@@ -1,5 +1,5 @@
 diff --git a/drivers/input/touchscreen/silead.c b/drivers/input/touchscreen/silead.c
-index 44d714110..43be03f1d 100644
+index c1a6a3a7b..43be03f1d 100644
 --- a/drivers/input/touchscreen/silead.c
 +++ b/drivers/input/touchscreen/silead.c
 @@ -312,12 +312,32 @@ static void silead_ts_read_data(struct i2c_client *client)
@@ -46,19 +46,3 @@ index 44d714110..43be03f1d 100644
  	if (error)
  		goto i2c_write_err;
  	usleep_range(SILEAD_CMD_SLEEP_MIN, SILEAD_CMD_SLEEP_MAX);
-@@ -779,6 +798,7 @@ static const struct i2c_device_id silead_ts_id[] = {
- 	{ .name = "gsl1680" },
- 	{ .name = "gsl1688" },
- 	{ .name = "gsl3670" },
-+	{ .name = "gsl3673" },
- 	{ .name = "gsl3675" },
- 	{ .name = "gsl3692" },
- 	{ .name = "mssl1680" },
-@@ -807,6 +827,7 @@ static const struct of_device_id silead_ts_of_match[] = {
- 	{ .compatible = "silead,gsl1680" },
- 	{ .compatible = "silead,gsl1688" },
- 	{ .compatible = "silead,gsl3670" },
-+	{ .compatible = "silead,gsl3673" },
- 	{ .compatible = "silead,gsl3675" },
- 	{ .compatible = "silead,gsl3692" },
- 	{ },

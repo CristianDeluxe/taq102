@@ -111,10 +111,18 @@ toolchain: `zImage` 13234688 bytes, `rk3126-taq102.dtb` 27187 bytes, exit 0,
 no compiler warnings. The tree at the end of that build reverse-applies all
 four patches below as a set, so these files are exactly what compiled.
 
-Apply in order, 0001 through 0009. The numbering was reconciled by hand after
-the build: concurrent agents had written three files numbered 0004 and two
-numbered 0005, and the seven superseded drafts listed below were deleted
-rather than left to be applied by mistake.
+Apply in order, 0001 through 0012 (there is no 0008 patch; that number is the
+config fragment). The board DTS is special: `rk3126-taq102.dts` in this
+directory is the whole file as it runs on the tablet, and 0006, 0007 and 0009
+also carry hunks for it from before it was kept as a file. Apply those three
+with `git apply --exclude=arch/arm/boot/dts/rockchip/rk3126-taq102.dts`, then
+copy the file in. Checked 2026-09-09: the series applied that way onto
+`28924df2a` reproduces the `/work/linux-mainline` tree exactly (`git diff
+HEAD` of both is identical), and the DTB it builds is byte for byte the one in
+v67 and v68. The numbering was reconciled by hand after the first build:
+concurrent agents had written three files numbered 0004 and two numbered
+0005, and the seven superseded drafts listed below were deleted rather than
+left to be applied by mistake.
 
 then merge `0008-taq102-mainline.config` onto the `.config` and run
 `olddefconfig`. All 32 symbols the fragment names survive `olddefconfig`;
