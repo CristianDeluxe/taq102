@@ -127,7 +127,13 @@ appliance back. The journal is `README.md` here and
   failed` (poll of offset 0x6 bit 1), no wlan0, so the panel shows Wi-Fi
   off. Same chip wedge the vendor kernel has (the [!] item under Bugs);
   only a full power-off clears it. Every `reboot-loader` flash lands in
-  this state.
+  this state. Tried 2026-09-09: rebinding the SDIO host (`10218000.mmc`,
+  which runs `sdio-pwrseq`, reset on gpio 13 of phandle 0x3a) re-enumerates
+  the card and rtw88 fails the same way, so the reset line does not cut the
+  chip's power. Next: find the rail (an RK816 LDO or a power-enable GPIO in
+  the vendor `wireless-wlan` node) and pulse that. Note `1021c000.mmc` is
+  the eMMC: unbinding it drops `/data`, which then needs
+  `mount -t ext4 /dev/mmcblk1p1 /data` by hand.
 - [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write
   (`0xe0 = 0x88`) while applying it, and `silead.c` treated that as a probe
   failure. Patch 0011 accepts the NAK; v68 probes (`input0 = silead_ts`,
