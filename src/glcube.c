@@ -329,10 +329,11 @@ int main(void) {
     }
     struct touch_flip touch_flip;
     const char *touch_flip_mode = getenv("GLCUBE_TOUCH_FLIP");
-    if (touch_flip_configure(&touch_flip, W, H, touch_flip_mode) != 0)
+    if (touch_flip_configure(&touch_flip, W, H, declared_x, declared_y, touch_flip_mode) != 0)
         fprintf(stderr, "invalid GLCUBE_TOUCH_FLIP=%s; using xy\n", touch_flip_mode);
-    printf("touch: declared %dx%d, mapping %dx%d, flip %s\n",
-           declared_x, declared_y, W, H, touch_flip.name);
+    printf("touch: declared %dx%d, mapping %dx%d, scale %.3fx%.3f, flip %s\n",
+           declared_x, declared_y, W, H, touch_flip.scale_x, touch_flip.scale_y,
+           touch_flip.name);
     printf("diagnostics: finish %s, static %s, trace %s\n",
            finish ? "on" : "off", static_scene ? "on" : "off",
            trace ? "on" : "off");

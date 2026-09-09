@@ -21,6 +21,9 @@ series describe, it carries:
   allows and the magics from the vendor tree;
 - the LVDS output endpoint with a reg, as the transmitter's of_graph walk
   needs it;
+- the touch controller's real geometry: silead.c reports the GSL3673's own
+  1664x896 grid with Y running bottom to top, measured corner by corner,
+  where the vendor's closed gsl_alg_id library had rescaled to 1024x600;
 - the Mali-400 enabled, and its OPP table removed: with no mali-supply
   described, lima's devfreq drove the clock alone from 148.5 MHz to 480 MHz
   and the GPU hung 73 s into the first run. At the bootloader's 148.5 MHz
@@ -30,16 +33,14 @@ series describe, it carries:
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
 ---
- arch/arm/boot/dts/rockchip/rk3126-taq102.dts | 455 +++++++++++++++++++
+ arch/arm/boot/dts/rockchip/rk3126-taq102.dts | 464 ++++++++++++++++++++++++++++++++++++++++
  1 file changed, 455 insertions(+)
  create mode 100644 arch/arm/boot/dts/rockchip/rk3126-taq102.dts
-
 diff --git a/arch/arm/boot/dts/rockchip/rk3126-taq102.dts b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
 new file mode 100644
-index 000000000..28f1e363e
 --- /dev/null
 +++ b/arch/arm/boot/dts/rockchip/rk3126-taq102.dts
-@@ -0,0 +1,455 @@
+@@ -0,0 +1,464 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * Denver TAQ-102 on mainline: RK3126C, 1 GB, LVDS 1024x600, GSL3673 touch.
@@ -270,11 +271,11 @@ index 000000000..28f1e363e
 + *    tablet's own stock blob. The array the vendor tree ships untouched is
 + *    another panel's.
 + *
-+ *  - touchscreen-size-x/y are unmeasured. They are the resolution word of the
-+ *    stock configuration array, 0x02580400 = 600 << 16 | 1024, and the
-+ *    screen_max_x/y of the reconstructed vendor node. The vendor driver's own
-+ *    ABS range is no evidence: with CONFIG_TOUCHSCREEN_GSL3673 no TP_SIZE_*
-+ *    macro is defined, so it falls through to 2048x1536.
++ *  - touchscreen-size-x/y and touchscreen-inverted-y were measured on
++ *    2026-09-09, see the node. The stock configuration array's resolution
++ *    word, 0x02580400 = 600 << 16 | 1024, is what the vendor's closed
++ *    gsl_alg_id library scaled to; silead.c reports the controller's own
++ *    1664x896 grid units, so userspace scales.
 + */
 +&i2c2 {
 +	status = "okay";
@@ -291,8 +292,17 @@ index 000000000..28f1e363e
 +		avdd-supply = <&vcc_tp>;
 +
 +		firmware-name = "gsl3673.fw";
-+		touchscreen-size-x = <1024>;
-+		touchscreen-size-y = <600>;
++		/*
++		 * The controller reports in its own units, 64 per electrode on a
++		 * 26 by 14 grid, and its Y runs bottom to top. Measured 2026-09-09
++		 * with silead.c: the top-left corner reads (13, 875), the
++		 * bottom-right (1650, 23), and a sweep of the whole edge spans
++		 * 1..1663 by 8..888. The vendor driver hid this behind its closed
++		 * gsl_alg_id library, which rescaled to 1024x600 in the kernel.
++		 */
++		touchscreen-size-x = <1664>;
++		touchscreen-size-y = <896>;
++		touchscreen-inverted-y;
 +	};
 +};
 +
@@ -496,5 +506,4 @@ index 000000000..28f1e363e
 +	/delete-property/ operating-points-v2;
 +};
 -- 
-2.53.0
-
+2.51.0

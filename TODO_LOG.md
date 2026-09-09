@@ -6,6 +6,11 @@
 
 ### 2026-09
 
+- [x] 2026-09-09 — **Mainline:** touch geometry measured and applied. The
+  GSL3673 reports a 1664x896 grid with Y inverted; the DTS says so and
+  glcube scales the declared range to the panel (v74). glcube also finds
+  its input nodes by device name. Evidence: raw captures decoded in
+  `kernel/mainline/FINDINGS.md`, "Touch works, once the geometry is told".
 - [x] 2026-09-09 — **Mainline:** MAINTAINERS entry for `rk816_charger.c`
   (in 0008); the board DTS needs none, `get_maintainer.pl` already routes
   it to the ARM/Rockchip entry. Series re-verified: `git am` 17/17, tree
