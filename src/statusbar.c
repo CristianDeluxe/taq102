@@ -36,11 +36,26 @@ static int in_bolt(float x, float y) {
 // The Wi-Fi fan: a dot and three arcs of a 90-degree sector opening upward
 // from the apex at (ax, ay). `lit` arcs from the inside out take ink, the
 // rest dim, as iOS greys out the bars it does not have.
+//
+// With no link at all -- `lit` is zero only when there is no interface or no
+// address -- the whole fan goes dim and takes a slash, which is what iOS shows
+// rather than an all-grey fan that reads as "one bar, far away". The stroke
+// runs at 45 degrees through the middle of the glyph and carries a clear gap
+// either side, so it reads over the arcs instead of merging into them.
 static void wifi_fan(struct canvas *c, int ax, int ay, int size, int lit, const struct statusbar_style *sty) {
     float unit = size / 4.f, thick = unit * 0.45f;
+    int slashed = lit <= 0;
+    // A point on the stroke, and the half-widths of the stroke and its gap.
+    float sx = ax, sy = ay - size / 2.f;
+    float half = thick * 0.5f, gap = thick;
     for (int y = ay - size; y <= ay; y++)
         for (int x = ax - size; x <= ax + size; x++) {
             float dx = x - ax, dy = ay - y;
+            // Distance to the stroke, which the loop's own bounds clip to the
+            // glyph: at the top row it sits at ax - size/2, at the apex row at
+            // ax + size/2.
+            float sd = slashed ? fabsf(((x - sx) - (y - sy)) * 0.70710678f) : 0.f;
+            if (slashed && sd <= half) { canvas_put(c, x, y, sty->ink); continue; }
             // 55 degrees each side, not 45: the narrower sector drew a fan
             // that came to a point, where the iPhone's is wide and shallow.
             if (dy < 0 || fabsf(dx) > dy * 1.43f) continue;
@@ -50,7 +65,8 @@ static void wifi_fan(struct canvas *c, int ax, int ay, int size, int lit, const 
             else for (int k = 1; k <= 3; k++)
                 if (r <= unit * (k + 0.5f) && r > unit * (k + 0.5f) - thick) ring = k;
             if (ring < 0) continue;
-            canvas_put(c, x, y, ring <= lit ? sty->ink : sty->dim);
+            if (slashed && sd <= half + gap) continue;
+            canvas_put(c, x, y, slashed ? sty->dim : ring <= lit ? sty->ink : sty->dim);
         }
 }
 

@@ -22,6 +22,16 @@ appliance back. The journal is `README.md` here and
 ## Security
 
 ## Bugs
+- [ ] Tembleques back on the panel, reported 2026-09-10 on v79. Not the radio:
+  they persist with `wlan0` down. Not the PHY PLL either: the tablet reads
+  `prediv 2, fbdiv 28` live, the known-good vendor pair. The four-band
+  `testpattern bars` was put up (one buffer, no flips, no GPU) to place the
+  artifact against the 2026-09-05 ranking -- vertical lines unwatchable,
+  horizontal less, grey a little, white nothing -- which would say LVDS bit
+  errors again, while an artifact that shows equally on flat white would not.
+  Awaiting eyes or a camera: this Mac has no camera of its own and the iPhone
+  is not presenting as a Continuity Camera yet. `tools/panel-camera/sweep.sh`
+  and `zigzag.py` are the instrument, and they need the phone mounted still.
 - [!] Wi-Fi sometimes fails at boot (`sdio_disable_func` -5, then probe -110),
   and a wedged RTL8723CS recovers only by a full power-off; `taq102-wifi`
   retries once through the BSP power nodes, and escalating further in software
