@@ -20,6 +20,7 @@ tablet's USB console (`ttyGS0`), ANSI escapes stripped.
 | `review-briefing.md`, `review-second-opinion.md` | the briefing given to the reviewer (gpt-6-astra) after those three failures, and its answer: an entry-by-entry diff of the vendor's power sequence tables against mainline's, which found the asymmetry that turned out to be the bug |
 | `v79-recovers-a-wedged-chip.log` | the fix: v79 booting on a chip the loader-mode reboot had just wedged, and bringing it up anyway. No vendor appliance involved |
 | `v79-warm-reboot-1-wifi-up.log`, `v79-warm-reboot-2-wifi-up.log` | two further warm reboots, Wi-Fi associated on both |
+| `v79-after-loader-flash-cycle-wifi-up.log` | and a full loader-mode flash cycle, the case the backlog said always landed wedged: Wi-Fi up, 192.168.1.83 |
 
 The first three attempts were reverted. The fix that works is
 `kernel/mainline/0018-wifi-rtw88-8703b-complete-the-card-disable-to-card-em.patch`.
