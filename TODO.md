@@ -22,6 +22,14 @@ appliance back. The journal is `README.md` here and
 ## Security
 
 ## Bugs
+- [ ] `usb2phy` charger detection reports nothing: `/sys/class/extcon/extcon0`
+  shows `USB`, `SDP`, `CDP`, `DCP` and `SLOW-CHARGER` all zero with VBUS
+  present and the gadget enumerated (2026-09-10, v83). The rk3128 config in
+  `phy-rockchip-inno-usb2.c` does carry a `chg_det` block, so this is a wiring
+  or a bvalid problem rather than an unimplemented feature. Until it works the
+  RK816 charger cannot tell a wall adapter from a laptop port, and the board's
+  declared `input-current-limit-microamp` is what stands in for it. Evidence:
+  `docs/evidence/2026-09-10-charging/`.
 - [-] Tembleques on the panel, reported 2026-09-10 on v79 and gone by the end
   of the same session without any display change. Probably self-inflicted, and
   worth reading before poking the PMIC with the panel live: the report came
