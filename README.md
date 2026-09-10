@@ -1568,18 +1568,51 @@ rebooting:
   stuck chip. Running `chip->pwr_off_seq` unconditionally and retrying made the
   chip fail the disable sequence too (`failed to poll offset=0x5f8`), then fail
   power-on again. It ignores both sequences.
-- **A real reset pulse.** `mmc-pwrseq-simple` asserts and releases WL_REG_ON in
-  the same breath unless `post-power-on-delay-ms` is set, and
-  `sun50i-a64-pinephone.dtsi` uses 200 ms for this same part. Adding it did not
-  help. All three changes were reverted; the tree carries none of them.
+- **A longer settle after reset.** `post-power-on-delay-ms = <200>`, the value
+  `sun50i-a64-pinephone.dtsi` uses for this same part, did not help either. Note
+  that property does not widen the reset pulse, as was assumed when it was
+  tried: `pwrseq_simple` releases the line first and sleeps afterwards. The
+  one- and three-second GPIO holds above are the real test of pulse width, and
+  they failed too. All three changes were reverted.
 
-What is still unexplained is what the vendor's `rtl8723cs` driver does that
-rtw88's 8703b path does not. Two candidates were checked and are not it: both
-drivers write `REG_RSV_CTRL` to zero to unlock the ISO/CLK/power registers
-before the sequence, and the vendor's external-clock configuration is compiled
-out (`CONFIG_EXT_CLK = n` in its Makefile). The vendor's power sequence tables
-in `hal/rtl8703b/Hal8703BPwrSeq.c` are the next thing to diff against
-`rtw8703b.c`, entry by entry.
+## The fix was an asymmetric transition table (2026-09-10)
+
+That entry-by-entry diff of the vendor's tables against `rtw8703b.c` is what
+found it, and it was the reviewer that did it -- the briefing and its answer are in
+`docs/evidence/2026-09-10-wifi/`. Two earlier candidates were already excluded
+by reading: both drivers write `REG_RSV_CTRL` to zero to unlock the
+ISO/CLK/power registers, and the vendor's external-clock configuration is
+compiled out (`CONFIG_EXT_CLK = n`). The real difference is not something the
+vendor does extra. It is something mainline fails to undo.
+
+`trans_cardemu_to_carddis_8703b` puts the chip's **12H LDO into sleep mode**
+(`0x23[4] = 1`) and asks the SDIO interface to suspend.
+`trans_carddis_to_cardemu_8703b`, the transition that is supposed to reverse
+that, had exactly one entry: clear the hardware power-down bit. So the LDO
+stayed asleep and the interface stayed suspended, and the WLAN MAC never
+powered up -- while the SDIO function kept enumerating and CMD52 kept working,
+which is why the failure looked like a healthy card with a dead MAC. Mainline's
+generic SDIO resume handshake does not cover it either: `rtw_mac_pre_system_cfg`
+returns early for 8051 wcpu chips, and this is one.
+
+The vendor's own `CARDDIS_TO_CARDEMU` table has four operations this one
+lacked, and patch 0018 adds them: clear the WL suspend bit alongside the
+power-down bit, withdraw the SDIO suspend request on local register `0x86`,
+poll for the interface to leave the suspended state, and return the 12H LDO to
+normal mode.
+
+It works, and it works better than expected: v79 was flashed by way of a reboot
+into loader mode, which is exactly what wedges the chip, and it brought the
+wedged chip up on that first boot with no vendor appliance anywhere in the
+loop. Two further warm reboots, Wi-Fi associated on both. The recovery
+procedure above is obsolete.
+
+One correction from the same review, worth keeping because it invalidates a
+conclusion drawn earlier that night: the `v77` experiment did not show that the
+chip ignores the disable sequence. It showed that `ACT_TO_LPS` failed at its
+`0x5f8` poll and mainline aborted the whole sequence there, never reaching the
+MCU reset or the terminal transition. The vendor continues past that failure.
+
 
 **Loader mode needs no buttons from any kernel.** `reboot-loader` works only
 where the DT declares `syscon-reboot-mode`, which v59 does not, so it reboots

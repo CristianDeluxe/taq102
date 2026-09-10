@@ -1,0 +1,37 @@
+
+[missed 5086 bytes]
+[    6.843204] Freeing initrd memory: 13468K
+[   12.005970] input: silead_ts as /devices/platform/2005a000.i2c/i2c-2/2-0040/input/input0
+[   12.047344] input: rk805 pwrkey as /devices/platform/2005a000.i2c/i2c-2/2-001a/rk805-pwrkey.3.auto/input/input1
+[   12.068464] rk808-rtc rk808-rtc.4.auto: registered as rtc0
+[   12.076791] rk808-rtc rk808-rtc.4.auto: setting system clock to 2026-09-10T01:01:12 UTC (1789002072)
+[   12.110477] rk816-charger rk816-charger.6.auto: restored 100% from the last boot
+[   12.147357] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[   12.153759] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[   12.161982] dwmmc_rockchip 1021c000.mmc: Using external DMA controller.
+[   12.175737] usbcore: registered new interface driver usbhid
+[   12.182059] usbhid: USB HID core driver
+[   12.188544] dwmmc_rockchip 1021c000.mmc: Version ID is 270a
+[   12.195089] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[   12.201
+[missed 6079 bytes]
+udhcpc: broadcasting discover
+[   18.769335] wlan0: authenticate with 00:00:5e:00:53:01 (local address=aa:99:3c:5f:6f:23)
+[   18.901355] wlan0: send auth to 00:00:5e:00:53:01 (try 1/3)
+[   18.955421] wlan0: authenticated
+[   18.964790] wlan0: associate with 00:00:5e:00:53:01 (try 1/3)
+[   18.995526] wlan0: RX AssocResp from 00:00:5e:00:53:01 (capab=0x1831 status=0 aid=19)
+[   19.004038] wlan0: associated
+[   19.216359] wlan0: Limiting TX power to 30 (30 - 0) dBm as advertised by 00:00:5e:00:53:01
+udhcpc: broadcasting discover
+udhcpc: broadcasting select for 192.168.1.81, server 192.168.1.1
+udhcpc: lease of 192.168.1.81 obtained from 192.168.1.1, lease time 43200
+deleting routers
+adding dns 1.1.1.1
+adding dns 1.0.0.1
+[   22.316683] taq102-wifi: mdnsd announcing taq102.local on wlan0
+
+TAQ-102 rescue image
+taq102 login: root
+login[94]: root login on 'ttyGS0'
+# sync; reboot

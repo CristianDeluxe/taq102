@@ -6,6 +6,20 @@
 
 ### 2026-09
 
+- [x] 2026-09-10 — **Mainline:** the RTL8723CS warm-reboot wedge is fixed.
+  Patch 0018 completes `trans_carddis_to_cardemu_8703b`, which never undid the
+  12H LDO sleep (`0x23[4]`) and the SDIO suspend that
+  `trans_cardemu_to_carddis_8703b` sets, so the WLAN MAC came back unpowered
+  while the card still enumerated and `rtw_mac_power_on` waited forever for
+  power ready. Found by diffing the vendor's tables against mainline's, entry
+  by entry, after three other fixes failed on hardware (SDIO shutdown power-off,
+  forced `pwr_off_seq` retry, `post-power-on-delay-ms`), all reverted. v79
+  recovers a chip wedged by a loader-mode reboot on its first boot and survives
+  repeated warm reboots. Also established on the way: no rail, GPIO or clock on
+  this board can cut the chip's power, a cold power-off does not clear the
+  wedge, and the chip itself is fine. Evidence:
+  `docs/evidence/2026-09-10-wifi/` (16 files, including the the reviewer briefing and
+  its answer); account in `README.md`.
 - [x] 2026-09-09 — **Mainline:** touch works. The GSL3673 reports a
   1664x896 grid with X inverted; the DTS says so and glcube scales the
   declared range to the panel (v75, confirmed at the tablet; v74 had Y inverted
