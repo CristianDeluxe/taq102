@@ -58,6 +58,40 @@ still gets 450 mA because that is the property's default. v83 carries it.
     brightness 255, cube running, wlan0 up
     current_now = +624 mA, battery 4.144 V
 
+## The review, and what the fix became
+
+the reviewer was given the measurements and both source trees (`review-briefing.md`,
+`review-second-opinion.md`) and rejected the first fix, correctly:
+
+- The device tree property means **the maximum from a dedicated charging
+  port**, which the binding says in as many words. Detection failing tells you
+  nothing about the source, so reusing that number for "unknown" claims
+  something the evidence does not support. What was measured is that *this*
+  port delivers 1.5 A, not that any unclassified port will.
+- The branch also fired where it should not have: on an ordinary disconnect
+  every cable reads zero too, so unplugging programmed the high limit, and a
+  negative `extcon_get_state()` collapses to false the same way.
+- Two premises in the briefing were wrong. `EXTCON_USB` is published only for
+  SDP in this PHY driver, so `USB=0` does **not** prove bvalid is low; and
+  `dr_mode = "peripheral"` does not disable detection. So the all-zero snapshot
+  does not by itself say where the detection breaks.
+
+What the driver does now: an unclassified port is held to 450 mA like SDP, and
+the usb supply gained a writable `POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT` with
+hardware readback, so policy lives where the knowledge is. The override lasts
+until the cable is pulled and is cleared on unplug. Two defects the same review
+found in the existing helper are fixed with it: a request between 81 and 449 mA
+used to round **up** to 450, and the register write's return value was
+discarded.
+
+The appliance's `init` raises the limit to the 1.6 A its own board declares,
+which the driver rounds down to the 1500 mA the hardware offers. That keeps a
+board whose detection is mute working without teaching the driver to guess.
+
+Verified on v85 from a clean boot: `input_current_limit` reads 1500000, the
+kernel log records the raise, and at brightness 255 with the cube running the
+battery takes +584 mA.
+
 ## Still open
 
 The usb2phy's charger detection reporting nothing at all is a separate bug and

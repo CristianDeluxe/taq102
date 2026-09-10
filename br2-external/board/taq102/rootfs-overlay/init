@@ -71,6 +71,19 @@ mkdir -p /sys/kernel/debug && mount -t debugfs none /sys/kernel/debug 2>/dev/nul
 # goes in here, now that there is somewhere to report a failure.
 [ -x /usr/sbin/taq102-display ] && /usr/sbin/taq102-display
 
+# The USB PHY's BC1.2 detection reports nothing on this board -- every extcon
+# cable reads zero with the cable in and the gadget enumerated -- so the kernel
+# holds the RK816's input to the 450 mA an unclassified port is worth. At full
+# brightness the panel and the SoC together draw more than that, and the tablet
+# discharges while reporting Charging (measured 2026-09-10: -259 mA with the
+# cube running). The kernel is right to be careful and this is where the board
+# knows better, so raise it from here. The override lasts until the cable is
+# pulled, and 1.6 A is what the board's own device tree declares.
+for ICL in /sys/class/power_supply/usb/input_current_limit; do
+    [ -w "$ICL" ] && echo 1600000 > "$ICL" 2>/dev/null &&
+        echo "$BUILD_ID: input current limit raised to $(cat "$ICL")" > /dev/kmsg
+done
+
 # The panel's backlight comes up at the device tree's default of 128 of 255,
 # which reads as a washed-out screen and is not a colour problem. Nothing else
 # raises it, so do it here, before anything draws. The rescue image runs the
