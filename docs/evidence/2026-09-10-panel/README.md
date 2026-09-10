@@ -57,3 +57,56 @@ displacement measurement cannot separate artifact from motion. `src/fliptest.c`
 is the instrument for that -- a static scene page-flipped between two
 bit-identical buffers -- and it is not in the mainline image's `taq102-diag`
 package yet.
+
+## The page-flip path, and the backlight (added after `fliptest` reached the image)
+
+`src/fliptest.c` went into `br2-external/package/taq102-diag` and v80 carries
+it: the v79 kernel and v75 DTB, with `fliptest` injected into the v75 ramdisk
+rather than regenerating one, since the mainline rootfs has kernel modules
+copied in by hand that Buildroot does not put there.
+
+The first pass of `flicker.py` reported a huge number for a *static* grey panel,
+which was the tell that the metric was wrong: it was measuring the panel's own
+fixed non-uniformity along with any flicker. Split the way `zigzag.py` splits
+displacement, into a fixed profile and the part that moves between frames:
+
+| what the panel was showing | fixed banding | **moving** | bezel moving |
+| --- | --- | --- | --- |
+| static grey, no flips | 14.51 | **0.436** | 0.171 |
+| static white, no flips | 1.19 | **0.209** | 0.824 |
+| identical buffers, flipped every vblank | 13.75 | **0.300** | 0.081 |
+| identical buffers, flipped every 100 ms | 12.32 | **0.642** | 0.287 |
+
+Levels out of a mean of 150-200, so the moving part is 0.1-0.4 % and sits at
+the same level as the black bezel, which emits nothing. Flipping does not
+change it.
+
+Backlight, static grey, `/sys/class/backlight/backlight/brightness`:
+
+| level | moving |
+| --- | --- |
+| 255 | 0.145 |
+| 160 | 0.115 |
+| 96 | 0.975 |
+| 48 | 0.168 |
+| 24 | 0.199 |
+
+The 96 reading is the camera's own auto-exposure settling: its whole-frame
+brightness moved 2.86 % in that clip, and the panel mean barely falls from 255
+to 24 because the exposure keeps compensating. No PWM signature.
+
+## Where that leaves it
+
+Across content (vertical lines, grey, white, amber), across flip modes (none,
+every vblank, every 100 ms), across backlight levels, at 30 and 60 fps, with
+fixed and moving separated, nothing above the room's own noise. The
+displacement axis is equally quiet at 0.008 panel px while `lvdsdiag ours`, the
+pre-fix PHY configuration, still measures 0.411 on the same rig.
+
+So the artifact is either intermittent and absent from every window recorded
+here, or outside what a 60 fps camera resolves. September's flicker had exactly
+this shape -- the eye caught a frame-to-frame alternation that a camera
+averaged away -- and it was solved by ranking my own reports against
+content, not by an instrument. That ranking is still the missing input:
+`testpattern bars` puts vertical lines, horizontal lines, grey and white side
+by side, and which of the four shimmer says which mechanism this is.

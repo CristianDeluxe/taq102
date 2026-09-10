@@ -10,7 +10,7 @@ TAQ102_DIAG_SITE_METHOD = local
 TAQ102_DIAG_LICENSE = MIT
 TAQ102_DIAG_DEPENDENCIES = libdrm
 
-TAQ102_DIAG_TOOLS = testpattern phytune lvdsdiag touchsim
+TAQ102_DIAG_TOOLS = testpattern phytune lvdsdiag touchsim fliptest
 
 define TAQ102_DIAG_BUILD_CMDS
 	$(foreach t,$(TAQ102_DIAG_TOOLS), \

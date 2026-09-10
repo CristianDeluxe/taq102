@@ -27,18 +27,19 @@ print(f'{vid.split("/")[-1]}: {n} frames of {w}x{h}')
 
 frame_mean = f.mean(axis=(1,2))
 print(f'  whole-frame brightness: mean {frame_mean.mean():.2f}, '
-      f'variation {frame_mean.std():.3f} ({100*frame_mean.std()/frame_mean.mean():.2f}%), '
-      f'range {frame_mean.max()-frame_mean.min():.2f}')
+      f'variation {frame_mean.std():.3f} ({100*frame_mean.std()/frame_mean.mean():.2f}%)')
 
-rows = f.mean(axis=2)                       # per frame, luminance down the frame
-rows_flat = rows - rows.mean(axis=1, keepdims=True)
-band = rows_flat.std(axis=1)
-print(f'  rolling-shutter banding within a frame: {band.mean():.3f} levels rms '
-      f'({100*band.mean()/frame_mean.mean():.2f}% of mean)')
-
-# No frequency is reported. The dominant FFT bin of a short crop is the lens
-# vignetting and the panel's own brightness gradient, not an oscillation, and
-# reading it as a frequency gave 96 Hz on one crop and 432 Hz on another of the
-# same recording. What is trustworthy is the amplitude, compared against a crop
-# of the black bezel: it emits nothing, so whatever bands there is the room.
-# Mains light in Spain flickers at 100 Hz and lands on both.
+# Luminance down the frame, per frame, with each frame's own exposure removed.
+# Splitting it the way zigzag.py splits displacement matters here too: a panel's
+# fixed non-uniformity and the lens vignetting sit in every frame and the eye
+# never notices them, while the part that changes from frame to frame is what
+# reads as flicker. Measuring the two together once made a static grey panel
+# look like the worst offender in the set.
+rows = f.mean(axis=2)
+rows -= rows.mean(axis=1, keepdims=True)
+fixed = rows.mean(axis=0).std()
+moving = rows.std(axis=0).mean()
+print(f'  banding down the frame: fixed {fixed:.2f} levels, '
+      f'MOVING {moving:.3f} levels rms ({100*moving/frame_mean.mean():.2f}% of mean)')
+print('  (compare the MOVING figure against a crop of the black bezel: it emits '
+      'nothing, so what moves there is the room. Mains light in Spain is 100 Hz.)')
