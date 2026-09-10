@@ -22,22 +22,24 @@ appliance back. The journal is `README.md` here and
 ## Security
 
 ## Bugs
-- [~] Tembleques back on the panel, reported 2026-09-10 on v79, and not
-  reproduced by the camera. Measured that night with the iPhone as a
-  Continuity Camera (`docs/evidence/2026-09-10-panel/`): the PHY variant sweep
-  puts the kernel's own configuration at 0.008 panel px of movement, on the
-  0.006 floor, while the pre-fix `ours` variant still measures 0.411 -- so the
-  instrument works and the LVDS link is clean. Brightness is flat, and the
-  banding a camera sees is the room's mains light: the black bezel, which emits
-  nothing, bands harder than the panel. Thirty seconds of cube at 60 fps showed
-  no blackout and no outlier frame. Not the radio either, which was the first
-  guess: it persists with `wlan0` down.
-  Next: `src/fliptest.c` is the one instrument not in the mainline image -- a
-  static scene page-flipped between two bit-identical buffers, which is the
-  only way to separate the flip path from content motion. Add it to
-  `br2-external/package/taq102-diag` and reflash. Until then the artifact is
-  reported but unmeasured, and it is not any of the three mechanisms this
-  repository has already solved.
+- [-] Tembleques on the panel, reported 2026-09-10 on v79 and gone by the end
+  of the same session without any display change. Probably self-inflicted, and
+  worth reading before poking the PMIC with the panel live: the report came
+  minutes after RK816 LDO4, LDO5 and LDO6 were disabled for half a second each
+  and then all three together for three seconds, hunting the Wi-Fi wedge. LDO6
+  is the rail whose absence once left this panel unpowered. The tablet was
+  rebooted several times afterwards and the artifact went with them. Not proven,
+  but the timing is close and the alternative is an artifact no instrument could
+  find. Measured while it was reportedly present, and all of it clean:
+  displacement 0.008 panel px against a 0.006 floor while the pre-fix PHY
+  configuration still measured 0.411 on the same rig; brightness flat across
+  vertical lines, grey, white and amber; page flips every vblank, every 100 ms
+  and not at all indistinguishable; backlight 255 down to 24 with no PWM
+  signature. Tables in `docs/evidence/2026-09-10-panel/`.
+  Left behind by the hunt, and worth keeping: `fliptest` is in the mainline
+  image's `taq102-diag` package now, `tools/panel-camera/flicker.py` measures
+  brightness the way `zigzag.py` measures displacement, and the iPhone works as
+  a Continuity Camera over USB-C on the Mac mini.
 - [ ] The charging bolt is a 5-by-7 bitmap scaled up, so it is the one blocky
   shape left in a bar that is otherwise smooth. Only visible while charging
   and only at close range; a small vector path would settle it.
