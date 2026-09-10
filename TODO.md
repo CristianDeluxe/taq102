@@ -181,14 +181,12 @@ appliance back. The journal is `README.md` here and
   must happen in the first seconds after recovery. The log should name the
   driver that failed, which is now believed to be DWC2 or the Rockchip USB2
   PHY, since the white screen proves the kernel reached the driver phase.
-- [!] Flashing a mainline kernel is a one-way door and is not authorised yet.
-  The SD card is not an escape: Rockchip's BootROM tries eMMC before SD, so a
-  card is never reached while `boot` holds a valid loader, which is why the
-  2026-09-02 SD rescue was abandoned. A kernel that does not come up also has
-  no USB console, because the ACM gadget is raised by our `/init`. The way back
-  is loader mode on both buttons, measured unreliable but proved once from the
-  dark U-Boot of the truncated v29. Decide with I, with hands on the
-  tablet, and only once the userspace above exists.
+- [-] Flashing a mainline kernel is a one-way door and is not authorised yet.
+  Overtaken by events: mainline images have been flashed to `recovery` and
+  booted repeatedly since 2026-09-08, and `/usr/sbin/reboot-loader` plus the
+  PMU poke (`devmem 0x100a0038 32 0x5242C301`) make loader mode reachable from
+  software, so the door is no longer one-way. `boot` still holds the vendor
+  appliance and the BCB still selects between them.
 - [ ] The PLL jitter mechanism is probable, not proven (prediv 12 runs the
   phase detector at 2 MHz, prediv 2 at 12 MHz); a 348 MHz probe on 2026-09-04
   was cut off. Only matters if the panel clock ever changes.
