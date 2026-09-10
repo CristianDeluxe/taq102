@@ -150,13 +150,23 @@ appliance back. The journal is `README.md` here and
   while the card still enumerated. v79 recovers a chip wedged by a loader-mode
   reboot on its first boot and survives repeated warm reboots. Evidence in
   `docs/evidence/2026-09-10-wifi/`, account in `README.md`.
-- [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write
-  (`0xe0 = 0x88`) while applying it, and `silead.c` treated that as a probe
-  failure. Patch 0011 accepts the NAK; v68 probes (`input0 = silead_ts`,
-  firmware loaded in 9 s) and glcube opens the device. Not yet seen: a touch
-  event. The interrupt line (gpio2 15, rising, as the vendor) had fired zero
-  times before I had touched the panel. Owner to touch; if the count
-  stays at zero with a finger on the glass, it is the INT line or its mux.
+- [~] Touch on mainline: the controller is not scanning, which is a different
+  fault from the one this item used to describe. Measured 2026-09-10 on v85
+  while I was asked to touch the glass: the interrupt on gpio2 15
+  stayed at 164, its count from probe, across three windows totalling a minute;
+  the pin's own level read 0 for 40 consecutive samples over 20 s (`devmem
+  0x20084050` bit 15), with the iomux confirmed as GPIO (`0x200080cc` reads 0);
+  and the controller itself reported **zero fingers over i2c** the whole time
+  (`i2cget -f -y 2 0x40 0x80`). So it is not the INT line or its mux, which is
+  where this item pointed before: the GSL3673 is not detecting anything to
+  report. Probe succeeds and the firmware loads, so the suspicion is that the
+  reset write whose data byte NAKs (patch 0012 accepts the NAK) leaves the chip
+  loaded but never started. Unconfirmed until I says they touched the
+  glass inside one of those windows.
+  Next: compare the vendor driver's post-firmware start-up writes against
+  `silead.c`, the same table-by-table way the Wi-Fi wedge was found; the vendor
+  source is in the VM at
+  `/work/kernel/drivers/input/touchscreen/gslX680*`.
 - [-] Flash `recovery-taq102-v55-mainline-beacon.img` and read the panel. Built
   and verified 2026-09-08: same kernel and resource image as v54, ramdisk
   carrying the backlight beacon, the ramoops rescue and the userspace marker.
@@ -238,9 +248,17 @@ appliance back. The journal is `README.md` here and
 
 ## Future ideas
 
-- [~] Soak the mainline cube: v67 was healthy at 20 min on 2026-09-09 (see
-  TODO_LOG); the vendor appliance has run for days. Leave v67 running
-  unplugged and plugged and note the first freeze, if any, with `dmesg`.
+- [x] Soak the mainline cube: done 2026-09-10, 8 hours unattended on v85. The
+  VOP interrupt advanced 168 counts in 3 s at the end of it, exactly the
+  panel's 56 Hz, so the display was still flipping rather than merely alive;
+  glcube still running, Wi-Fi still associated, battery charged to 100 % and
+  holding at a 13 mA trickle. No GPU hang, no `flip_done` timeout, no oops. The
+  only recurring message is `rtw88_8723cs: failed to get tx report from
+  firmware`, 11 times in 8 hours, which is its own item below.
+- [ ] `rtw88_8723cs: failed to get tx report from firmware`, 11 times in an
+  8 hour soak (2026-09-10, v85), roughly every 10 to 60 minutes and never in
+  bursts. The link stayed associated throughout, so it costs nothing visible;
+  worth understanding before the driver work is called finished.
 - [ ] A real application in place of the `glcube` demo; what the appliance is
   for is still unstated.
 - [ ] Bluetooth: which of the three RTL8723CS firmware variants this board loads
