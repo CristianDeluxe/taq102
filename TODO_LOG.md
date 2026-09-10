@@ -13,9 +13,18 @@
   every cable as zero, `USB` included. Folded into patch 0008: when detection
   says nothing, take the board's declared `input-current-limit-microamp`, which
   the DTS has carried all along and which was only ever read for DCP. From a
-  clean boot on v83, brightness 255 with the cube running: +624 mA and the
+  clean boot on v85, brightness 255 with the cube running: +584 mA and the
   battery climbing, against -259 mA before. Measured along the way: the
-  backlight costs about 300 mA and the cube 50 to 90. Evidence:
+  backlight costs about 300 mA and the cube 50 to 90.
+  The first attempt made the driver guess -- it took the board's declared limit
+  whenever detection said nothing -- and a the reviewer review rejected it: the binding
+  defines that property as a dedicated charging port's maximum, and the branch
+  also fired on an ordinary disconnect. The shipped fix instead holds an
+  unclassified port to 450 mA and gives the usb supply a writable
+  `input_current_limit`, which the appliance's `init` raises because it knows
+  what it is plugged into. Two defects in the existing helper went with it: a
+  request between 81 and 449 mA rounded up to 450, and the register write's
+  error was discarded. Evidence, including the review:
   `docs/evidence/2026-09-10-charging/`.
 - [x] 2026-09-10 — **Mainline:** the RTL8723CS warm-reboot wedge is fixed.
   Patch 0018 completes `trans_carddis_to_cardemu_8703b`, which never undid the

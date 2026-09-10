@@ -96,7 +96,7 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  drivers/mfd/rk8xx-i2c.c              |   11 +-
  drivers/power/supply/Kconfig         |    9 +
  drivers/power/supply/Makefile        |    1 +
- drivers/power/supply/rk816_charger.c | 1221 ++++++++++++++++++++++++++
+ drivers/power/supply/rk816_charger.c | 1290 ++++++++++++++++++++++++++
  7 files changed, 1246 insertions(+), 1 deletion(-)
  create mode 100644 drivers/power/supply/rk816_charger.c
 
@@ -216,7 +216,7 @@ new file mode 100644
 index 000000000..c5a258ccd
 --- /dev/null
 +++ b/drivers/power/supply/rk816_charger.c
-@@ -0,0 +1,1221 @@
+@@ -0,0 +1,1290 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Battery and charger driver for the Rockchip RK816 PMIC.
@@ -400,6 +400,7 @@ index 000000000..c5a258ccd
 +	u32 sleep_enter_current_ua;
 +	u32 sleep_filter_current_ua;
 +	u32 input_current_limit_ua;
++	u32 input_current_override_ua;	/* set from userspace, cleared on unplug */
 +	u32 charge_full_design_uah;
 +	int voltage_min_design_uv;
 +	int voltage_max_design_uv;
@@ -580,6 +581,8 @@ index 000000000..c5a258ccd
 +	} else if (!cg->plugged_in) {
 +		cg->usb_online = false;
 +		cg->ac_online = false;
++		/* Whatever userspace knew about that supply, it is unplugged. */
++		cg->input_current_override_ua = 0;
 +	}
 +
 +	if (rk816_bat_get_charge_uah(cg, &val))
@@ -737,21 +740,107 @@ index 000000000..c5a258ccd
 +	return 0;
 +}
 +
++/*
++ * Program the input current limit, choosing the largest setting that does not
++ * exceed the request. The table is not sorted -- index 0 is 450 mA and index 1
++ * is 80 mA, the rest ascend from 850 -- so the walk handles those two by hand.
++ * A request below the smallest setting is refused rather than rounded up:
++ * there is no input-disable here, and quietly drawing more than the caller
++ * asked for is the one answer a current limit must never give.
++ */
++static int rk816_bat_set_input_current(struct rk816_charger *cg, u32 limit_ua)
++{
++	unsigned int limit_ma = limit_ua / 1000;
++	unsigned int i, sel;
++
++	if (limit_ma < 80)
++		return -EINVAL;
++
++	if (limit_ma < 450) {
++		sel = 1;
++	} else if (limit_ma < 850) {
++		sel = 0;
++	} else {
++		sel = 2;
++		for (i = 2; i < ARRAY_SIZE(rk816_input_cur_ma); i++) {
++			if (limit_ma < rk816_input_cur_ma[i])
++				break;
++			sel = i;
++		}
++	}
++
++	return regmap_update_bits(cg->regmap, RK816_USB_CTRL_REG,
++				  RK816_USB_INPUT_CUR_MSK,
++				  FIELD_PREP(RK816_USB_INPUT_CUR_MSK, sel));
++}
++
++static int rk816_bat_get_input_current(struct rk816_charger *cg, u32 *limit_ua)
++{
++	unsigned int val;
++	int ret;
++
++	ret = regmap_read(cg->regmap, RK816_USB_CTRL_REG, &val);
++	if (ret)
++		return ret;
++
++	*limit_ua = rk816_input_cur_ma[FIELD_GET(RK816_USB_INPUT_CUR_MSK, val) %
++				       ARRAY_SIZE(rk816_input_cur_ma)] * 1000;
++
++	return 0;
++}
++
 +static int rk816_usb_get_prop(struct power_supply *ps,
 +			      enum power_supply_property prop,
 +			      union power_supply_propval *val)
 +{
 +	struct rk816_charger *cg = power_supply_get_drvdata(ps);
 +
++	u32 limit_ua;
++	int ret;
++
 +	switch (prop) {
 +	case POWER_SUPPLY_PROP_ONLINE:
 +		val->intval = cg->usb_online;
++		break;
++	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
++		ret = rk816_bat_get_input_current(cg, &limit_ua);
++		if (ret)
++			return ret;
++		val->intval = limit_ua;
 +		break;
 +	default:
 +		return -EINVAL;
 +	}
 +
 +	return 0;
++}
++
++static int rk816_usb_set_prop(struct power_supply *ps,
++			      enum power_supply_property prop,
++			      const union power_supply_propval *val)
++{
++	struct rk816_charger *cg = power_supply_get_drvdata(ps);
++	int ret;
++
++	if (prop != POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT)
++		return -EINVAL;
++
++	if (val->intval < 0)
++		return -EINVAL;
++
++	mutex_lock(&cg->lock);
++	ret = rk816_bat_set_input_current(cg, val->intval);
++	if (!ret)
++		cg->input_current_override_ua = val->intval;
++	mutex_unlock(&cg->lock);
++
++	return ret;
++}
++
++static int rk816_usb_prop_writeable(struct power_supply *ps,
++				    enum power_supply_property prop)
++{
++	return prop == POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT;
 +}
 +
 +static int rk816_ac_get_prop(struct power_supply *ps,
@@ -793,6 +882,11 @@ index 000000000..c5a258ccd
 +	POWER_SUPPLY_PROP_ONLINE,
 +};
 +
++static const enum power_supply_property rk816_usb_props[] = {
++	POWER_SUPPLY_PROP_ONLINE,
++	POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
++};
++
 +/*
 + * "battery", "usb" and "ac" rather than rk817-charger's "rk817-battery" and
 + * "rk817-charger": on this class of board those three names under
@@ -809,9 +903,11 @@ index 000000000..c5a258ccd
 +static const struct power_supply_desc rk816_usb_desc = {
 +	.name = "usb",
 +	.type = POWER_SUPPLY_TYPE_USB,
-+	.properties = rk816_online_props,
-+	.num_properties = ARRAY_SIZE(rk816_online_props),
++	.properties = rk816_usb_props,
++	.num_properties = ARRAY_SIZE(rk816_usb_props),
 +	.get_property = rk816_usb_get_prop,
++	.set_property = rk816_usb_set_prop,
++	.property_is_writeable = rk816_usb_prop_writeable,
 +};
 +
 +static const struct power_supply_desc rk816_ac_desc = {
@@ -831,40 +927,11 @@ index 000000000..c5a258ccd
 +	return IRQ_HANDLED;
 +}
 +
-+/*
-+ * Program the input current limit. The selection walk is the vendor's
-+ * rk816_bat_select_chrg_cv(): index 1 is 80 mA and is only ever chosen for a
-+ * request of 80 mA or less, anything below 850 mA takes index 0 (450 mA), and
-+ * everything above that walks the table from index 2 downwards to the largest
-+ * entry that does not exceed the request.
-+ */
-+static int rk816_bat_set_input_current(struct rk816_charger *cg, u32 limit_ua)
-+{
-+	unsigned int limit_ma = limit_ua / 1000;
-+	unsigned int i, sel;
-+
-+	if (limit_ma <= 80) {
-+		sel = 1;
-+	} else if (limit_ma < 850) {
-+		sel = 0;
-+	} else {
-+		sel = 2;
-+		for (i = 2; i < ARRAY_SIZE(rk816_input_cur_ma); i++) {
-+			if (limit_ma < rk816_input_cur_ma[i])
-+				break;
-+			sel = i;
-+		}
-+	}
-+
-+	return regmap_update_bits(cg->regmap, RK816_USB_CTRL_REG,
-+				  RK816_USB_INPUT_CUR_MSK,
-+				  FIELD_PREP(RK816_USB_INPUT_CUR_MSK, sel));
-+}
-+
 +static void rk816_bat_update_cables(struct rk816_charger *cg)
 +{
 +	bool sdp, dcp, cdp;
 +	u32 limit_ua;
++	int ret;
 +
 +	sdp = extcon_get_state(cg->edev, EXTCON_CHG_USB_SDP) > 0;
 +	dcp = extcon_get_state(cg->edev, EXTCON_CHG_USB_DCP) > 0;
@@ -875,25 +942,27 @@ index 000000000..c5a258ccd
 +	cg->usb_online = sdp || cdp;
 +
 +	/*
-+	 * "No cable state at all" is not the same answer as "SDP", and it is
-+	 * what this board gives: its usb2phy reports every cable, USB included,
-+	 * as zero while VBUS is plainly present and the gadget is enumerated.
-+	 * Clamping to 450 mA on that is not the cautious choice it looks like,
-+	 * because the panel and the SoC together draw more than that, so the
-+	 * tablet discharges while reporting Charging. When detection says
-+	 * nothing, take what the board declares; a board that declares nothing
-+	 * still gets 450 mA, because that is the default of the property.
++	 * An unclassified port is held to 450 mA, the same as SDP: detection
++	 * failing tells us nothing about what the source can supply, and the
++	 * device tree's limit describes a dedicated charging port, which this
++	 * is not known to be. A board whose detection is mute and whose supply
++	 * is known -- an appliance wired to one charger, say -- raises it
++	 * through input_current_limit on the usb supply, and that override
++	 * lasts until the cable is pulled.
 +	 */
-+	if (dcp)
++	if (cg->input_current_override_ua && cg->plugged_in)
++		limit_ua = cg->input_current_override_ua;
++	else if (dcp)
 +		limit_ua = cg->input_current_limit_ua;
 +	else if (cdp)
 +		limit_ua = 1500000;
-+	else if (sdp)
-+		limit_ua = 450000;
 +	else
-+		limit_ua = cg->input_current_limit_ua;
++		limit_ua = 450000;
 +
-+	rk816_bat_set_input_current(cg, limit_ua);
++	ret = rk816_bat_set_input_current(cg, limit_ua);
++	if (ret)
++		dev_warn(cg->dev, "failed to set the input current limit: %d\n",
++			 ret);
 +	mutex_unlock(&cg->lock);
 +
 +	power_supply_changed(cg->usb_ps);
