@@ -123,28 +123,32 @@ appliance back. The journal is `README.md` here and
   has an entry in 0008 and the DTS is covered by the Rockchip glob. The genpd
   deadlock goes as a bug report with
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
-- [~] Wi-Fi on mainline after a warm reboot: `rtw88_8723cs: mac power on
+- [!] Wi-Fi on mainline after a warm reboot: `rtw88_8723cs: mac power on
   failed` (poll of offset 0x6 bit 1, the chip's own power-ready flag), no
-  wlan0. Every `reboot-loader` flash lands in this state; only a full
-  power-off clears it. Measured on the wedged tablet over the USB console,
-  2026-09-09/10, each followed by an SDIO host rebind that re-enumerated
-  the card and failed the same poll: gpio2 PB5 (the pwrseq reset, the same
-  line the vendor pwrseq uses) held low 1 s with the level read back;
-  gpio2 PB1 (vendor `BT,reset_gpio`, the BT enable) already low; RK816
-  clkout2 on (reg 0x20 = 0x01); RK816 LDO4, LDO5 and LDO6 each cut 0.5 s,
-  then all three together 3 s, registers read back. No SDIO host names a
-  supply, the vendor `wireless-wlan` node has no power GPIO, so the chip
-  sits on an unswitched rail and no kernel has ever taken power off it.
-  Cause, then: mainline never powers the MAC off at reboot (`rtw8703b`
-  has no shutdown op, `rtw_sdio_shutdown` did nothing), so the firmware
-  runs through the reboot and the next `rtw_mac_power_on` fails. Patch
-  0018 takes the ifdown path in `rtw_sdio_shutdown`; v76 on `recovery`
-  carries it (build #28, boots, still wedged as expected).
-  Next, owner: unplug USB, hold power for a real power-off, boot v76, see
-  Wi-Fi up, then `reboot` from the console or the panel and see whether
-  Wi-Fi comes back. If it does, a `reboot-loader` cycle is the second
-  check. Note `1021c000.mmc` is the eMMC: unbinding it drops `/data`,
-  which then needs `mount -t ext4 /dev/mmcblk1p1 /data` by hand.
+  wlan0. Diagnosed 2026-09-10 over the USB console; the full account is in
+  `README.md`, "The Wi-Fi wedge is not a rail, and mainline cannot undo it".
+  Established: the chip is fine (the v49 vendor appliance gives wlan0 in five
+  seconds on the same chip); no rail cuts it (pwrseq reset PB5, BT enable PB1,
+  the RK816 32k clkout2 cut with reset held, LDO4/5/6 alone and together, each
+  with registers read back); a cold power-off does not clear it; and it is not
+  a kernel regression -- v59, the one image in the evidence with mainline Wi-Fi
+  working, fails identically when reflashed today. Only the vendor driver
+  clears the chip.
+  Workaround: boot `recovery-taq102-v49-appliance.img` once, then flash the
+  mainline image back. Wi-Fi works on that boot and no later one.
+  Tried and reverted, each verified on a chip the appliance had just cleaned:
+  powering the MAC off in `rtw_sdio_shutdown`; forcing `chip->pwr_off_seq` and
+  retrying in `rtw_mac_power_on` (the chip then fails the disable sequence too,
+  `failed to poll offset=0x5f8`); and `post-power-on-delay-ms = <200>` on the
+  pwrseq, as PinePhone uses for this same part.
+  Next: diff the vendor tables in
+  `/work/kernel/drivers/net/wireless/rockchip_wlan/rtl8723cs/hal/rtl8703b/Hal8703BPwrSeq.c`
+  against `rtw8703b.c` entry by entry -- `REG_RSV_CTRL` unlock and
+  `CONFIG_EXT_CLK` are both already excluded. Blocked on that comparison, not
+  on hardware: the test loop is cheap now (appliance to clean the chip, flash,
+  boot, reboot).
+  Note `1021c000.mmc` is the eMMC: unbinding it drops `/data`, which then needs
+  `mount -t ext4 /dev/mmcblk1p1 /data` by hand.
 - [~] Touch on mainline: the GSL3673 NAKs the data byte of the reset write
   (`0xe0 = 0x88`) while applying it, and `silead.c` treated that as a probe
   failure. Patch 0011 accepts the NAK; v68 probes (`input0 = silead_ts`,

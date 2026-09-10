@@ -112,10 +112,11 @@ toolchain: `zImage` 13234688 bytes, `rk3126-taq102.dtb` 27187 bytes, exit 0,
 no compiler warnings. The tree at the end of that build reverse-applies all
 four patches below as a set, so these files are exactly what compiled.
 
-2026-09-10: 0018 (rtw88 SDIO shutdown powers the MAC off, so a warm reboot
-does not wedge the RTL8723CS) sits on top of the seventeen below; v76 is the
-seventeen plus 0018, zImage 10330704 bytes, otherwise the v75 DTB and ramdisk.
-Untested until a cold boot: see the Wi-Fi item in `TODO.md`.
+2026-09-10: three attempts at the RTL8723CS warm-reboot wedge were built and
+tested (v76 rtw88 SDIO shutdown, v77 forced card-disable and retry, v78
+`post-power-on-delay-ms`) and all three failed on hardware. Every one was
+reverted; the series below is unchanged at seventeen. The evidence and what
+is still open are in the repository `README.md` and `TODO.md`.
 
 The series is `git am`-able as a whole, 0001 through 0017, each patch with a
 message and a Signed-off-by: it is `git format-patch` output from a branch
