@@ -1,0 +1,237 @@
+-0x000000008fffffff]
+[    0.000000]   HighMem  [mem 0x0000000090000000-0x000000009fffffff]
+[    0.000000] Movable zone start for each node
+[    0.000000] Early memory node ranges
+[    0.000000]   node   0: [mem 0x0000000060000000-0x00000000683fffff]
+[    0.000000]   node   0: [mem 0x0000000069200000-0x000000009dbfffff]
+[    0.000000]   node   0: [mem 0x000000009dc00000-0x000000009de57fff]
+[    0.000000]   node   0: [mem 0x000000009de58000-0x000000009fffffff]
+[    0.000000] Initmem setup node 0 [mem 0x0000000060000000-0x000000009fffffff]
+[    0.000000] On node 0, zone Normal: 1536 pages in unavailable ranges
+[    0.000000] percpu: Embedded 17 pages/cpu s40460 r8192 d20980 u69632
+[    0.000000] pcpu-alloc: s40460 r8192 d20980 u69632 alloc=17*4096
+[    0.000000] pcpu-alloc: [0] 0 [0] 1 [0] 2 [0] 3 
+[    0.000000] Kernel command line: console=ttyFIQ0 androidboot.baseband=N/A androidboot.veritymode=enforcing androidboot.hardware=rk30board androidboot.console=ttyFIQ0 init=/init  mtdparts=rk29xxnand:0x00002000@0x00000000(parameter),0x00002000@0x00002000(uboot),0x00002000@0x00004000(trust),0x00002000@0x00006000(misc),0x00008000@0x00008000(resource),0x00010000@0x00010000(kernel),0x00010000@0x00020000(boot),0x00020000@0x00030000(recovery),0x00038000@0x00050000(backup),0x00002000@0x00088000(security),0x0080000@0x0008a000(cache),0x00300000@0x0010a000(system),0x00008000@0x0040a000(metadata),0x00060000@0x00412000(vendor),0x00030000@0x00472000(oem),0x00000400@0x004a2000(frp),-@0x004a2400(userdata) storagemedia=emmc androidboot.deviceid=CPTP_RK3126_TAQ-102_A01 uboot_logo=0x02000000@0x9dc00000 loader.timestamp=2021-05-17_10:08:05 adc.incre=0 SecureBootCheckOk=0 console=tty0 console=ttyGS0 ignore_loglevel consoleblank=0 nosmp fw_devlink=off blkdevparts=mmcblk1:-@0x94880000(data)
+[    0.000000] Unknown kernel command line parameters "storagemedia=emmc uboot_logo=0x02000000@0x9dc00000 SecureBootCheckOk=0", will be passed to user space.
+[    0.000000] printk: log buffer data + meta data: 131072 + 409600 = 540672 bytes
+[    0.000000] Dentry cache hash table entries: 131072 (order: 7, 524288 bytes, linear)
+[    0.000000] Inode-cache hash table entries: 65536 (order: 6, 262144 bytes, linear)
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 258560
+[    0.000000] mem auto-init: stack:all(zero), heap alloc:off, heap free:off
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=4, Nodes=1
+[    0.000000] rcu: Hierarchical RCU implementation.
+[    0.000000] rcu: 	RCU event tracing is enabled.
+[    0.000000] rcu: 	RCU restricting CPUs from NR_CPUS=16 to nr_cpu_ids=4.
+[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+[    0.000000] NR_IRQS: 16, nr_irqs: 16, preallocated irqs: 16
+[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.
+[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+[    0.000000] arch_timer: cp15 timer running at 24.00MHz (sec-phys).
+[    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+[    0.000004] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+[    0.000046] Switching to timer-based delay loop, resolution 41ns
+[    0.003350] clocksource: rk_timer: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 79635851949 ns
+[    0.003414] sched_clock: 32 bits at 24MHz, resolution 41ns, wraps every 89478484971ns
+[    0.003539] Too many timer definitions for 'rk_timer'
+[    0.003554] Failed to initialize '/timer@20044040': -22
+[    0.003693] Too many timer definitions for 'rk_timer'
+[    0.003706] Failed to initialize '/timer@20044060': -22
+[    0.003831] Too many timer definitions for 'rk_timer'
+[    0.003843] Failed to initialize '/timer@20044080': -22
+[    0.003967] Too many timer definitions for 'rk_timer'
+[    0.003980] Failed to initialize '/timer@200440a0': -22
+[    0.007584] Console: colour dummy device 80x30
+[    0.007647] printk: legacy console [tty0] enabled
+[    0.010618] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=240000)
+[    0.010755] CPU: Testing write buffer coherency: ok
+[    0.010974] pid_max: default: 32768 minimum: 301
+[    0.011854] Mount-cache hash table entries: 2048 (order: 1, 8192 bytes, linear)
+[    0.012003] Mountpoint-cache hash table entries: 2048 (order: 1, 8192 bytes, linear)
+[    0.013255] VFS: Finished mounting rootfs on nullfs
+[    0.015444] /cpus/cpu@f00 missing clock-frequency property
+[    0.015631] /cpus/cpu@f01 missing clock-frequency property
+[    0.015756] /cpus/cpu@f02 missing clock-frequency property
+[    0.015879] /cpus/cpu@f03 missing clock-frequency property
+[    0.015971] CPU0: thread -1, cpu 0, socket 15, mpidr 80000f00
+[    0.021331] Setting up static identity map for 0x60100000 - 0x60100060
+[    0.022078] rcu: Hierarchical SRCU implementation.
+[    0.022167] rcu: 	Max phase no-delay instances is 1000.
+[    0.023458] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+[    0.025314] smp: Bringing up secondary CPUs ...
+[    0.025417] smp: Brought up 1 node, 1 CPU
+[    0.025489] SMP: Total of 1 processors activated (48.00 BogoMIPS).
+[    0.025565] CPU: All CPU(s) started in SVC mode.
+[    0.027047] Memory: 954764K/1034240K available (16384K kernel code, 1810K rwdata, 4788K rodata, 1024K init, 277K bss, 51808K reserved, 24576K cma-reserved, 235168K highmem)
+[    0.028533] devtmpfs: initialized
+[    0.050916] VFP support v0.3: implementor 41 architecture 2 part 30 variant 7 rev 5
+[    0.051857] posixtimers hash table entries: 2048 (order: 2, 16384 bytes, linear)
+[    0.052173] futex hash table entries: 1024 (65536 bytes on 1 NUMA nodes, total 64 KiB, linear).
+[    0.058585] NET: Registered PF_NETLINK/PF_ROUTE protocol family
+[    0.061247] DMA: preallocated 256 KiB pool for atomic coherent allocations
+[    0.070773] thermal_sys: Registered thermal governor 'step_wise'
+[    0.071062] cpuidle: using governor menu
+[    0.072424] hw-breakpoint: found 5 (+1 reserved) breakpoint and 4 watchpoint registers.
+[    0.072543] hw-breakpoint: maximum watchpoint size is 8 bytes.
+[    0.073609] Serial: AMBA PL011 UART driver
+[    0.076267] pstore: Using crash dump compression: deflate
+[    0.076381] printk: legacy console [ramoops-1] enabled
+[    0.078635] pstore: Registered ramoops as persistent store backend
+[    0.078751] ramoops: using 0xf0000@0x68100000, ecc: 0
+[    0.118761] rockchip-gpio 2007c000.gpio: probed /pinctrl/gpio@2007c000
+[    0.121062] rockchip-gpio 20080000.gpio: probed /pinctrl/gpio@20080000
+[    0.123300] rockchip-gpio 20084000.gpio: probed /pinctrl/gpio@20084000
+[    0.125377] rockchip-gpio 20088000.gpio: probed /pinctrl/gpio@20088000
+[    0.182742] iommu: Default domain type: Translated
+[    0.182886] iommu: DMA domain TLB invalidation policy: strict mode
+[    0.195366] SCSI subsystem initialized
+[    0.196277] libata version 3.00 loaded.
+[    0.197323] usbcore: registered new interface driver usbfs
+[    0.
+[missed 5086 bytes]
+[    6.811239] Freeing initrd memory: 13468K
+[   12.004595] input: silead_ts as /devices/platform/2005a000.i2c/i2c-2/2-0040/input/input0
+[   12.046040] input: rk805 pwrkey as /devices/platform/2005a000.i2c/i2c-2/2-001a/rk805-pwrkey.3.auto/input/input1
+[   12.067328] rk808-rtc rk808-rtc.4.auto: registered as rtc0
+[   12.075852] rk808-rtc rk808-rtc.4.auto: setting system clock to 2026-09-10T00:59:47 UTC (1789001987)
+[   12.110044] rk816-charger rk816-charger.6.auto: restored 100% from the last boot
+[   12.145481] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[   12.154968] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[   12.161407] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[   12.175498] dwmmc_rockchip 1021c000.mmc: Using external DMA controller.
+[   12.182128] dwmmc_rockchip 1021c000.mmc: Version ID is 270a
+[   12.190585] usbcore: registered new interface driver usbhid
+[   12.197164] usbhid: USB HID core driver
+[   12.204029] dwmmc_rockchip 10218000.mmc: allocated mmc-pwrseq
+[   12.210542] mmc_host mmc2: card is non-removable.
+[   12.217342] dwmmc_rockchip 1021c000.mmc: DW MMC controller at irq 61,32 bit host data width,256 deep fifo
+[   12.227308] mmc_host mmc1: card is non-removable.
+[   12.242554] hw perfevents: enabled with armv7_cortex_a7 PMU driver, 5 (8000000f) counters available
+[   12.253197] mmc_host mmc2: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[   12.263656] mmc_host mmc1: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[   12.272033] NET: Registered PF_INET6 protocol family
+[   12.286370] Segment Routing with IPv6
+[   12.295210] In-situ OAM (IOAM) with IPv6
+[   12.304065] NET: Registered PF_PACKET protocol family
+[   12.312148] can: controller area network core
+[   12.320575] NET: Registered PF_CAN protocol family
+[   12.328752] can: raw protocol
+[   12.336996] can: broadcast manager protocol
+[   12.345181] can: netlink gateway - max_hops=1
+[   12.354787] Key type dns_resolver registered
+[   12.364120] ThumbEE CPU extension supported.
+[   12.372220] Registering SWP/SWPB emulation handler
+[   12.386333] mmc_host mmc2: Bus speed = 50000000Hz (req 50000000Hz, actual 50000000HZ div = 0)
+[   12.396405] mmc2: new high speed SDIO card at address 0001
+[   12.414402] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[   12.423615] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[   12.503155] random: crng init done
+[   12.514174] mmc_host mmc1: Bus speed = 50000000Hz (req 52000000Hz, actual 50000000HZ div = 0)
+[   12.533370] mmc1: new high speed MMC card at address 0001
+[   12.564618] Loading compiled-in X.509 certificates
+[   12.573934] mmcblk1: mmc1:0001 Origin 57.6 GiB
+[   12.705548] cfg80211: Loading compiled-in X.509 certificates for regulatory database
+[   12.788624] Loaded X.509 cert 'sforshee: 00b28ddf47aef9cea7'
+[   12.809376] Loaded X.509 cert 'wens: 61c038651aabdcf94bd0ac7ff06c7248db18c600'
+[   12.833239] clk: Disabling unused clocks
+[   12.841448] PM: genpd: Disabling unused power domains
+[   12.877330] Freeing unused kernel image (initmem) memory: 1024K
+[   12.894203] Run /init as init process
+[   12.902051]   with arguments:
+[   12.909844]     /init
+[   12.917513]   with environment:
+[   12.925049]     HOME=/
+[   12.932256]     TERM=linux
+[   12.939256]     storagemedia=emmc
+[   12.946049]     uboot_logo=0x02000000@0x9dc00000
+[   12.952671]     SecureBootCheckOk=0
+[   13.172251] faux_driver regulatory: Direct firmware load for regulatory.db failed with error -2
+[   13.180680]  mmcblk1: p1(data)
+[   13.204735] mmcblk1boot0: mmc1:0001 Origin 4.00 MiB
+[   13.213301] cfg80211: failed to load regulatory.db
+[   13.278395] rtw88_8723cs mmc2:0001:1: efuse MAC invalid, using random
+[   13.297834] taq102-initramfs 20260908-030330-f001466: init running
+[   13.339698] mmcblk1boot1: mmc1:0001 Origin 4.00 MiB
+[   13.353349] taq102-initramfs 20260908-030330-f001466: diagnostic image, kernel owns the USB console
+[   13.369406] mmcblk1rpmb: mmc1:0001 Origin 4.00 MiB, chardev (238:0)
+[   13.377505] taq102-initramfs 20260908-030330-f001466: NO gadget -- no console will appear
+[   13.470770] taq102-display: no PHY module for 7.3.0-rc2-g28924df2a08f-dirty; the kernel must carry the driver itself
+[   13.534401] taq102-initramfs 20260908-030330-f001466: backlight 255 of 255
+[   13.609816] taq102-initramfs 20260908-030330-f001466: rescued a previous ramoops from 0x68100000
+[   14.510630] EXT4-fs (mmcblk1p1): recovery complete
+[   14.520513] EXT4-fs (mmcblk1p1): mounted filesystem 056c3b81-6827-4622-972a-5b2f34e489ab r/w with ordered data mode. Quota mode: disabled.
+[   14.539820] taq102-initramfs 20260908-030330-f001466: /data mounted from /dev/mmcblk1p1
+[   14.601593] taq102-initramfs 20260908-030330-f001466: MAINLINE-USERSPACE-REACHED handing over to init
+taq102-initramfs 20260908-030330-f001466: MAINLINE-USERSPACE-REACHED
+taq102-initramfs 20260908-030330-f001466: MAINLINE-USERSPACE-REACHED
+mount: mounting devpts on /dev/pts failed: No such file or directory
+mount: mounting tmpfs on /dev/shm failed: No such file or directory
+taq102-cube: insmod phy-rockchip-inno-dsidphy
+[   14.786177] taq102-cube: insmod phy-rockchip-inno-dsidphy
+
+TAQ-102 rescue image
+taq102 login: taq102-cube: ok phy-rockchip-inno-dsidphy
+[   14.954576] taq102-cube: ok phy-rockchip-inno-dsidphy
+[   14.974829] Console: switching to colour dummy device 80x30
+[   15.003470] rockchip-drm display-subsystem: bound 1010e000.vop (ops 0xc11df848)
+[   15.003933] rockchip-drm display-subsystem: bound lvds (ops 0xc11e37e4)
+[   15.020719] rockchip-drm display-subsystem: [drm] [PLANE:35:plane-0] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   15.020951] rockchip-drm display-subsystem: [drm] [PLANE:37:plane-1] pixel format with alpha exposed but blend mode not setup. Please fix.
+[   15.022833] [drm] Initialized rockchip 1.0.0 for display-subsystem on minor 0
+[   15.161664] Console: switching to colour frame buffer device 128x37
+[   15.190121] taq102-ssh: dropbear listening on 22
+[   15.272078] rockchip-drm display-subsystem: [drm] fb0: rockchipdrmfb frame buffer device
+Successfully initialized wpa_supplicant
+udhcpc: started, v1.37.0
+udhcpc: broadcasting discover
+taq102-cube: LVDS-1 is connected, modes: 1024x600 
+[   16.207548] taq102-cube: LVDS-1 is connected, modes: 1024x600 
+taq102-cube: insmod drm_shmem_helper
+[   16.209242] taq102-cube: insmod drm_shmem_helper
+taq102-cube: ok drm_shmem_helper
+taq102-cube: insmod gpu-sched
+[   16.275425] taq102-cube: ok drm_shmem_helper
+[   16.276754] taq102-cube: insmod gpu-sched
+taq102-cube: ok gpu-sched
+[   16.345705] taq102-cube: ok gpu-sched
+taq102-cube: insmod lima
+[   16.364692] taq102-cube: insmod lima
+[   16.444526] lima 10090000.gpu: gp - mali400 version major 1 minor 1
+[   16.473773] lima 10090000.gpu: pp0 - mali400 version major 1 minor 1
+[   16.500819] lima 10090000.gpu: pp1 - mali400 version major 1 minor 1
+[   16.523228] lima 10090000.gpu: l2_cache0 64K, 4-way, 64byte cache line, 64bit external bus
+[   16.544317] lima 10090000.gpu: bus rate = 148500000
+[   16.552685] lima 10090000.gpu: mod rate = 148500000
+[   16.593284] [drm] Initialized lima 1.1.0 for 10090000.gpu on minor 1
+taq102-cube: ok lima
+[   16.644146] taq102-cube: ok lima
+taq102-cube: render node up: card0 card1 renderD128 
+[   16.727530] taq102-cube: render node up: card0 card1 renderD128 
+taq102-cube: touch /dev/input/event0, power key /dev/input/event1
+[   16.874675] taq102-cube: touch /dev/input/event0, power key /dev/input/event1
+open: No such file or directory
+open: No such file or directory
+[   17.014313] Console: switching to colour dummy device 80x30
+[   17.015248] taq102-app: fbcon unbound from /sys/class/vtconsole/vtcon1
+[   17.016431] taq102-app: starting /usr/bin/glcube (attempt 1)
+[   18.002725] warning: `glcube' uses wireless extensions which will stop working for Wi-Fi 7 hardware; use nl80211
+udhcpc: broadcasting discover
+[   19.248050] wlan0: authenticate with 00:00:5e:00:53:01 (local address=da:66:12:44:24:f7)
+[   19.379792] wlan0: send auth to 00:00:5e:00:53:01 (try 1/3)
+[   19.414531] wlan0: authenticated
+[   19.423740] wlan0: associate with 00:00:5e:00:53:01 (try 1/3)
+[   19.474789] wlan0: RX AssocResp from 00:00:5e:00:53:01 (capab=0x1831 status=0 aid=20)
+[   19.484364] wlan0: associated
+[   19.595386] wlan0: Limiting TX power to 30 (30 - 0) dBm as advertised by 00:00:5e:00:53:01
+udhcpc: broadcasting discover
+udhcpc: broadcasting select for 192.168.1.80, server 192.168.1.1
+udhcpc: lease of 192.168.1.80 obtained from 192.168.1.1, lease time 43200
+deleting routers
+adding dns 1.1.1.1
+adding dns 1.0.0.1
+[   22.778799] taq102-wifi: mdnsd announcing taq102.local on wlan0
+
+TAQ-102 rescue image
+taq102 login: root
+login[96]: root login on 'ttyGS0'
+# sync; reboot

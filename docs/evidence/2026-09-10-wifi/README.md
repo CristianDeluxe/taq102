@@ -17,5 +17,9 @@ tablet's USB console (`ttyGS0`), ANSI escapes stripped.
 | `v78-boot1-after-vendor-wifi-up.log`, `v78-boot2-pwrseq-delay-wedged.log` | `post-power-on-delay-ms = <200>` on the pwrseq, the value PinePhone uses for this part: works from a clean chip, wedges on the next reboot like the others |
 | `v75-restored-wifi-up.log` | the tablet as it was left: v75, Wi-Fi associated, 192.168.1.79 |
 
-All three driver and device-tree changes were reverted; the tree carries none
-of them.
+| `review-briefing.md`, `review-second-opinion.md` | the briefing given to the reviewer (gpt-6-astra) after those three failures, and its answer: an entry-by-entry diff of the vendor's power sequence tables against mainline's, which found the asymmetry that turned out to be the bug |
+| `v79-recovers-a-wedged-chip.log` | the fix: v79 booting on a chip the loader-mode reboot had just wedged, and bringing it up anyway. No vendor appliance involved |
+| `v79-warm-reboot-1-wifi-up.log`, `v79-warm-reboot-2-wifi-up.log` | two further warm reboots, Wi-Fi associated on both |
+
+The first three attempts were reverted. The fix that works is
+`kernel/mainline/0018-wifi-rtw88-8703b-complete-the-card-disable-to-card-em.patch`.
