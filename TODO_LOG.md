@@ -6,6 +6,17 @@
 
 ### 2026-09
 
+- [x] 2026-09-10 - **Mainline:** the tablet discharged with the cable in,
+  reporting `Charging` while `current_now` was -301 mA. The RK816's input limit
+  sat at 450 mA because the charger driver takes that when the USB PHY's BC1.2
+  detection reports neither SDP, CDP nor DCP -- and on this board it reports
+  every cable as zero, `USB` included. Folded into patch 0008: when detection
+  says nothing, take the board's declared `input-current-limit-microamp`, which
+  the DTS has carried all along and which was only ever read for DCP. From a
+  clean boot on v83, brightness 255 with the cube running: +624 mA and the
+  battery climbing, against -259 mA before. Measured along the way: the
+  backlight costs about 300 mA and the cube 50 to 90. Evidence:
+  `docs/evidence/2026-09-10-charging/`.
 - [x] 2026-09-10 — **Mainline:** the RTL8723CS warm-reboot wedge is fixed.
   Patch 0018 completes `trans_carddis_to_cardemu_8703b`, which never undid the
   12H LDO sleep (`0x23[4]`) and the SDIO suspend that

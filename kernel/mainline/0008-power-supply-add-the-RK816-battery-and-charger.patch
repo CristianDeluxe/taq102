@@ -96,7 +96,7 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  drivers/mfd/rk8xx-i2c.c              |   11 +-
  drivers/power/supply/Kconfig         |    9 +
  drivers/power/supply/Makefile        |    1 +
- drivers/power/supply/rk816_charger.c | 1209 ++++++++++++++++++++++++++
+ drivers/power/supply/rk816_charger.c | 1221 ++++++++++++++++++++++++++
  7 files changed, 1246 insertions(+), 1 deletion(-)
  create mode 100644 drivers/power/supply/rk816_charger.c
 
@@ -216,7 +216,7 @@ new file mode 100644
 index 000000000..c5a258ccd
 --- /dev/null
 +++ b/drivers/power/supply/rk816_charger.c
-@@ -0,0 +1,1209 @@
+@@ -0,0 +1,1221 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Battery and charger driver for the Rockchip RK816 PMIC.
@@ -874,12 +874,24 @@ index 000000000..c5a258ccd
 +	cg->ac_online = dcp;
 +	cg->usb_online = sdp || cdp;
 +
++	/*
++	 * "No cable state at all" is not the same answer as "SDP", and it is
++	 * what this board gives: its usb2phy reports every cable, USB included,
++	 * as zero while VBUS is plainly present and the gadget is enumerated.
++	 * Clamping to 450 mA on that is not the cautious choice it looks like,
++	 * because the panel and the SoC together draw more than that, so the
++	 * tablet discharges while reporting Charging. When detection says
++	 * nothing, take what the board declares; a board that declares nothing
++	 * still gets 450 mA, because that is the default of the property.
++	 */
 +	if (dcp)
 +		limit_ua = cg->input_current_limit_ua;
 +	else if (cdp)
 +		limit_ua = 1500000;
-+	else
++	else if (sdp)
 +		limit_ua = 450000;
++	else
++		limit_ua = cg->input_current_limit_ua;
 +
 +	rk816_bat_set_input_current(cg, limit_ua);
 +	mutex_unlock(&cg->lock);
