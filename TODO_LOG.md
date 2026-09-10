@@ -6,6 +6,12 @@
 
 ### 2026-09
 
+- [x] 2026-09-10 - **Mainline:** 8 hour unattended soak of the cube on v85,
+  clean. The check that matters is progress rather than liveness: the VOP
+  interrupt advanced 168 counts in 3 s at the end, exactly the panel's 56 Hz.
+  Wi-Fi stayed associated across the whole run, which is the charger and the
+  rtw88 fix from the same night both holding. Battery reached 100 % and settled
+  to a 13 mA trickle. One recurring driver message, now its own backlog item.
 - [x] 2026-09-10 - **Mainline:** the tablet discharged with the cable in,
   reporting `Charging` while `current_now` was -301 mA. The RK816's input limit
   sat at 450 mA because the charger driver takes that when the USB PHY's BC1.2
