@@ -1,0 +1,41 @@
+
+TAQ-102 rescue image
+taq102 login: root
+login[86]: root login on 'ttyGS0'
+# echo MARK8; uptime; uname -v; dmesg | grep -i -E "rtw88|mmc2:|reboot|taq102-wi
+fi|wlan" | cut -c1-110 | head -30; ls /sys/class/net; cat /sys/class/rtc/rtc0/si
+nce_epoch 2>/dev/null
+MARK8
+ 22:03:09 up 1 min,  load average: 1.00, 0.30, 0.10
+#28 SMP Wed Sep  9 23:57:52 CEST 2026
+[    0.000000] Kernel command line: console=ttyFIQ0 androidboot.baseband=N/A androidboot.veritymode=enforcing 
+[    0.000000] Unknown kernel command line parameters "storagemedia=emmc uboot_logo=0x02000000@0x9dc00000 Secu
+[   12.226283] mmc_host mmc2: card is non-removable.
+[   12.269532] mmc_host mmc2: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[   12.387736] mmc_host mmc2: Bus speed = 50000000Hz (req 50000000Hz, actual 50000000HZ div = 0)
+[   12.405016] mmc2: new high speed SDIO card at address 0001
+[   12.426525] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[   12.920935]     SecureBootCheckOk=0
+[   14.633644] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[   16.045584] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[   16.061625] rtw88_8723cs mmc2:0001:1: mac power on failed
+[   16.069785] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[   16.077736] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[   16.085672] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[   16.121842] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+[   35.616613] taq102-wifi: no wlan0. The chip needs power removed -- a full power-off, not a reboot.
+lo
+1788991389
+# echo MARK9; i2cget -f -y 2 0x1a 0xae; i2cget -f -y 2 0x1a 0xaf; i2cget -f -y 2
+ 0x1a 0xea; dmesg | grep -i -E "rk816|pwrkey|reboot mode|reboot-mode" | cut -c1-
+110 | head -8; cat /proc/device-tree/chosen/bootargs 2>/dev/null | tr " " "\n" |
+ grep -i "reboot\|mode\|reason" 
+MARK9
+0x40
+0x04
+0x01
+[   12.058554] input: rk805 pwrkey as /devices/platform/2005a000.i2c/i2c-2/2-001a/rk805-pwrkey.3.auto/input/in
+[   12.122007] rk816-charger rk816-charger.6.auto: restored 100% from the last boot
+androidboot.veritymode=enforcing
+SecureBootCheckOk=0
+# sync; /usr/sbin/reboot-loader

@@ -1,0 +1,463 @@
+RCU restricting CPUs from NR_CPUS=16 to nr_cpu_ids=4.
+[    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.
+[    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=4
+[    0.000000] NR_IRQS: 16, nr_irqs: 16, preallocated irqs: 16
+[    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.
+[    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+[    0.000000] arch_timer: cp15 timer running at 24.00MHz (sec-phys).
+[    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+[    0.000004] sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+[    0.000046] Switching to timer-based delay loop, resolution 41ns
+[    0.003351] clocksource: rk_timer: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 79635851949 ns
+[    0.003414] sched_clock: 32 bits at 24MHz, resolution 41ns, wraps every 89478484971ns
+[    0.003540] Too many timer definitions for 'rk_timer'
+[    0.003555] Failed to initialize '/timer@20044040': -22
+[    0.003694] Too many timer definitions for 'rk_timer'
+[    0.003708] Failed to initialize '/timer@20044060': -22
+[    0.003831] Too many timer definitions for 'rk_timer'
+[    0.003844] Failed to initialize '/timer@20044080': -22
+[    0.003968] Too many timer definitions for 'rk_timer'
+[    0.003981] Failed to initialize '/timer@200440a0': -22
+[    0.007582] Console: colour dummy device 80x30
+[    0.007645] printk: legacy console [tty0] enabled
+[    0.010612] Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=240000)
+[    0.010747] CPU: Testing write buffer coherency: ok
+[    0.010965] pid_max: default: 32768 minimum: 301
+[    0.011844] Mount-cache hash table entries: 2048 (order: 1, 8192 bytes, linear)
+[    0.011993] Mountpoint-cache hash table entries: 2048 (order: 1, 8192 bytes, linear)
+[    0.013263] VFS: Finished mounting rootfs on nullfs
+[    0.015448] /cpus/cpu@f00 missing clock-frequency property
+[    0.015635] /cpus/cpu@f01 missing clock-frequency property
+[    0.015762] /cpus/cpu@f02 missing clock-frequency property
+[    0.015884] /cpus/cpu@f03 missing clock-frequency property
+[    0.015977] CPU0: thread -1, cpu 0, socket 15, mpidr 80000f00
+[    0.021341] Setting up static identity map for 0x60100000 - 0x60100060
+[    0.022100] rcu: Hierarchical SRCU implementation.
+[    0.022191] rcu: 	Max phase no-delay instances is 1000.
+[    0.023481] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level
+[    0.025323] smp: Bringing up secondary CPUs ...
+[    0.025424] smp: Brought up 1 node, 1 CPU
+[    0.025500] SMP: Total of 1 processors activated (48.00 BogoMIPS).
+[    0.025575] CPU: All CPU(s) started in SVC mode.
+[    0.027050] Memory: 954764K/1034240K available (16384K kernel code, 1810K rwdata, 4788K rodata, 1024K init, 277K bss, 51808K reserved, 24576K cma-reserved, 235168K highmem)
+[    0.028530] devtmpfs: initialized
+[    0.050903] VFP support v0.3: implementor 41 architecture 2 part 30 variant 7 rev 5
+[    0.051849] posixtimers hash table entries: 2048 (order: 2, 16384 bytes, linear)
+[    0.052163] futex hash table entries: 1024 (65536 bytes on 1 NUMA nodes, total 64 KiB, linear).
+[    0.058555] NET: Registered PF_NETLINK/PF_ROUTE protocol family
+[    0.061212] DMA: preallocated 256 KiB pool for atomic coherent allocations
+[    0.070755] thermal_sys: Registered thermal governor 'step_wise'
+[    0.071047] cpuidle: using governor menu
+[    0.072422] hw-breakpoint: found 5 (+1 reserved) breakpoint and 4 watchpoint registers.
+[    0.072541] hw-breakpoint: maximum watchpoint size is 8 bytes.
+[    0.073606] Serial: AMBA PL011 UART driver
+[    0.076011] pstore: Using crash dump compression: deflate
+[    0.076125] printk: legacy console [ramoops-1] enabled
+[    0.078384] pstore: Registered ramoops as persistent store backend
+[    0.078502] ramoops: using 0xf0000@0x68100000, ecc: 0
+[    0.118531] rockchip-gpio 2007c000.gpio: probed /pinctrl/gpio@2007c000
+[    0.120736] rockchip-gpio 20080000.gpio: probed /pinctrl/gpio@20080000
+[    0.123090] rockchip-gpio 20084000.gpio: probed /pinctrl/gpio@20084000
+[    0.125167] rockchip-gpio 20088000.gpio: probed /pinctrl/gpio@20088000
+[    0.182566] iommu: Default domain type: Translated
+[    0.182710] iommu: DMA domain TLB invalidation policy: strict mode
+[    0.195198] SCSI subsystem initialized
+[    0.196101] libata version 3.00 loaded.
+[    0.197153] usbcore: registered new interface driver usbfs
+[    0.
+[missed 5131 bytes]
+[   11.994482] input: silead_ts as /devices/platform/2005a000.i2c/i2c-2/2-0040/input/input0
+[   12.038653] input: rk805 pwrkey as /devices/platform/2005a000.i2c/i2c-2/2-001a/rk805-pwrkey.3.auto/input/input1
+[   12.059822] rk808-rtc rk808-rtc.4.auto: registered as rtc0
+[   12.068207] rk808-rtc rk808-rtc.4.auto: setting system clock to 2026-09-09T20:07:52 UTC (1788984472)
+[   12.104489] rk816-charger rk816-charger.6.auto: restored 99% from the last boot
+[   12.137906] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[   12.154765] dwmmc_rockchip 1021c000.mmc: Using external DMA controller.
+[   12.161146] dwmmc_rockchip 1021c000.mmc: Version ID is 270a
+[   12.167550] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[   12.174974] usbcore: registered new interface driver usbhid
+[   12.181042] usbhid: USB HID core driver
+[   12.187304] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[   12.193897] dwmmc_rockchip 1021c000.mmc: DW MMC contr
+[missed 6212 bytes]
+
+TAQ-102 rescue image
+taq102 login: echo MARK1; uname -r; ip -br link; uptime
+Password: 
+root
+Login incorrect
+login[86]: invalid password for 'UNKNOWN' on 'ttyGS0'
+taq102 login: echo MARK2; uname -r; ip -br link; dmesg | grep -i -E "rtw88|mmc2" | tail -8; which devmem
+
+TAQ-102 rescue image
+taq102 login: root
+login[11878]: root login on 'ttyGS0'
+# echo MARK2; uname -r; ip -br link; dmesg | grep -i -E "rtw88|mmc2" | tail -8; 
+which devmem; devmem 0x200080cc; devmem 0x20084050; devmem 0x20084000; devmem 0x
+20084004
+MARK2
+7.3.0-rc2-g28924df2a08f-dirty
+BusyBox v1.37.0 (2026-09-08 03:13:49 CEST) multi-call binary.
+
+Usage: ip [OPTIONS] address|route|link|tunnel|neigh|rule [ARGS]
+
+OPTIONS := -f[amily] inet|inet6|link | -o[neline]
+
+ip addr add|del IFADDR dev IFACE | show|flush [dev IFACE] [to PREFIX]
+ip route list|flush|add|del|change|append|replace|test ROUTE
+ip link set IFACE [up|down] [arp on|off] [multicast on|off]
+	[promisc on|off] [mtu NUM] [name NAME] [qlen NUM] [address MAC]
+	[master IFACE | nomaster] [netns PID] [type TYPE ARGS]
+ip tunnel add|change|del|show [NAME]
+	[mode ipip|gre|sit] [remote ADDR] [local ADDR] [ttl TTL]
+ip neigh show|flush [to PREFIX] [dev DEV] [nud STATE]
+ip rule [list] | add|del SELECTOR ACTION
+[   12.406216] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[   14.613463] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[   15.903863] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[   15.912255] rtw88_8723cs mmc2:0001:1: mac power on failed
+[   15.920532] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[   15.928618] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[   15.936650] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[   16.013958] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+/bin/devmem
+0x00000000
+0x0031707C
+0x00007000
+0x00007000
+# echo MARK3; mount -t debugfs none /sys/kernel/debug 2>/dev/null; grep -i -E "r
+k8|clkout|xin32k|32k" /sys/kernel/debug/clk/clk_summary; ls /sys/kernel/debug/re
+gmap; which i2cset i2cget i2cdump; cat /sys/kernel/debug/regmap/2-001a/registers
+ | head -60; echo END3
+MARK3
+ rk816-clkout2                       1       1        0        32768       0          0     50000      Y   sdio-pwrseq                     ext_clock                
+ xin32k                              0       0        0        32768       0          0     50000      Y   deviceless                      no_connection_id         
+2-001a                   dummy-qos@0x1012f080     dummy-syscon@0x100a0000
+dummy-qos@0x1012d000     dummy-qos@0x1012f100     dummy-syscon@0x20008000
+dummy-qos@0x1012e000     dummy-qos@0x1012f180
+dummy-qos@0x1012f000     dummy-qos@0x1012f200
+/bin/i2cset
+/bin/i2cget
+/bin/i2cdump
+00: 52
+01: 07
+02: 20
+03: 30
+04: 08
+05: 26
+06: 07
+07: 00
+08: 13
+09: 54
+0a: 13
+0b: 22
+0c: 08
+0d: 26
+0e: 00
+0f: 00
+10: 80
+11: 02
+12: 00
+13: 00
+14: 00
+15: 00
+16: 00
+17: 81
+18: 65
+19: 00
+1a: 00
+1b: 00
+1c: 00
+1d: 00
+1e: 00
+1f: 00
+20: 01
+21: c2
+22: 08
+23: ff
+24: 60
+25: 0f
+26: 36
+27: ff
+28: 33
+29: 00
+2a: 00
+2b: 2a
+2c: 06
+2d: 06
+2e: ba
+2f: 1f
+30: 1f
+31: 00
+32: ba
+33: 1f
+34: 1f
+35: 00
+36: 2a
+37: 2c
+38: 19
+39: 19
+3a: 00
+3b: 34
+END3
+# echo MARK4; uptime; for r in /sys/class/regulator/regulator.*; do echo "$(cat 
+$r/name 2>/dev/null) state=$(cat $r/state 2>/dev/null) users=$(cat $r/num_users 
+2>/dev/null) uV=$(cat $r/microvolts 2>/dev/null) min=$(cat $r/min_microvolts 2>/
+dev/null)"; done; echo END4
+MARK4
+ 21:47:09 up  1:39,  load average: 1.14, 1.23, 1.22
+regulator-dummy state= users=3 uV= min=
+vcc_io state= users=2 uV=3300000 min=
+ldo4 state=enabled users=0 uV=3300000 min=0
+ldo5 state=enabled users=0 uV=3300000 min=0
+ldo6 state=enabled users=0 uV=3300000 min=0
+vcc_tp state= users=2 uV=3300000 min=
+dcdc1 state=enabled users=0 uV=1100000 min=0
+dcdc2 state=enabled users=0 uV=1100000 min=0
+dcdc3 state=enabled users=0 uV= min=
+dcdc4 state=enabled users=0 uV=3300000 min=0
+ldo1 state=enabled users=0 uV=2800000 min=0
+ldo2 state=enabled users=0 uV=1800000 min=0
+ldo3 state=enabled users=0 uV=1100000 min=0
+END4
+# echo MARK5; DR=$(devmem 0x20084000); devmem 0x20084000 32 $((DR & ~(1<<13))); 
+sleep 1; devmem 0x20084050; devmem 0x20084000 32 $((DR | (1<<13))); sleep 0.3; e
+cho 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/unbind; sleep 1; ech
+o 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/bind; sleep 8; dmesg |
+ tail -12; echo END5
+MARK5
+0x0031507C
+[ 5975.194466] mmc2: card 0001 removed
+[ 5976.257291] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[ 5976.257868] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[ 5976.258131] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[ 5976.258564] dwmmc_rockchip 10218000.mmc: allocated mmc-pwrseq
+[ 5976.258887] mmc_host mmc2: card is non-removable.
+[ 5976.273549] mmc_host mmc2: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[ 5976.317011] mmc_host mmc2: Bus speed = 50000000Hz (req 50000000Hz, actual 50000000HZ div = 0)
+[ 5976.319190] mmc2: new high speed SDIO card at address 0001
+[ 5977.545180] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 5977.545822] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 5978.521941] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 5978.522567] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 5978.522738] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 5978.523067] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 5978.523184] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 5978.524377] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+[ 5976.258887] mmc_host mmc2: card is non-removable.
+[ 5976.273549] mmc_host mmc2: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[ 5976.317011] mmc_host mmc2: Bus speed = 50000000Hz (req 50000000Hz, actual 50000000HZ div = 0)
+[ 5976.319190] mmc2: new high speed SDIO card at address 0001
+[ 5977.545180] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 5977.545822] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 5978.521941] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 5978.522567] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 5978.522738] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 5978.523067] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 5978.523184] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 5978.524377] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+END5
+# echo MARK6; mount | grep -c " /data "; sync; mount -o remount,ro /data 2>&1; i
+2cget -f -y 2 0x1a 0x28; i2cset -f -y 2 0x1a 0x28 0x10; sleep 0.5; i2cget -f -y 
+2 0x1a 0x28; i2cset -f -y 2 0x1a 0x28 0x11; sleep 0.3; i2cget -f -y 2 0x1a 0x28;
+ echo 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/unbind; sleep 1; e
+cho 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/bind; sleep 8; dmesg
+ | tail -9; echo END6
+MARK6
+0
+mount: can't find /data in /proc/mounts
+0x33
+0x12
+0x13
+[ 6106.371185] mmc2: card 0001 removed
+[ 6107.399869] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[ 6107.400469] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[ 6107.400726] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[ 6107.401177] dwmmc_rockchip 10218000.mmc: allocated mmc-pwrseq
+[ 6107.401332] mmc_host mmc2: card is non-removable.
+[ 6107.413258] mmc_host mmc2: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[ 6107.453580] mmc_host mmc2: Bus speed = 50000000Hz (req 50000000Hz, actual 50000000HZ div = 0)
+[ 6107.455455] mmc2: new high speed SDIO card at address 0001
+[ 6108.675055] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 6108.675745] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 6109.655468] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 6109.657553] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 6109.657764] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 6109.657875] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 6109.657983] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 6109.659249] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+[ 6107.455455] mmc2: new high speed SDIO card at address 0001
+[ 6108.675055] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 6108.675745] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 6109.655468] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 6109.657553] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 6109.657764] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 6109.657875] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 6109.657983] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 6109.659249] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+END6
+# t() { echo "MARK-$1"; i2cget -f -y 2 0x1a $2; i2cset -f -y 2 0x1a $2 $3; sleep
+ 0.5; i2cget -f -y 2 0x1a $2; i2cset -f -y 2 0x1a $2 $4; sleep 0.3; i2cget -f -y
+ 2 0x1a $2; echo 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/unbind;
+ sleep 1; echo 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/bind; sle
+ep 8; dmesg | tail -8 | cut -c1-90; ip -br link | grep -c wlan; echo "END-$1"; }
+ t LDO4 0x27 0x80 0x88 ip -br link | grep -q wlan || t LDO6 0x28 0x20 0x22 
+-sh: syntax error: unexpected word
+# t() { echo "MARK-$1"; i2cget -f -y 2 0x1a $2; i2cset -f -y 2 0x1a $2 $3; sleep
+ 0.5; i2cget -f -y 2 0x1a $2; i2cset -f -y 2 0x1a $2 $4; sleep 0.3; i2cget -f -y
+ 2 0x1a $2; echo 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/unbind;
+ sleep 1; echo 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/bind; sle
+ep 8; dmesg | tail -8 | cut -c1-90; ip -br link | grep -c wlan; echo "END-$1"; }
+# t LDO4 0x27 0x80 0x88
+MARK-LDO4
+0xff
+ip -br link | grep -q wlan || t LDO6 0x28 0x20 0x22
+0x87
+0x8f
+[ 6237.259588] mmc2: card 0001 removed
+[ 6238.294608] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[ 6238.295324] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[ 6238.295732] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[ 6238.296352] dwmmc_rockchip 10218000.mmc: allocated mmc-pwrseq
+[ 6238.296556] mmc_host mmc2: card is non-removable.
+[ 6238.311223] mmc_host mmc2: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[ 6238.353454] mmc_host mmc2: Bus speed = 50000000Hz (req 50000000Hz, actual 50000000HZ div = 0)
+[ 6238.355324] mmc2: new high speed SDIO card at address 0001
+[ 6239.573739] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 6239.574416] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 6240.561971] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 6240.562569] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 6240.562738] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 6240.563028] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 6240.563144] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 6240.564359] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+[ 6239.573739] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 6239.574416] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 6240.561971] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 6240.562569] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 6240.562738] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 6240.563028] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 6240.563144] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 6240.564359] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error 
+BusyBox v1.37.0 (2026-09-08 03:13:49 CEST) multi-call binary.
+
+Usage: ip [OPTIONS] address|route|link|tunnel|neigh|rule [ARGS]
+
+OPTIONS := -f[amily] inet|inet6|link | -o[neline]
+
+ip addr add|del IFADDR dev IFACE | show|flush [dev IFACE] [to PREFIX]
+ip route list|flush|add|del|change|append|replace|test ROUTE
+ip link set IFACE [up|down] [arp on|off] [multicast on|off]
+	[promisc on|off] [mtu NUM] [name NAME] [qlen NUM] [address MAC]
+	[master IFACE | nomaster] [netns PID] [type TYPE ARGS]
+ip tunnel add|change|del|show [NAME]
+	[mode ipip|gre|sit] [remote ADDR] [local ADDR] [ttl TTL]
+ip neigh show|flush [to PREFIX] [dev DEV] [nud STATE]
+ip rule [list] | add|del SELECTOR ACTION
+0
+END-LDO4
+# ip -br link | grep -q wlan || t LDO6 0x28 0x20 0x22
+BusyBox v1.37.0 (2026-09-08 03:13:49 CEST) multi-call binary.
+
+Usage: ip [OPTIONS] address|route|link|tunnel|neigh|rule [ARGS]
+
+OPTIONS := -f[amily] inet|inet6|link | -o[neline]
+
+ip addr add|del IFADDR dev IFACE | show|flush [dev IFACE] [to PREFIX]
+ip route list|flush|add|del|change|append|replace|test ROUTE
+ip link set IFACE [up|down] [arp on|off] [multicast on|off]
+	[promisc on|off] [mtu NUM] [name NAME] [qlen NUM] [address MAC]
+	[master IFACE | nomaster] [netns PID] [type TYPE ARGS]
+ip tunnel add|change|del|show [NAME]
+	[mode ipip|gre|sit] [remote ADDR] [local ADDR] [ttl TTL]
+ip neigh show|flush [to PREFIX] [dev DEV] [nud STATE]
+ip rule [list] | add|del SELECTOR ACTION
+MARK-LDO6
+0x13
+0x21
+0x23
+[ 6247.482282] mmc2: card 0001 removed
+[ 6248.511426] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[ 6248.512034] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[ 6248.512368] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[ 6248.513742] dwmmc_rockchip 10218000.mmc: allocated mmc-pwrseq
+[ 6248.513987] mmc_host mmc2: card is non-removable.
+[ 6248.527966] mmc_host mmc2: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[ 6248.569312] mmc_host mmc2: Bus speed = 50000000Hz (req 50000000Hz, actual 50000000HZ div = 0)
+[ 6248.571725] mmc2: new high speed SDIO card at address 0001
+[ 6248.578787] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 6248.579495] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 6250.796912] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 6250.797512] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 6250.797679] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 6250.797788] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 6250.797896] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 6250.802339] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+[ 6248.578787] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 6248.579495] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 6250.796912] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 6250.797512] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 6250.797679] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 6250.797788] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 6250.797896] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 6250.802339] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error 
+BusyBox v1.37.0 (2026-09-08 03:13:49 CEST) multi-call binary.
+
+Usage: ip [OPTIONS] address|route|link|tunnel|neigh|rule [ARGS]
+
+OPTIONS := -f[amily] inet|inet6|link | -o[neline]
+
+ip addr add|del IFADDR dev IFACE | show|flush [dev IFACE] [to PREFIX]
+ip route list|flush|add|del|change|append|replace|test ROUTE
+ip link set IFACE [up|down] [arp on|off] [multicast on|off]
+	[promisc on|off] [mtu NUM] [name NAME] [qlen NUM] [address MAC]
+	[master IFACE | nomaster] [netns PID] [type TYPE ARGS]
+ip tunnel add|change|del|show [NAME]
+	[mode ipip|gre|sit] [remote ADDR] [local ADDR] [ttl TTL]
+ip neigh show|flush [to PREFIX] [dev DEV] [nud STATE]
+ip rule [list] | add|del SELECTOR ACTION
+0
+END-LDO6
+# echo MARK-ALL3; lsmod | grep -c rtw; i2cget -f -y 2 0x1a 0x27; i2cget -f -y 2 
+0x1a 0x28; i2cset -f -y 2 0x1a 0x27 0x80; i2cset -f -y 2 0x1a 0x28 0x30; sleep 3
+; i2cget -f -y 2 0x1a 0x27; i2cget -f -y 2 0x1a 0x28; i2cset -f -y 2 0x1a 0x28 0
+x33; i2cset -f -y 2 0x1a 0x27 0x88; sleep 0.5; i2cget -f -y 2 0x1a 0x27; i2cget 
+-f -y 2 0x1a 0x28; echo 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/
+unbind; sleep 1; echo 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/bi
+nd; sleep 8; dmesg | tail -8 | cut -c1-90; ls /sys/class/net; echo END-ALL3
+MARK-ALL3
+0
+0x8f
+0x23
+0x87
+0x30
+0x8f
+0x33
+[ 6347.939765] mmc2: card 0001 removed
+[ 6348.968594] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[ 6348.969266] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[ 6348.969514] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[ 6348.969947] dwmmc_rockchip 10218000.mmc: allocated mmc-pwrseq
+[ 6348.970108] mmc_host mmc2: card is non-removable.
+[ 6348.986175] mmc_host mmc2: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[ 6349.027949] mmc_host mmc2: Bus speed = 50000000Hz (req 50000000Hz, actual 50000000HZ div = 0)
+[ 6349.029817] mmc2: new high speed SDIO card at address 0001
+[ 6350.294376] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 6350.295018] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 6351.290317] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 6351.290939] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 6351.291112] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 6351.291223] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 6351.291330] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 6351.292517] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+[ 6350.294376] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[ 6350.295018] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[ 6351.290317] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[ 6351.290939] rtw88_8723cs mmc2:0001:1: mac power on failed
+[ 6351.291112] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[ 6351.291223] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[ 6351.291330] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[ 6351.292517] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error 
+lo
+END-ALL3
+# sync; /usr/sbin/reboot-loader

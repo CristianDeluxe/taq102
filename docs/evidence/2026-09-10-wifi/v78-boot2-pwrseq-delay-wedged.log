@@ -1,0 +1,11 @@
+/usr/sbin/taq102-wifi: line 45: can't create /sys/class/rkwifi/driver: nonexistent directory
+/usr/sbin/taq102-wifi: line 46: can't create /sys/class/rkwifi/power: nonexistent directory
+/usr/sbin/taq102-wifi: line 48: can't create /sys/class/rkwifi/power: nonexistent directory
+/usr/sbin/taq102-wifi: line 49: can't create /sys/class/rkwifi/driver: nonexistent directory
+[   36.199988] taq102-wifi: no wlan0. The chip needs power removed -- a full power-off, not a reboot.
+8723cs did not give us wlan0
+
+TAQ-102 rescue image
+taq102 login: root
+login[94]: root login on 'ttyGS0'
+# sync; /usr/sbin/reboot-loader
