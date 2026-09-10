@@ -1509,48 +1509,90 @@ leak, a missing binding, an unscoped quirk, stale messages. It is now twelve
 `git am`-able patches that reproduce the running tree line for line
 (`kernel/mainline/FINDINGS.md`, "The series, reviewed").
 
-## The Wi-Fi wedge is not a rail (2026-09-10)
+## The Wi-Fi wedge is not a rail, and mainline cannot undo it (2026-09-10)
 
-After a warm reboot on mainline the RTL8723CS enumerates on SDIO and rtw88
-fails its power-on sequence at the chip's own power-ready flag (`failed to
-poll offset=0x6 mask=0x2 value=0x2`, `mac power on failed`), so there is no
-wlan0 and every `reboot-loader` flash lands there. The backlog said "cut the
-chip's rail through the RK816 next". There is no rail to cut, and the night
-over the USB console established that rather than assumed it. Each attempt was
-followed by an unbind and bind of `10218000.mmc`, which re-enumerated the card
-every time and failed the same poll every time:
+After any warm reboot on mainline the RTL8723CS enumerates on SDIO and rtw88
+fails its power-on sequence at the chip's own power-ready flag (`failed to poll
+offset=0x6 mask=0x2 value=0x2`, `mac power on failed`), so there is no wlan0.
+The backlog said to cut the chip's rail through the RK816 next. There is no
+rail to cut, the chip is not broken, and a full power-off does not clear it.
+All three were measured rather than assumed, over the USB console.
 
-- gpio2 PB5, the pwrseq reset line, held low for a second through the GPIO2
-  registers at `0x20084000` with the level read back on `EXT_PORTA`. The
-  vendor pwrseq resets the same pin (`wifi-enable-h`), so this is not a
-  mainline omission.
-- gpio2 PB1, the vendor `BT,reset_gpio`, already read low, so the combo chip's
-  BT half was not holding the core up.
-- RK816 clkout2, the pwrseq's `ext_clock`, on: register 0x20 = 0x01 and the
-  clock tree shows it prepared with `sdio-pwrseq` as its consumer.
-- RK816 LDO4, LDO5 and LDO6, the three unnamed 3.3 V LDOs, each cut for half
-  a second through `i2cset -f -y 2 0x1a`, then all three together for three
-  seconds, the enable registers read back before, during and after. The
-  tablet, the console and the display all survived, and the chip did not care.
+**No rail cuts it.** Each of these was followed by an unbind and bind of
+`10218000.mmc`, which re-enumerated the card every time and failed the same
+poll every time: gpio2 PB5, the pwrseq reset line, held low for a second with
+the level read back on `EXT_PORTA`; gpio2 PB1, the vendor `BT,reset_gpio`,
+already low; the RK816's 32.768 kHz clkout2 turned off for three seconds with
+PB5 held low, which stops the chip's power FSM outright; and RK816 LDO4, LDO5
+and LDO6, each cut for half a second and then all three together for three
+seconds, enable registers read back each time. Neither SDIO host names a
+supply and the vendor `wireless-wlan` node has no power GPIO, so the chip sits
+on an unswitched rail and no kernel has ever taken power off it.
 
-Neither SDIO host names a supply, the vendor `wireless-wlan` node has no power
-GPIO, and the vendor's own `rkwifi` power node toggles nothing on this board,
-so no kernel has ever taken power off the chip: it sits on an unswitched rail,
-which is why only a real power-off clears it.
+**A power-off does not clear it either.** I powered the tablet down
+with USB unplugged and booted it cold; the chip came up wedged.
 
-What differs between the kernels is what they do at reboot. The vendor driver
-powers the MAC off in its shutdown path; mainline's `rtw_sdio_shutdown` only
-called the chip's shutdown op, and `rtw8703b` has none, so the firmware ran
-straight through the reboot and the next `rtw_mac_power_on` found the MAC on,
-took its already-on branch and never saw power-ready. Patch 0018 takes the
-ifdown path at shutdown when the interface is running, which ends in
-`rtw_power_off` and card-disable state, the same thing `rtw_pci_shutdown` gets
-from `PCI_D3hot`. v76 on `recovery` carries it and boots (build #28); it was
-flashed onto the wedged chip, so it says nothing yet. The verification is the
-owner's: a real power-off with USB unplugged, boot v76 and see Wi-Fi, then
-`reboot` and see whether Wi-Fi comes back.
+**The chip is fine.** Flashing the v49 vendor appliance and booting it gives
+`wlan0` in five seconds, associated to the AP, mdnsd announcing, ssh answering
+-- on the same chip that mainline had just failed on. The vendor 4.4 driver
+recovers it from any state, every time.
 
-Two console facts for the next time: log in as `root` with no password after
-a bare carriage return, and send the lines of a script one at a time; joining
-them with `tr '\n' ' '` drops the separators and the shell rejects the lot,
-which is the safe failure but costs a round trip.
+**It is not a kernel regression.** v59, the first mainline image to reach
+userspace and the one boot in the evidence where mainline Wi-Fi worked
+(2026-09-08), was reflashed and booted: it fails identically now. The same
+binary, the same board, a different chip state. So the difference between that
+working boot and every failing one is not in the kernel at all -- it is that
+the vendor appliance had run before it.
+
+That is the whole mechanism. The vendor driver leaves the chip in a state
+mainline's power-on sequence can start from. Mainline leaves it in one that
+mainline itself cannot start from, and because nothing on this board can cut
+the chip's power, that state survives a reboot and a power-off alike. Only the
+vendor driver clears it.
+
+**The recovery, until the driver is fixed:** flash
+`recovery-taq102-v49-appliance.img`, boot it once, then flash the mainline
+image back. Wi-Fi works on that mainline boot and on no later one.
+
+Three fixes were tried against this and all three failed, each verified on a
+chip the appliance had just cleaned, by booting once with Wi-Fi up and then
+rebooting:
+
+- **Power the MAC off at shutdown.** `rtw_sdio_shutdown` only calls the chip's
+  own shutdown op and `rtw8703b` has none, so nothing powered the MAC down at
+  reboot; taking the ifdown path there, as `rtw_pci_shutdown` does with
+  `PCI_D3hot`, changed nothing.
+- **Force the card-disable sequence and retry.** `rtw_mac_power_on` recovers a
+  MAC it finds already on, but `rtw_mac_power_switch` short-circuits when it
+  believes the MAC is off, so the disable sequence is never reached from a
+  stuck chip. Running `chip->pwr_off_seq` unconditionally and retrying made the
+  chip fail the disable sequence too (`failed to poll offset=0x5f8`), then fail
+  power-on again. It ignores both sequences.
+- **A real reset pulse.** `mmc-pwrseq-simple` asserts and releases WL_REG_ON in
+  the same breath unless `post-power-on-delay-ms` is set, and
+  `sun50i-a64-pinephone.dtsi` uses 200 ms for this same part. Adding it did not
+  help. All three changes were reverted; the tree carries none of them.
+
+What is still unexplained is what the vendor's `rtl8723cs` driver does that
+rtw88's 8703b path does not. Two candidates were checked and are not it: both
+drivers write `REG_RSV_CTRL` to zero to unlock the ISO/CLK/power registers
+before the sequence, and the vendor's external-clock configuration is compiled
+out (`CONFIG_EXT_CLK = n` in its Makefile). The vendor's power sequence tables
+in `hal/rtl8703b/Hal8703BPwrSeq.c` are the next thing to diff against
+`rtw8703b.c`, entry by entry.
+
+**Loader mode needs no buttons from any kernel.** `reboot-loader` works only
+where the DT declares `syscon-reboot-mode`, which v59 does not, so it reboots
+normally there and the tablet comes back to the same image. The magic can be
+written directly instead: `devmem 0x100a0038 32 0x5242C301` then `reboot`, the
+PMU register at offset 0x38 that U-Boot reads. That took the tablet into loader
+mode from an image with no reboot-mode node at all, and is how the vendor
+appliance got flashed without touching the tablet.
+
+Two console facts for next time: log in as `root` with no password after a bare
+carriage return, and send the lines of a script one at a time; joining them with
+`tr '\n' ' '` drops the separators and the shell rejects the lot. And the
+tablet's `/dev/mmcblk1` sector numbering does **not** match the LBAs
+`flash-recovery.sh` uses -- the recovery partition's own header does not appear
+at LBA 196608 from userspace -- so the BCB cannot be written from the running
+system, and a `dd` there would land somewhere unknown.
