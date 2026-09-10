@@ -22,23 +22,22 @@ appliance back. The journal is `README.md` here and
 ## Security
 
 ## Bugs
-- [ ] Tembleques back on the panel, reported 2026-09-10 on v79. Not the radio:
-  they persist with `wlan0` down. Not the PHY PLL either: the tablet reads
-  `prediv 2, fbdiv 28` live, the known-good vendor pair. The four-band
-  `testpattern bars` was put up (one buffer, no flips, no GPU) to place the
-  artifact against the 2026-09-05 ranking -- vertical lines unwatchable,
-  horizontal less, grey a little, white nothing -- which would say LVDS bit
-  errors again, while an artifact that shows equally on flat white would not.
-  Awaiting eyes or a camera: this Mac has no camera of its own and the iPhone
-  is not presenting as a Continuity Camera yet. `tools/panel-camera/sweep.sh`
-  and `zigzag.py` are the instrument, and they need the phone mounted still.
-- [!] Wi-Fi sometimes fails at boot (`sdio_disable_func` -5, then probe -110),
-  and a wedged RTL8723CS recovers only by a full power-off; `taq102-wifi`
-  retries once through the BSP power nodes, and escalating further in software
-  stopped the SDIO card enumerating at all (2026-09-02). Next: count the failure
-  rate over cold boots into `/data`, then try cutting the chip's rail through
-  the RK816 instead of the BSP nodes. `br2-external/package/taq102-wifi/taq102-wifi`.
-  Blocked: needs repeated cold power-offs of the tablet by hand to measure the rate; the running appliance has been up for days.
+- [~] Tembleques back on the panel, reported 2026-09-10 on v79, and not
+  reproduced by the camera. Measured that night with the iPhone as a
+  Continuity Camera (`docs/evidence/2026-09-10-panel/`): the PHY variant sweep
+  puts the kernel's own configuration at 0.008 panel px of movement, on the
+  0.006 floor, while the pre-fix `ours` variant still measures 0.411 -- so the
+  instrument works and the LVDS link is clean. Brightness is flat, and the
+  banding a camera sees is the room's mains light: the black bezel, which emits
+  nothing, bands harder than the panel. Thirty seconds of cube at 60 fps showed
+  no blackout and no outlier frame. Not the radio either, which was the first
+  guess: it persists with `wlan0` down.
+  Next: `src/fliptest.c` is the one instrument not in the mainline image -- a
+  static scene page-flipped between two bit-identical buffers, which is the
+  only way to separate the flip path from content motion. Add it to
+  `br2-external/package/taq102-diag` and reflash. Until then the artifact is
+  reported but unmeasured, and it is not any of the three mechanisms this
+  repository has already solved.
 - [ ] The charging bolt is a 5-by-7 bitmap scaled up, so it is the one blocky
   shape left in a bar that is otherwise smooth. Only visible while charging
   and only at close range; a small vector path would settle it.
