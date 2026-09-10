@@ -1,0 +1,144 @@
+
+TAQ-102 rescue image
+taq102 login: root
+login[100]: root login on 'ttyGS0'
+# [  239.738537] taq102-usb-beacon: code 4
+echo MARKB; uptime; ls /sys/class/net; dmesg | tail -4 | cut -c1-100
+MARKB
+ 00:09:06 up 4 min,  load average: 1.97, 1.15, 0.49
+lo
+[  203.072947] taq102-usb-beacon: code 4
+[  215.295305] taq102-usb-beacon: code 4
+[  227.516338] taq102-usb-beacon: code 4
+[  239.738537] taq102-usb-beacon: code 4
+# [  251.960349] taq102-usb-beacon: code 4
+echo MARKC
+MARKC
+# echo 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/unbind
+[  357.729059] mmc2: card 0001 removed
+# DR=$(devmem 0x20084000); DDR=$(devmem 0x20084004); echo "DR=$DR DDR=$DDR"
+DR=0x00004000 DDR=0x00007000
+# devmem 0x20084004 32 $((DDR | (1<<13)))
+# devmem 0x20084000 32 $((DR & ~(1<<13)))
+# i2cset -f -y 2 0x1a 0x20 0x00
+# sleep 3
+# i2cget -f -y 2 0x1a 0x20
+0x00
+# i2cset -f -y 2 0x1a 0x20 0x01
+# devmem 0x20084000 32 $((DR | (1<<13)))
+# echo 10218000.mmc > /sys/bus/platform/drivers/dwmmc_rockchip/bind
+[  369.393489] dwmmc_rockchip 10218000.mmc: Using external DMA controller.
+[  369.394015] dwmmc_rockchip 10218000.mmc: Version ID is 270a
+[  369.394369] dwmmc_rockchip 10218000.mmc: DW MMC controller at irq 60,32 bit host data width,256 deep fifo
+[  369.394959] dwmmc_rockchip 10218000.mmc: allocated mmc-pwrseq
+[  369.395149] mmc_host mmc2: card is non-removable.
+[  369.408980] mmc_host mmc2: Bus speed = 400000Hz (req 400000Hz, actual 400000HZ div = 0)
+[  369.422271] probe of 10218000.mmc with driver dwmmc_rockchip returned 0 after 30102 usecs
+# [  369.440513] mmc_host mmc2: Bus speed = 50000000Hz (req 50000000Hz, actual 50000000HZ div = 0)
+[  369.442325] mmc2: new high speed SDIO card at address 0001
+[  369.442986] probe of mmc2:0001 with driver mmcblk returned 19 after 123 usecs
+[  370.451017] rtw88_8723cs mmc2:0001:1: Firmware version 11.0.0, H2C version 0
+[  370.451577] rtw88_8723cs mmc2:0001:1: WOW Firmware version 11.0.0, H2C version 0
+[  371.205441] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[  371.205953] rtw88_8723cs mmc2:0001:1: mac power on failed
+[  371.206107] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[  371.206213] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[  371.206318] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[  371.207342] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+[  371.207742] probe of mmc2:0001:1 with driver rtw88_8723cs returned 16 after 1764315 usecs
+echo RESULT; dmesg | tail -7 | cut -c1-100; ls /sys/class/net
+RESULT
+[  371.205441] rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
+[  371.205953] rtw88_8723cs mmc2:0001:1: mac power on failed
+[  371.206107] rtw88_8723cs mmc2:0001:1: failed to power on mac
+[  371.206213] rtw88_8723cs mmc2:0001:1: failed to setup chip efuse info
+[  371.206318] rtw88_8723cs mmc2:0001:1: failed to setup chip information
+[  371.207342] rtw88_8723cs mmc2:0001:1: probe with driver rtw88_8723cs failed with error -16
+[  371.207742] probe of mmc2:0001:1 with driver rtw88_8723cs returned 16 after 1764315 usecs
+lo
+# echo MARKD; ls /dev/mmcblk*; which dd hexdump od
+MARKD
+/dev/mmcblk1       /dev/mmcblk1boot1  /dev/mmcblk1rpmb
+/dev/mmcblk1boot0  /dev/mmcblk1p1
+/bin/dd
+/bin/hexdump
+/bin/od
+# dd if=/dev/mmcblk1 bs=512 skip=24608 count=1 2>/dev/null | od -A d -c | head -
+6
+0000000  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0
+*
+0000512
+# echo TAIL; dd if=/dev/mmcblk1 bs=512 skip=24608 count=1 2>/dev/null | strings 
+| head -5
+TAIL
+# echo MARKE; uname -a | cut -c1-120; cat /proc/version | cut -c1-120
+MARKE
+Linux taq102 7.3.0-rc2-g28924df2a08f-dirty #8 SMP Tue Sep  8 18:06:35 CEST 2026 armv7l GNU/Linux
+Linux version 7.3.0-rc2-g28924df2a08f-dirty (cristiandeluxe@taq102) (arm-buildroot-linux-gnueabihf-gcc.br_real (Buildroo
+# echo BCBWIDE; for s in 24576 24608 24640; do echo "-- LBA $s"; dd if=/dev/mmcb
+lk1 bs=512 skip=$s count=1 2>/dev/null | od -A d -c | head -3; done
+BCBWIDE
+-- LBA 24576
+0000000   T   O   S                      \0  \0  \0  \0  \0  \0  \0  \0
+0000016  \0  \0   @   h 370   r  \t  \0 241   {   { 037 024  \0  \0  \0
+0000032   v   M 033 332 274  \0 332 020 303   w 006 252 370 262   9 317
+-- LBA 24608
+0000000  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0
+*
+0000512
+-- LBA 24640
+0000000   )   F 006 232   [   F 270   G   X   E 255 321 001   # 021 250
+0000016   )   F  \0   "  \0 223  \0   #   7   i 270   G 202   F 020 261
+0000032   6   K 021 223   3 340 021 250   )   F 267   h 024 252   K   F
+# echo MARKF; for s in 131072 196608; do echo "-- LBA $s"; dd if=/dev/mmcblk1 bs
+=512 skip=$s count=1 2>/dev/null | od -A d -c | head -2; done
+MARKF
+-- LBA 131072
+0000000  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0
+*
+-- LBA 196608
+0000000  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0  \0
+*
+# echo MARKG; devmem 0x100a0038
+MARKG
+0xC3524203
+# devmem 0x100a0038 32 0x5242C301
+# devmem 0x100a0038
+0x5242C301
+# sync; reboot
+# [  578.884275] EXT4-fs (mmcblk1p1): unmounting filesystem 056c3b81-6827-4622-972a-5b2f34e489ab.
+umount: devtmpfs busy - remounted read-only
+The system is going down NOW!
+Sent SIGTERM to all processes
+Sent SIGKILL to all processes
+Requesting system reboot
+[  579.922077] ------------[ cut here ]------------
+[  579.922310] WARNING: drivers/usb/gadget/function/u_serial.c:703 at gs_close+0x158/0x1e8, CPU#0: sh/100
+[  579.922507] Modules linked in:
+[  579.922624] CPU: 0 UID: 0 PID: 100 Comm: sh Tainted: G      D             7.3.0-rc2-g28924df2a08f-dirty #8 VOLUNTARY 
+[  579.922679] Tainted: [D]=DIE
+[  579.922692] Hardware name: Generic DT based system
+[  579.922710] Call trace: 
+[  579.922732]  unwind_backtrace from show_stack+0x10/0x14
+[  579.922813]  show_stack from dump_stack_lvl+0x54/0x68
+[  579.922892]  dump_stack_lvl from __warn+0x94/0x170
+[  579.922976]  __warn from warn_slowpath_fmt+0x184/0x18c
+[  579.923057]  warn_slowpath_fmt from gs_close+0x158/0x1e8
+[  579.923142]  gs_close from tty_release+0xe0/0x460
+[  579.923223]  tty_release from __fput+0xd0/0x2dc
+[  579.923284]  __fput from task_work_run+0x8c/0xbc
+[  579.923351]  task_work_run from do_exit+0x2d8/0xa18
+[  579.923419]  do_exit from do_group_exit+0x34/0x84
+[  579.923471]  do_group_exit from get_signal+0xa48/0xa70
+[  579.923532]  get_signal from do_work_pending+0x204/0x4bc
+[  579.923601]  do_work_pending from slow_work_pending+0xc/0x24
+[  579.923660] Exception stack(0xf0e55fb0 to 0xf0e55ff8)
+[  579.923695] 5fa0:                                     beb088a4 00000001 ffffffff 00000000
+[  579.923733] 5fc0: 00000000 00000000 ffffffff 000000a8 00000000 00000000 beb089a5 00000000
+[  579.923767] 5fe0: ffffffff beb08840 00000001 b6dde69c 20000010 beb088a4
+[  579.923788] ---[ end trace 0000000000000000 ]---
+[  580.926189] sdio mmc2:0001:1: shutdown
+[  580.926523] mmc mmc2:0001: shutdown
+[  580.926655] mmc_host mmc2: shutdown_pre
+[  580.926805] mmcblk mmc1:0001: shutdown
+[  580.930223] mmc_host mmc1: shutdown_pre

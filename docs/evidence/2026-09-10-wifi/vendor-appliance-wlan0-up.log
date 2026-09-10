@@ -1,0 +1,24 @@
+
+TAQ-102 rescue image
+taq102 login: 
+TAQ-102 rescue image
+taq102 login: root
+# echo VMARK; uname -r; ls /sys/class/net; dmesg | grep -i -E "8723|wlan|rkwifi"
+ | tail -12 | cut -c1-110
+VMARK
+4.4.167
+lo     p2p0   sit0   wlan0
+[    5.067472] RTW: rtl8723cs v5.2.1.7_25082.20171108_COEX20170626-1a00_wifi_hal
+[    5.067528] RTW: rtl8723cs BT-Coex version = COEX20170626-1a00
+[    5.067556] [WLAN_RFKILL]: rockchip_wifi_get_oob_irq: Enter
+[    5.079892] RTW: rtw_read_efuse_from_file /system/etc/wifi/wifi_efuse_8723cs.map is not readable
+[    5.206783] [WLAN_RFKILL]: rockchip_wifi_mac_addr: enter.
+[    5.206851] [WLAN_RFKILL]: get_wifi_addr_vendor: rk_vendor_read wifi mac address failed (-1)
+[    5.209972] RTW: rtw_ndev_init(wlan0) if1 mac_addr=00:e0:4c:3a:49:ef
+[    6.872048] RTW: wlan0- hw port(0) mac_addr =00:e0:4c:06:ff:af
+[    6.875339] IPv6: ADDRCONF(NETDEV_UP): wlan0: link is not ready
+[    8.630749] RTW: rtw_set_802_11_connect(wlan0)  fw_state=0x00000000
+[    9.057256] IPv6: ADDRCONF(NETDEV_CHANGE): wlan0: link becomes ready
+[   10.377162] taq102-wifi: mdnsd announcing taq102.local on wlan0
+# sync; reboot loader
+# 
