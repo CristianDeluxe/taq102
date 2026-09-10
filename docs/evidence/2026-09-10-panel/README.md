@@ -110,3 +110,23 @@ averaged away -- and it was solved by ranking my own reports against
 content, not by an instrument. That ranking is still the missing input:
 `testpattern bars` puts vertical lines, horizontal lines, grey and white side
 by side, and which of the four shimmer says which mechanism this is.
+
+## How it ended
+
+I reported the panel looking right again at the end of the same
+session, with nothing in the display path changed between the two reports: v80
+is v79 plus a diagnostic binary in the ramdisk, and several reboots happened in
+between.
+
+The likeliest explanation is that the hunt caused it. The report came minutes
+after RK816 LDO4, LDO5 and LDO6 were disabled for half a second each and then
+all three together for three seconds, with the panel live, while trying to find
+a rail that would reset the Wi-Fi chip. LDO6 is the rail whose absence once left
+this panel unpowered and voided a set of earlier PHY measurements. That is a
+correlation and not a proof, but it is a better fit than an artifact that four
+axes of measurement could not see.
+
+What the hunt leaves behind is worth more than the bug was: `fliptest` in the
+mainline image, `flicker.py` separating fixed panel non-uniformity from real
+flicker, the console-driven variant sweep for when ssh is down, and a working
+camera rig on this machine.
