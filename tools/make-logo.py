@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the boot logo U-Boot draws, from a transparent PNG on black.
 
-    make-logo.py <logo.png> <out.bmp> [width] [height]
+    make-logo.py <logo.png> <out.bmp> [width] [height] [reference.bmp]
 
 The stock image this replaces is 1024x600, 8 bits per pixel with a palette,
 and RLE8 compressed, so this writes the same: Rockchip's U-Boot reads that
@@ -9,6 +9,12 @@ form, and a two-colour picture compresses to a few kilobytes under RLE8 where
 an uncompressed 8-bit frame is 600 KB.
 
 Pillow cannot write RLE8, so the encoder is here. BMP rows run bottom-up.
+
+Given a reference BMP, its palette is reused verbatim and the two colours are
+mapped onto the entries nearest black and white. That leaves the picture as the
+only thing this file changes about an image the board's own U-Boot is known to
+draw, which is worth more than a tidy two-entry table when the only way to test
+the reader is to flash it.
 """
 import sys
 from PIL import Image
@@ -79,19 +85,45 @@ def write_bmp(path, payload, width, height, palette):
     return len(out)
 
 
+def read_palette(path):
+    """The 256-entry table of an 8-bit BMP, as (r, g, b) tuples."""
+    data = open(path, "rb").read()
+    if data[:2] != b"BM":
+        raise SystemExit(f"{path} is not a BMP")
+    table = data[54:54 + 256 * 4]
+    return [(table[i * 4 + 2], table[i * 4 + 1], table[i * 4]) for i in range(256)]
+
+
+def nearest(palette, target):
+    """The index whose colour is closest to `target`, by squared distance."""
+    best, best_d = 0, None
+    for i, (r, g, b) in enumerate(palette):
+        d = (r - target[0]) ** 2 + (g - target[1]) ** 2 + (b - target[2]) ** 2
+        if best_d is None or d < best_d:
+            best, best_d = i, d
+    return best
+
+
 def main():
     if len(sys.argv) < 3:
         raise SystemExit(__doc__)
     png, out = sys.argv[1], sys.argv[2]
     width = int(sys.argv[3]) if len(sys.argv) > 3 else 1024
     height = int(sys.argv[4]) if len(sys.argv) > 4 else 600
+    reference = sys.argv[5] if len(sys.argv) > 5 else None
+
+    global BLACK, WHITE
+    if reference:
+        palette = read_palette(reference)
+        BLACK = nearest(palette, (0, 0, 0))
+        WHITE = nearest(palette, (255, 255, 255))
+        print(f"paleta de {reference}: negro={BLACK} {palette[BLACK]}, "
+              f"blanco={WHITE} {palette[WHITE]}")
+    else:
+        palette = [(0, 0, 0)] * 256
+        palette[WHITE] = (255, 255, 255)
+
     image = compose(png, width, height)
-    # A full 256-entry table, like the image this replaces. A two-entry palette
-    # is legal and a third of a kilobyte smaller, but readers are entitled to
-    # treat 8 bits per pixel as 256 colours and at least one decodes a short
-    # table as a 1-bit image instead.
-    palette = [(0, 0, 0)] * 256
-    palette[WHITE] = (255, 255, 255)
     size = write_bmp(out, rle8(image, width, height), width, height, palette)
     print(f"{out}: {width}x{height}, 8 bpp, RLE8, {size} bytes")
 
