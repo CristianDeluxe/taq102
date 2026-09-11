@@ -109,7 +109,7 @@ void control_runtime_tick(struct control_runtime *r, int64_t now, int asleep) {
     }
     if (r->settings_pending && now >= r->save_at_ms) save(r);
     readouts(r);
-    if (!asleep && sleep_timer_due(&r->idle, now, r->status.plugged, r->status.online_valid))
+    if (!asleep && sleep_timer_due(&r->idle, now))
         r->sleep_requested = 1;
 }
 

@@ -12,8 +12,7 @@ void sleep_timer_init(struct sleep_timer *timer, int minutes, int64_t now_ms);
 void sleep_timer_touch(struct sleep_timer *timer, int64_t now_ms);
 void sleep_timer_set_minutes(struct sleep_timer *timer, int minutes,
                              int64_t now_ms);
-int sleep_timer_due(const struct sleep_timer *timer, int64_t now_ms,
-                    int plugged, int plugged_valid);
+int sleep_timer_due(const struct sleep_timer *timer, int64_t now_ms);
 
 struct pickup {
     int have_base;
@@ -21,6 +20,14 @@ struct pickup {
     int by;
     int bz;
     int votes;
+    /* While waiting to arm: the previous sample, and how many consecutive
+     * samples have agreed with their predecessor.
+     */
+    int have_settle;
+    int sx;
+    int sy;
+    int sz;
+    int settle_votes;
     int64_t slept_at_ms;
     int64_t last_sample_ms;
 };

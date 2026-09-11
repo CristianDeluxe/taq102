@@ -1629,3 +1629,48 @@ tablet's `/dev/mmcblk1` sector numbering does **not** match the LBAs
 `flash-recovery.sh` uses -- the recovery partition's own header does not appear
 at LBA 196608 from userspace -- so the BCB cannot be written from the running
 system, and a `dd` there would land somewhere unknown.
+
+
+## Sleep that sticks, and a boot screen of our own (2026-09-11)
+
+Three things I asked for, two of which turned out to be one bug and a
+setting rather than missing features.
+
+**It already slept, but only on battery.** `sleep_timer_due()` carried a
+`!plugged` condition, so an appliance left on the charger never slept at all
+and the whole feature looked absent. The power source no longer enters into it:
+five idle minutes is five idle minutes. Unplugging still restarts the
+countdown rather than shortening it.
+
+**The pick-up detector was waking it seconds after the button.** Sleep here is
+not a kernel suspend: the backlight goes off, the CRTC is disabled and the
+process waits on the power key and the accelerometer. The baseline for "has
+somebody picked this up" was taken on a stopwatch, a flat two seconds after the
+screen went dark -- which is while the hand that pressed the power key is still
+on the tablet. The baseline was captured mid-movement and the very next sample
+read as a pick-up. It now arms on stillness instead: three consecutive samples
+agreeing within 60 mg, compared against each other so a slow drift never
+accumulates into a false "still".
+
+The trade-off is deliberate. Put the tablet down and it arms in a fraction of a
+second. Hold it in your hand and it never arms, so only the power key will wake
+it -- which is the right way round, because a hand that can hold it can reach
+the button.
+
+Measured on v87, plugged in, with the timer at one minute: it slept by itself,
+and four minutes later `bl_power` still read 4 with **no wake event at all**.
+The log to read is `/data/log/taq102-app.log`, not the wrapper's: glcube's
+stdout is redirected there, and counting wakes in the wrong file gives a
+reassuring zero for the wrong reason.
+
+**The white boot screen was the vendor's own logo**, carried along in every
+resource image we build because `make-resource.py` preserved it. It now takes a
+replacement: `tools/make-logo.py` composes the Vibra wordmark, white on black,
+into the 1024x600 8-bit RLE8 BMP U-Boot reads, and both `logo.bmp` and
+`logo_kernel.bmp` are swapped. 11 KB against the stock 80 KB, because two
+colours compress well.
+
+One detail worth keeping: the palette is a full 256 entries even though the
+picture uses two. A two-entry table is legal and smaller, and at least one
+reader treats it as a 1-bit image and refuses to decode -- which would have
+been discovered on the tablet rather than on the desk.
