@@ -59,6 +59,17 @@ appliance back. The journal is `README.md` here and
   Reproduce with `fliptest` pause mode before touching the driver.
 ## Kernel and drivers
 
+- [ ] `trans_cardemu_to_carddis_8703b` is the vendor's CARDEMU_TO_PDN table
+  under the card-disable name: it sets the hardware power-down bit and never
+  asks the SDIO interface to suspend, where `trans_cardemu_to_carddis_8723d`
+  does both (compared 2026-09-11). Harmless since patch 0018 made the reverse
+  transition undo everything the PDN path sets, and 35 hours of running say so,
+  but it is the same family of defect as 0018 and worth reporting once someone
+  can test a power-off path change.
+- [ ] `cck_pd_set` is NULL for 8703b where 8723d has
+  `rtw8723d_phy_cck_pd_set`: dynamic CCK packet-detection thresholds, which
+  help 11b reception in noise. A feature this chip could have rather than a
+  defect; it needs 8703b's own threshold tables, not a copy of the sibling's.
 - [ ] The vendor build warns about DT interrupt properties and executable-stack
   or RWX segments in the link, and the PHY module about macro attributes
   (2026-09-07 build logs). Harmless today; worth a look before a

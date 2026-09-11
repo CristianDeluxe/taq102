@@ -48,3 +48,39 @@ What our board contributes is only the exposure: on hardware where WL_REG_ON
 is the host's only reset and the chip's rail cannot be switched, the asymmetry
 has no other way of being undone. A board that can power-cycle the part never
 sees it.
+
+## What else the siblings have that 8703b lacks (2026-09-11)
+
+Having found one gap, the obvious next question is whether there are others.
+Four comparisons, and only one more turned up something worth changing.
+
+**Upstream history: nothing missed.** No commit in three years touched
+`rtw8723d.c`, `rtw8723x.c` or `rtw8723x.h` without also touching `rtw8703b.c`.
+The chips have been maintained together, so there is no fix the sibling got and
+this one did not.
+
+**The chip description: nothing missing.** `rtw8703b_hw_spec` and
+`rtw8723d_hw_spec` share every field name; 8703b in fact carries four the
+sibling does not.
+
+**The chip ops: two set to NULL that 8723d implements.** `shutdown` is
+`rtw8723d_shutdown`, which sets `BIT_USB_SUS_DIS` in `REG_HCI_OPT_CTRL` and is
+USB-only, so it is nothing to this chip. `cck_pd_set` is
+`rtw8723d_phy_cck_pd_set`, dynamic CCK packet-detection thresholds: a real
+receive-sensitivity feature on 11b in noise, not a defect, and it needs the
+chip's own threshold tables rather than a copy. Left alone.
+
+**The power tables, entry by entry.** Two findings:
+
+- `trans_act_to_lps_8703b` writes 0xff to MAC `0x301` on **every** interface.
+  That is the PCIe DMA control, and both `trans_act_to_lps_8723d` and Realtek's
+  own `Hal8703BPwrSeq.h:139` restrict the same entry to PCI, commented "PCIe
+  DMA stop". On an SDIO-only chip it is a pointless poke at a PCIe register on
+  every transition into low power. Patch 0019 restricts it.
+- `trans_cardemu_to_carddis_8703b` is, entry for entry, the vendor's
+  CARDEMU_TO_**PDN** table rather than its CARDEMU_TO_CARDDIS: it sets the
+  hardware power-down bit and never asks the SDIO interface to suspend, where
+  8723d does both. Recorded and deliberately not changed: with 0018 in place
+  the pair is symmetric again, 35 hours of running and repeated reboots say so,
+  and rewriting a power-off path with no observed symptom is how a working
+  driver stops working.

@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cristian Deluxe <info@busirocket.com>
+Date: Fri, 11 Sep 2026 17:25:00 +0200
+Subject: [PATCH 19/19] wifi: rtw88: 8703b: stop the PCIe DMA write reaching
+ SDIO
+
+The first entry of trans_act_to_lps_8703b writes 0xff to MAC register
+0x301 on every interface. That register is the PCIe DMA control, and
+both trans_act_to_lps_8723d and Realtek's own 8703b sequence header
+restrict the same entry to PCI, where it is commented "PCIe DMA stop".
+
+So on an RTL8723CS, which is SDIO only, every transition into low power
+poked a PCIe register for no reason. Restrict it the way the sibling
+chip and the vendor both do.
+
+Tested on an RTL8723CS over SDIO: the interface goes down and back up,
+reassociates and takes an address, and a warm reboot brings Wi-Fi back
+with no change in behaviour.
+
+Signed-off-by: Cristian Deluxe <info@busirocket.com>
+---
+ drivers/net/wireless/realtek/rtw88/rtw8703b.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/realtek/rtw88/rtw8703b.c b/drivers/net/wireless/realtek/rtw88/rtw8703b.c
+--- a/drivers/net/wireless/realtek/rtw88/rtw8703b.c
++++ b/drivers/net/wireless/realtek/rtw88/rtw8703b.c
+@@ -412,7 +412,7 @@ static const struct rtw_pwr_seq_cmd trans_act_to_reset_mcu_8703b[] = {
+ static const struct rtw_pwr_seq_cmd trans_act_to_lps_8703b[] = {
+ 	{0x0301,
+ 	 RTW_PWR_CUT_ALL_MSK,
+-	 RTW_PWR_INTF_ALL_MSK,
++	 RTW_PWR_INTF_PCI_MSK,
+ 	 RTW_PWR_ADDR_MAC,
+ 	 RTW_PWR_CMD_WRITE, 0xff, 0xff},
+ 	{0x0522,
+-- 
+2.51.0
