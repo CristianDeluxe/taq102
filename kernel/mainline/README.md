@@ -403,3 +403,30 @@ sh tools/make-recovery.sh <ramdisk> <out.img>` and `tools/flash-recovery.sh`.
 From a running mainline image `/usr/sbin/reboot-loader` drops the tablet into
 loader mode, so no buttons are needed between images; only a hung one costs
 I the dance, with `tools/loader-watch.sh recovery <img>` armed first.
+
+
+## Submitted upstream, 2026-09-11
+
+0018 and 0019 were sent to the rtw88 maintainer and the lists as a two-patch
+series, from `me@cristiandeluxe.dev` through nova's exim. The submission copies
+differ from the files here in two ways that matter and in nothing else: the
+subjects are renumbered `[PATCH 1/2]` and `[PATCH 2/2]`, because `18/18` and
+`19/19` mean something only inside this repository, and both the `From:` and the
+`Signed-off-by:` carry `me@cristiandeluxe.dev` rather than the
+`info@busirocket.com` the rest of the series uses, so that the author matches
+the account the mail was sent from. A cover letter went ahead of them.
+
+    To:  Ping-Ke Shih <pkshih@realtek.com>
+    Cc:  linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org
+
+`git send-email` is not installed on nova and this is a production hosting box,
+so the three messages were assembled by hand and piped to `sendmail` as the
+`cristiandev` user: plain text, `In-Reply-To` and `References` threading the
+patches under the cover, ASCII throughout. The domain's SPF authorises nova,
+its rDNS is `nova.nubenode.com` and DKIM is published, all checked before
+sending.
+
+Delivery: Realtek accepted all three immediately. Both vger lists answered
+`450 4.3.2 Service currently unavailable`, which is a temporary rejection and
+the normal greeting for a sender they have not seen before, so the messages sat
+in exim's queue for automatic retry.

@@ -59,6 +59,13 @@ appliance back. The journal is `README.md` here and
   Reproduce with `fliptest` pause mode before touching the driver.
 ## Kernel and drivers
 
+- [~] Patches 0018 and 0019 are with upstream (sent 2026-09-11 to Ping-Ke Shih,
+  linux-wireless and linux-kernel, from `me@cristiandeluxe.dev` via nova).
+  Realtek accepted them; both vger lists deferred with `450 4.3.2 Service
+  currently unavailable` and were left to exim's retry. Check
+  `lore.kernel.org/linux-wireless` for the thread, and watch that account for
+  review mail. If the lists never take them, the usual cause is a first-time
+  sender and the usual fix is to resend after the retry window.
 - [ ] `trans_cardemu_to_carddis_8703b` is the vendor's CARDEMU_TO_PDN table
   under the card-disable name: it sets the hardware power-down bit and never
   asks the SDIO interface to suspend, where `trans_cardemu_to_carddis_8723d`
