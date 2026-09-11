@@ -426,6 +426,7 @@ int main(void) {
                 int ready = poll(pp, 2, 250);
                 if (ready < 0 && errno != EINTR) { perror("sleep poll"); break; }
                 int wake = power_key_read(&power_key, pfd);
+                if (wake) { printf("wake: power key\n"); fflush(stdout); }
                 /* Decode and discard while dark; preserve the decoder's fd/clock. */
                 struct touch_event discarded[64];
                 int n;
@@ -439,7 +440,10 @@ int main(void) {
                 if (accelerometer && accel_monitor_snapshot(accelerometer, &sample) == 0 &&
                     sample.sequence != sleep_sequence) {
                     sleep_sequence = sample.sequence;
-                    if (pickup_feed(&pickup, sample.x_mg, sample.y_mg, sample.z_mg, sample.at_ms)) wake = 1;
+                    if (pickup_feed(&pickup, sample.x_mg, sample.y_mg, sample.z_mg, sample.at_ms)) {
+                        wake = 1;
+                        printf("wake: pick-up\n"); fflush(stdout);
+                    }
                 }
                 if (wake) break;
             }

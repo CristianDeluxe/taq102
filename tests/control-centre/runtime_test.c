@@ -70,14 +70,22 @@ int main(void) {
     assert(writes == before && !r.sleep_requested);
     control_runtime_wake(&r, 100000); assert(r.idle.deadline_ms == 400000);
     action(&r, CC_SET_SLEEP_MINUTES, 1, 100000);
+    /* The charger no longer suppresses the idle countdown: left plugged in,
+     * this used to stay lit for ever, which is what made the whole feature
+     * look as though it did not exist.
+     */
     telemetry.plugged = telemetry.usb_online = 1;
-    tick(&r, 170000, 0); assert(!r.sleep_requested);
+    tick(&r, 159000, 0); assert(!r.sleep_requested);
+    tick(&r, 160000, 0); assert(r.sleep_requested);
+    control_runtime_sleep(&r, 160000);
+    control_runtime_wake(&r, 161000); assert(r.idle.deadline_ms == 221000);
+    /* Unplugging still restarts the countdown rather than shortening it. */
     telemetry.plugged = telemetry.usb_online = 0;
     tick(&r, 171000, 0); assert(r.idle.deadline_ms == 231000 && !r.sleep_requested);
     tick(&r, 231000, 0); assert(r.sleep_requested);
     control_runtime_sleep(&r, 231000); control_runtime_wake(&r, 232000);
 
-    struct touch_flip flip; assert(touch_flip_configure(&flip, 1024, 600, "xy") == 0);
+    struct touch_flip flip; assert(touch_flip_configure(&flip, 1024, 600, 0, 0, "xy") == 0);
     struct control_input input; assert(control_input_init(&input, &flip) == 0);
     /* One render batch opens the panel, then taps Auto with a new contact. */
     struct touch_event batch[] = {{TOUCH_DOWN,0,900,10,233}, {TOUCH_MOVE,0,900,80,233.1},

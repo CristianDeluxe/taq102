@@ -221,6 +221,19 @@ appliance back. The journal is `README.md` here and
 
 ## Appliance
 
+- [~] Sleep and the boot logo, v87 (2026-09-11). Auto-sleep now runs on the
+  charger too, and the pick-up detector arms on stillness rather than on a
+  two-second stopwatch, so the tablet no longer wakes itself moments after the
+  power key. Measured: slept by itself while plugged, still asleep four minutes
+  later, zero wake events. The boot screen is now the Vibra wordmark white on
+  black instead of the vendor's white logo.
+  Not yet confirmed by hand: that the power key still *wakes* it, and that the
+  new boot logo looks right on the panel. Both need I.
+- [ ] Real suspend-to-RAM is still unexplored. Today's sleep keeps the SoC
+  running, so it saves the backlight's ~300 mA and nothing else. I
+  asked for the current behaviour to be fixed first and for suspend to be
+  investigated afterwards; whether RK3126 suspend works at all on mainline is
+  unknown, and a failed attempt can hang the boot.
 - [!] Hands-on checks on v46 (2026-09-07): open the panel with a swipe down from
   the bar and judge the look; drag brightness; leave it unplugged for the
   chosen minutes and see it sleep, then pick it up and see it wake; tap Wi-Fi

@@ -16,7 +16,11 @@ which looks exactly like a kernel that does not boot.
 Keeping the logo entries is not cosmetic either. U-Boot draws logo.bmp from
 this image, so dropping them means the boot logo silently stops working.
 
-Usage: make-resource.py <stock.rsce> <new-dtb> <out.rsce>
+Usage: make-resource.py <stock.rsce> <new-dtb> <out.rsce> [logo.bmp]
+
+With a logo given, both `logo.bmp` and `logo_kernel.bmp` are replaced with it,
+which is how the boot screen stops being the vendor's white one. U-Boot reads
+8-bit RLE8 BMPs at the panel's own size; `make-logo.py` writes that form.
 """
 import sys
 
@@ -24,6 +28,7 @@ BLOCK = 512
 NAME_OFF = 4
 INDEX_OFF = 0x100
 DTB_NAME = "rk-kernel.dtb"
+LOGO_NAMES = ("logo.bmp", "logo_kernel.bmp")
 
 
 def read_entries(blob):
@@ -65,16 +70,33 @@ def write_image(header, entries):
 
 
 def main():
+    if len(sys.argv) < 4:
+        raise SystemExit(__doc__)
     stock, dtb_path, out_path = sys.argv[1:4]
+    logo_path = sys.argv[4] if len(sys.argv) > 4 else None
     blob = open(stock, "rb").read()
     dtb = open(dtb_path, "rb").read()
     if dtb[:4] != b"\xd0\x0d\xfe\xed":
         raise SystemExit("replacement is not a device tree blob")
 
+    logo = None
+    if logo_path:
+        logo = open(logo_path, "rb").read()
+        if logo[:2] != b"BM":
+            raise SystemExit("replacement logo is not a BMP")
+
     entries = read_entries(blob)
     if not any(name == DTB_NAME for name, _ in entries):
         raise SystemExit(f"{stock} carries no {DTB_NAME}")
-    entries = [(name, dtb if name == DTB_NAME else p) for name, p in entries]
+
+    def replacement(name, payload):
+        if name == DTB_NAME:
+            return dtb
+        if logo and name in LOGO_NAMES:
+            return logo
+        return payload
+
+    entries = [(name, replacement(name, p)) for name, p in entries]
 
     open(out_path, "wb").write(write_image(blob, entries))
     print(f"{out_path}: " + ", ".join(f"{n} {len(p)}" for n, p in entries))

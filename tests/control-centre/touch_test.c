@@ -68,7 +68,7 @@ const struct touch_input_linux_io touch_input_linux_io = {
 
 static void test_input_frames(void) {
     struct touch_flip flip;
-    assert(touch_flip_configure(&flip, 1024, 600, "xy") == 0);
+    assert(touch_flip_configure(&flip, 1024, 600, 0, 0, "xy") == 0);
     struct touch_input *ti = touch_input_new(&flip);
     assert(ti != NULL);
     struct touch_event ev[32];
@@ -111,7 +111,7 @@ static void test_input_frames(void) {
 
 static void test_input_loss_and_capacity(void) {
     struct touch_flip flip;
-    assert(touch_flip_configure(&flip, 1024, 600, "xy") == 0);
+    assert(touch_flip_configure(&flip, 1024, 600, 0, 0, "xy") == 0);
     struct touch_input *ti = touch_input_new(&flip);
     assert(ti != NULL);
     struct touch_event ev[8];
@@ -180,7 +180,7 @@ static void test_input_loss_and_capacity(void) {
 
 static void test_pending_release_expires_as_cancel(void) {
     struct touch_flip flip;
-    assert(touch_flip_configure(&flip, 1024, 600, "none") == 0);
+    assert(touch_flip_configure(&flip, 1024, 600, 0, 0, "none") == 0);
     struct touch_input *ti = touch_input_new(&flip);
     assert(ti != NULL);
     struct touch_event ev[4];
@@ -201,7 +201,7 @@ static void test_pending_release_expires_as_cancel(void) {
 
 static void collect_filtered_moves(double base, float result[2]) {
     struct touch_flip flip;
-    assert(touch_flip_configure(&flip, 1024, 600, "none") == 0);
+    assert(touch_flip_configure(&flip, 1024, 600, 0, 0, "none") == 0);
     struct touch_input *ti = touch_input_new(&flip);
     assert(ti != NULL);
     struct touch_event event[2];
@@ -228,7 +228,7 @@ static void collect_filtered_moves(double base, float result[2]) {
 static void test_large_timestamp_precision(void) {
     const double base = 10000000.0;
     struct touch_flip flip;
-    assert(touch_flip_configure(&flip, 1024, 600, "none") == 0);
+    assert(touch_flip_configure(&flip, 1024, 600, 0, 0, "none") == 0);
     struct touch_input *ti = touch_input_new(&flip);
     assert(ti != NULL);
     struct touch_event event[2];
@@ -268,7 +268,7 @@ static void append_fake_event(unsigned short type, unsigned short code,
 
 static void test_linux_fd_uses_monotonic_clock(void) {
     struct touch_flip flip;
-    assert(touch_flip_configure(&flip, 1024, 600, "none") == 0);
+    assert(touch_flip_configure(&flip, 1024, 600, 0, 0, "none") == 0);
     struct touch_input *ti = touch_input_new(&flip);
     assert(ti != NULL);
     fake_input_length = 0;
@@ -427,7 +427,7 @@ static void test_slot_selection_survives_flip_and_cancel(void) {
      * flip or a logical cancel must not forget it: the next contact reported
      * without a slot still belongs to slot 1. */
     struct touch_flip flip;
-    assert(touch_flip_configure(&flip, 1024, 600, "xy") == 0);
+    assert(touch_flip_configure(&flip, 1024, 600, 0, 0, "xy") == 0);
     struct touch_input *ti = touch_input_new(&flip);
     assert(ti != NULL);
     struct touch_event ev[32];
