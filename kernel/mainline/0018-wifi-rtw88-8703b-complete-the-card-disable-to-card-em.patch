@@ -10,29 +10,34 @@ the power-on sequence waits forever for power ready and probe fails.
   rtw88_8723cs mmc2:0001:1: failed to poll offset=0x6 mask=0x2 value=0x2
   rtw88_8723cs mmc2:0001:1: mac power on failed
 
-The transition is asymmetric. trans_cardemu_to_carddis_8703b puts the
-chip's 12H LDO into sleep mode (0x23[4] = 1) and asks the SDIO interface
-to suspend, but trans_carddis_to_cardemu_8703b only clears the hardware
-power-down bit, leaving the LDO asleep and the interface suspended. The
-generic SDIO resume handshake in rtw_mac_pre_system_cfg() does not cover
-it either, because that function returns early for 8051 wcpu chips, of
-which this is one. So the chip comes back with the WLAN MAC unpowered
-while the SDIO function still enumerates and CMD52 still works, and
-nothing in the sequence ever wakes it.
+trans_carddis_to_cardemu_8703b has a single entry, clearing the hardware
+power-down bit. Its sibling trans_carddis_to_cardemu_8723d has six more,
+and 8822b and 8822c carry the same SDIO pair: withdraw the SDIO suspend
+request on local register 0x86 and wait for the interface to leave the
+suspended state, clear the WL suspend bit alongside the power-down bit,
+and take the 12H LDO out of sleep mode. The transition is the reverse of
+trans_cardemu_to_carddis_8703b, which sets 0x23[4] and asks the
+interface to suspend, so with those operations missing neither is ever
+undone.
+
+The chip then comes back with the WLAN MAC unpowered while the SDIO
+function still enumerates and CMD52 still works, and nothing in the
+sequence wakes it. rtw_mac_pre_system_cfg() does not cover it either: it
+returns early for 8051 wcpu chips, of which this is one.
 
 It survives a reboot on any board where WL_REG_ON is the only reset the
-host has and the chip's rail is not switchable: on the Denver TAQ-102 the
-pwrseq reset line, the BT enable line, the 32.768 kHz clock and every
-switchable PMIC rail were each toggled against a wedged chip and none of
-them cleared it, while the vendor driver recovered it every time.
+host has and the chip's rail is not switchable. On the Denver TAQ-102
+the pwrseq reset line, the BT enable line, the 32.768 kHz clock and
+every switchable PMIC rail were each toggled against a wedged chip and
+none of them cleared it, while the vendor driver recovered it every
+time.
 
-Take the four operations the vendor's own CARDDIS_TO_CARDEMU table has and
-this one lacks: clear the WL suspend bit alongside the power-down bit,
-withdraw the SDIO suspend request and wait for the interface to leave the
-suspended state, and return the 12H LDO to normal mode.
+Take the operations 8723d has and this table lacks. That table's USB-only
+and PCI-only entries are left out: this chip has no such variant.
 
 Tested on an RTL8723CS over SDIO: recovers a chip left wedged by a
-previous boot, and survives repeated warm reboots.
+previous boot, and survives repeated warm reboots and loader-mode flash
+cycles.
 
 Signed-off-by: Cristian Deluxe <info@busirocket.com>
 ---
