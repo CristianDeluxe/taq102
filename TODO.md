@@ -227,8 +227,20 @@ appliance back. The journal is `README.md` here and
   power key. Measured: slept by itself while plugged, still asleep four minutes
   later, zero wake events. The boot screen is now the Vibra wordmark white on
   black instead of the vendor's white logo.
-  Not yet confirmed by hand: that the power key still *wakes* it, and that the
-  new boot logo looks right on the panel. Both need I.
+  Not yet confirmed by hand: that the power key still *wakes* it. Needs the
+  owner.
+- [!] The new boot logo draws as a smudge (observed, 2026-09-11, v87). The BMP is
+  provably well formed -- 600 rows of exactly 1024 pixels, runs only, the
+  vendor's own palette since v88 -- and Pillow decodes it back correctly, so
+  the fault is in what U-Boot makes of it rather than in the file's shape.
+  Blocked on seeing it: `uboot_logo=0x02000000@0x9dc00000` is a reserved
+  simple-framebuffer that `/dev/mem` refuses under `CONFIG_STRICT_DEVMEM` and
+  that DRM has replaced by the time there is a shell, so the boot has to be
+  filmed. The iPhone works as a Continuity Camera over USB-C on the Mac mini.
+  Cheapest discriminator once there are eyes: flash a resource image with the
+  stock logo and see whether DENVER appears. If it does, U-Boot draws our
+  resource and the file is at fault; if the screen is white, U-Boot never drew
+  our logo and the smudge is something else entirely.
 - [ ] Real suspend-to-RAM is still unexplored. Today's sleep keeps the SoC
   running, so it saves the backlight's ~300 mA and nothing else. I
   asked for the current behaviour to be fixed first and for suspend to be

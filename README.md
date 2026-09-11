@@ -1674,3 +1674,28 @@ One detail worth keeping: the palette is a full 256 entries even though the
 picture uses two. A two-entry table is legal and smaller, and at least one
 reader treats it as a 1-bit image and refuses to decode -- which would have
 been discovered on the tablet rather than on the desk.
+
+**The first attempt drew a smudge**, and the hunt for why is worth recording
+because most of it ruled things out rather than finding the fault. The file is
+well formed: 600 encoded rows, every one exactly 1024 pixels, runs only with no
+escapes, the same shape of stream as the vendor's own and now the vendor's own
+palette verbatim, so the picture is the only thing about it that differs from
+an image this board demonstrably draws. Pillow decodes it back to the right
+picture.
+
+What the hunt did establish is where the boot screen comes from. The kernel
+command line carries `uboot_logo=0x02000000@0x9dc00000`, and the kernel
+registers a `simple-framebuffer` at exactly that address, `x8r8g8b8`,
+1024x600x32, which keeps displaying U-Boot's decode until the Rockchip DRM
+driver takes fb0 at about 15 seconds. So whatever is on the panel for those
+fifteen seconds is U-Boot's own rendering of `logo.bmp`.
+
+That memory cannot be read back from userspace to see it: `/dev/mem` answers
+`Bad address` under `CONFIG_STRICT_DEVMEM`, the region is carved out of
+memblock so it never appears in `/proc/iomem`, and by the time there is a shell
+`fb0` is `rockchipdrmfb` rather than the simplefb. The next step is a camera on
+the boot, not another guess.
+
+Also worth knowing, because it contradicts what everyone assumed: the stock
+`logo.bmp` is **DENVER in white on black**, not a white screen. So the white
+boot screen this was meant to replace was never the vendor's logo.
