@@ -426,7 +426,21 @@ patches under the cover, ASCII throughout. The domain's SPF authorises nova,
 its rDNS is `nova.nubenode.com` and DKIM is published, all checked before
 sending.
 
-Delivery: Realtek accepted all three immediately. Both vger lists answered
-`450 4.3.2 Service currently unavailable`, which is a temporary rejection and
-the normal greeting for a sender they have not seen before, so the messages sat
-in exim's queue for automatic retry.
+Delivery took two attempts and the first one taught the lesson. Realtek
+accepted all three immediately. Both vger lists answered `450 4.3.2 Service
+currently unavailable`, greylisting a sender they had not seen; that is six
+temporary rejections in one burst, three messages times two list recipients,
+and cPanel discards a domain's mail once it has five defers or failures in an
+hour. So the retries never happened: exim threw the messages away.
+
+The way through is to establish the greylist entry with one message before
+sending the rest. The cover letter went alone, deferred twice, was retried and
+accepted, and the two patches then went straight out with no deferral at all.
+Delivered 2026-09-11 19:00 and 19:39, all three to both lists and to the
+maintainer, every one `Completed` with nothing left in the queue.
+
+Two traps for anyone repeating this. cPanel's limit counts **defers as well as
+failures**, so a normal greylisting looks like abuse to it. And exim writes
+`=>` for the first recipient of a delivery and `->` for the rest, so a watcher
+counting only `=>` concludes that half the recipients never received it, which
+is how the first watcher decided a delivered cover letter had failed.
