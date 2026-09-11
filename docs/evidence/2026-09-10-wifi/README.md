@@ -24,3 +24,27 @@ tablet's USB console (`ttyGS0`), ANSI escapes stripped.
 
 The first three attempts were reverted. The fix that works is
 `kernel/mainline/0018-wifi-rtw88-8703b-complete-the-card-disable-to-card-em.patch`.
+
+## Is it really upstream, or our own bad implementation? (asked 2026-09-11)
+
+A fair challenge, and it is checkable. `trans_carddis_to_cardemu_8703b` is an
+upstream table in an upstream file; nothing in this board's series touches
+rtw88. The decisive comparison is against the other chips in the same driver:
+
+| table | entries applicable to SDIO |
+| --- | --- |
+| `trans_carddis_to_cardemu_8723d` | `0x0005` BIT(3)\|BIT(7), SDIO-local `0x0086` write and poll, `0x0005` BIT(3)\|BIT(4), `0x0023` BIT(4) |
+| `trans_carddis_to_cardemu_8822b`, `..._8822c` | the same SDIO-local `0x0086` write and poll |
+| `trans_carddis_to_cardemu_8703b`, before the patch | `0x0005` BIT(7). One entry. |
+
+8723d is the nearest relative of this chip and its table is, entry for entry
+and in the same order, what patch 0018 adds. So this is not a board quirk and
+not our implementation: 8703b is the only chip in the driver whose
+card-disable-to-card-emulation transition was incomplete, and the patch brings
+it in line with its siblings. That argument is now the first paragraph of the
+patch's own commit message, because it is the one a maintainer will want.
+
+What our board contributes is only the exposure: on hardware where WL_REG_ON
+is the host's only reset and the chip's rail cannot be switched, the asymmetry
+has no other way of being undone. A board that can power-cycle the part never
+sees it.
