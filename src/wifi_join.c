@@ -68,14 +68,19 @@ static void fail(struct wifi_join *j, const char *reason) {
     // The file goes back to what it was: a replaced block returns whole,
     // key and all, and a new one disappears.
     if (j->wrote_block) {
-        if (j->before || j->before_len == 0)
-            wifi_conf_restore(j->conf_path, j->before, j->before_len);
-        else
-            wifi_conf_remove(j->conf_path, j->ssid);
+        int rc = j->before || j->before_len == 0
+               ? wifi_conf_restore(j->conf_path, j->before, j->before_len)
+               : wifi_conf_remove(j->conf_path, j->ssid);
+        if (rc != 0) {
+            // The backup stays for the next attempt; the card says the file is not as it was.
+            snprintf(j->reason, sizeof j->reason, "%s; config not restored", reason);
+            fprintf(stderr, "wifi: cannot restore %s after a failed join\n", j->conf_path);
+        } else {
+            free(j->before);
+            j->before = NULL;
+            j->before_len = 0;
+        }
     }
-    free(j->before);
-    j->before = NULL;
-    j->before_len = 0;
     ask_ok(j, "RECONFIGURE");
     if (j->prev_ssid[0])
         select_network(j, j->prev_ssid);

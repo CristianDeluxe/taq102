@@ -694,10 +694,10 @@ int main(int argc, char **argv) {
                             snprintf(conf.master, sizeof conf.master, "%s", act.host);
                             conf.port = act.port;
                             if (desk_conf_save(&conf, DESK_CONF_PATH) != 0) {
-                                snprintf(setup.master_note, sizeof setup.master_note, "Applied, not saved");
+                                snprintf(setup.save_note, sizeof setup.save_note, "Applied, not saved");
                                 fprintf(stderr, "desk: cannot save %s\n", DESK_CONF_PATH);
                             } else {
-                                setup.master_note[0] = '\0';
+                                setup.save_note[0] = '\0';
                             }
                             qlc_session_set_host(session, conf.master, conf.port);
                             desk_setup_set_master(&setup, conf.master, conf.port, 1);
@@ -719,7 +719,7 @@ int main(int argc, char **argv) {
                 if (layout.speed_page >= 0 && model.page == layout.speed_page && slot == speed_slot) {
                     if (events[i].kind == TOUCH_UP) {
                         // A release after the lock fires nothing.
-                        struct speed_action sa = desk_speed_touch_up(&speed, x, y, now);
+                        struct speed_action sa = desk_speed_touch_up(&speed, x, y, now_ms());
                         if (desk_lock_allows(&lock))
                             send_speed(session, sa, now);
                         speed_slot = -1;
@@ -768,7 +768,7 @@ int main(int argc, char **argv) {
                         // Tempo is measured from the contact's own clock, not
                         // from when the batch was drained.
                         int64_t at = events[i].t > 0 ? (int64_t)(events[i].t * 1000.0) : now;
-                        struct speed_action sa = desk_speed_touch_down(&speed, x, y, now, at);
+                        struct speed_action sa = desk_speed_touch_down(&speed, x, y, now_ms(), at);
                         // Dead space claims nothing: another finger may still
                         // reach a target while this one rests on the card.
                         if (speed.capture != SPEED_T_NONE)

@@ -64,7 +64,8 @@ struct desk_setup {
     int found_partial;
     int found_page;
     char master_busy[SETUP_WORD_MAX];
-    char master_note[48];               // "Search failed", "No network address", "Applied, not saved" 
+    char master_note[48];               // discovery: "Search failed", "No network address"
+    char save_note[32];                 // persistence: "Applied, not saved" 
     // The footer.
     int brightness, brightness_max, power_aware;
     int brightness_unsaved;             // the level applied but the file refused it
@@ -79,6 +80,7 @@ struct desk_setup {
     // Touch.
     enum setup_target capture;
     int capture_index;
+    int capture_outside;                // the finger left the target it pressed
     int dragging_fader;
     int dirty;
 };

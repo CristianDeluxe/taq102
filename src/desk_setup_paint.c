@@ -136,12 +136,13 @@ static void master_card(struct canvas *c, const struct desk_setup *s, const stru
     if (s->found_count == 0)
         text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
                 s->master_busy[0] ? "Sweeping the subnet" : "Nothing found yet", DESK_MUTED);
-    char note[96];
-    snprintf(note, sizeof note, "%s%s%s", s->master_note,
-             s->master_note[0] && s->found_partial ? "  " : "",
-             s->found_partial ? "First 256 hosts only" : "");
-    if (!s->master_busy[0])
-        text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, note, DESK_MUTED);
+    char note[128];
+    const char *discovery = s->master_busy[0] ? "" : s->master_note;
+    snprintf(note, sizeof note, "%s%s%s%s%s", s->save_note,
+             s->save_note[0] && (discovery[0] || s->found_partial) ? "  " : "",
+             discovery, discovery[0] && s->found_partial ? "  " : "",
+             s->found_partial && !s->master_busy[0] ? "First 256 hosts only" : "");
+    text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, note, DESK_MUTED);
     int half = (SETUP_CARD_W - 48) / 2;
     char busy[SETUP_WORD_MAX + 4];
     snprintf(busy, sizeof busy, "%s...", s->master_busy);
@@ -233,9 +234,15 @@ void desk_setup_paint(struct canvas *c, const struct desk_setup *s, const struct
     master_card(c, s, fonts);
     footer(c, s, fonts);
     button(c, fonts->label, SETUP_CLOSE_X, SETUP_CLOSE_Y, SETUP_CLOSE_W, SETUP_CLOSE_H, "Close", BUTTON_SECONDARY);
-    if (!s->confirm_open && s->capture != T_NONE && s->capture != T_FADER) {
+    // The outline says a release here will do something: not off the
+    // target, not on a dead one.
+    int live = 1;
+    if (s->capture == T_SCAN)
+        live = s->wifi_available && !s->wifi_busy[0];
+    else if (s->capture == T_FIND)
+        live = !s->master_busy[0];
+    if (!s->confirm_open && s->capture != T_NONE && s->capture != T_FADER && !s->capture_outside && live)
         pressed_outline_ring(c, s);
-    }
     if (s->confirm_open) {
         // A uniform scrim over the cards, so the question stands alone.
         canvas_blend_rect(c, SETUP_SHEET_X, SETUP_SHEET_Y, SETUP_SHEET_W, SETUP_SHEET_H, 0xB0000000u | (DESK_GLASS & 0xFFFFFF));

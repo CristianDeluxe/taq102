@@ -128,6 +128,7 @@ struct setup_action desk_setup_touch_down(struct desk_setup *s, int x, int y) {
     enum setup_target t = hit(s, x, y, &index);
     s->capture = t;
     s->capture_index = index;
+    s->capture_outside = 0;
     if (t == T_KEYBOARD) {
         keyboard_touch_down(&s->kb, x, y);
         s->dirty = 1;
@@ -147,8 +148,18 @@ struct setup_action desk_setup_touch_down(struct desk_setup *s, int x, int y) {
 }
 
 struct setup_action desk_setup_touch_move(struct desk_setup *s, int x, int y) {
-    (void)y;
-    if (!s->open || !s->dragging_fader)
+    if (!s->open)
+        return none();
+    if (!s->dragging_fader && s->capture != T_NONE) {
+        int index;
+        int outside = hit(s, x, y, &index) != s->capture || index != s->capture_index;
+        if (outside != s->capture_outside) {
+            s->capture_outside = outside;
+            s->dirty = 1;
+        }
+        return none();
+    }
+    if (!s->dragging_fader)
         return none();
     int level = fader_level(s, x);
     if (level == s->brightness)
