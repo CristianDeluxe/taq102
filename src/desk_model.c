@@ -2,8 +2,6 @@
 
 #include <string.h>
 
-#include "desk_layout.h"
-
 #define NO_CAPTURE (-1)
 
 static struct desk_action none(void) {
@@ -11,29 +9,44 @@ static struct desk_action none(void) {
     return a;
 }
 
-static int inside(const struct desk_control *c, int x, int y) {
-    return c->w > 0 && c->h > 0 &&
-           x >= c->x && x < c->x + c->w && y >= c->y && y < c->y + c->h;
+static int inside(const struct desk_placement *p, int x, int y) {
+    return p->w > 0 && p->h > 0 &&
+           x >= p->x && x < p->x + p->w && y >= p->y && y < p->y + p->h;
 }
 
+static int on_view(const struct desk_model *m, const struct desk_placement *p) {
+    return p->page == m->page && p->bank == m->bank;
+}
+
+// The placement under a point on the current view, or -1.
 static int hit(const struct desk_model *m, int x, int y) {
-    for (int i = 0; i < m->count; i++) {
-        if (inside(&m->control[i], x, y))
+    for (int i = 0; i < m->layout.placements; i++) {
+        const struct desk_placement *p = &m->layout.placement[i];
+        if (on_view(m, p) && inside(p, x, y))
             return i;
     }
     return -1;
 }
 
 // The master's fill runs bottom to top, and a drag anywhere in the tile sets
-// it. 8 is the floor: a master that reads zero looks like a dead rig.
-static int master_level_at(const struct desk_control *c, int y) {
-    int span = c->h > 1 ? c->h - 1 : 1;
-    int from_bottom = c->y + c->h - 1 - y;
+// it.
+static int master_level_at(const struct desk_placement *p, int y) {
+    int span = p->h > 1 ? p->h - 1 : 1;
+    int from_bottom = p->y + p->h - 1 - y;
     if (from_bottom < 0)
         from_bottom = 0;
     if (from_bottom > span)
         from_bottom = span;
     return from_bottom * 255 / span;
+}
+
+static void release(struct desk_model *m) {
+    if (m->capture_index >= 0)
+        m->control[m->capture_index].pressed = 0;
+    m->capture_slot = NO_CAPTURE;
+    m->capture_index = -1;
+    m->capture_placement = -1;
+    m->dirty = 1;
 }
 
 void desk_init(struct desk_model *m) {
@@ -42,6 +55,7 @@ void desk_init(struct desk_model *m) {
     m->dirty = 1;
     m->capture_slot = NO_CAPTURE;
     m->capture_index = -1;
+    m->capture_placement = -1;
 }
 
 int desk_add(struct desk_model *m, const struct desk_control *control) {
@@ -54,6 +68,39 @@ int desk_add(struct desk_model *m, const struct desk_control *control) {
     return m->count++;
 }
 
+void desk_set_layout(struct desk_model *m, const struct desk_layout *layout) {
+    m->layout = *layout;
+    m->page = 0;
+    m->bank = 0;
+    release(m);
+}
+
+void desk_set_view(struct desk_model *m, int page, int bank) {
+    if (page < 0)
+        page = 0;
+    if (page >= m->layout.pages)
+        page = m->layout.pages > 0 ? m->layout.pages - 1 : 0;
+    int banks = m->layout.banks[page] > 0 ? m->layout.banks[page] : 1;
+    if (bank < 0)
+        bank = 0;
+    if (bank >= banks)
+        bank = banks - 1;
+    if (page == m->page && bank == m->bank)
+        return;
+    m->page = page;
+    m->bank = bank;
+    release(m);
+}
+
+const struct desk_placement *desk_placement_of(const struct desk_model *m, int control) {
+    for (int i = 0; i < m->layout.placements; i++) {
+        const struct desk_placement *p = &m->layout.placement[i];
+        if (on_view(m, p) && p->control == control)
+            return p;
+    }
+    return NULL;
+}
+
 static int usable(const struct desk_model *m, const struct desk_control *c) {
     return c->enabled && m->link == DESK_LINK_READY;
 }
@@ -64,19 +111,21 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
     int index = hit(m, x, y);
     if (index < 0)
         return none();
-    struct desk_control *c = &m->control[index];
+    const struct desk_placement *p = &m->layout.placement[index];
+    struct desk_control *c = &m->control[p->control];
     if (!usable(m, c))
         return none();
 
     m->capture_slot = slot;
-    m->capture_index = index;
+    m->capture_index = p->control;
+    m->capture_placement = index;
     c->pressed = 1;
     m->dirty = 1;
 
     // A fader follows the finger from the first contact; a cue waits for the
     // release, so sliding off it is a way to change your mind.
     if (c->kind == DESK_MASTER) {
-        c->requested_level = master_level_at(c, y);
+        c->requested_level = master_level_at(p, y);
         struct desk_action a = { DESK_ACT_MASTER, c->widget_id, c->requested_level };
         return a;
     }
@@ -87,8 +136,9 @@ struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y)
     if (slot != m->capture_slot || m->capture_index < 0)
         return none();
     struct desk_control *c = &m->control[m->capture_index];
+    const struct desk_placement *p = &m->layout.placement[m->capture_placement];
     if (c->kind == DESK_MASTER) {
-        int level = master_level_at(c, y);
+        int level = master_level_at(p, y);
         if (level != c->requested_level) {
             c->requested_level = level;
             m->dirty = 1;
@@ -98,7 +148,7 @@ struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y)
         return none();
     }
     int was = c->pressed;
-    c->pressed = inside(c, x, y);
+    c->pressed = inside(p, x, y);
     if (c->pressed != was)
         m->dirty = 1;
     return none();
@@ -108,12 +158,10 @@ struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y) {
     if (slot != m->capture_slot || m->capture_index < 0)
         return none();
     struct desk_control *c = &m->control[m->capture_index];
-    int fired = (c->kind == DESK_CUE || c->kind == DESK_STOP_ALL) && inside(c, x, y) &&
+    const struct desk_placement *p = &m->layout.placement[m->capture_placement];
+    int fired = (c->kind == DESK_CUE || c->kind == DESK_STOP_ALL) && inside(p, x, y) &&
                 usable(m, c);
-    c->pressed = 0;
-    m->capture_slot = NO_CAPTURE;
-    m->capture_index = -1;
-    m->dirty = 1;
+    release(m);
     if (!fired)
         return none();
     // One gesture, one message. The tile does not change colour here: the
@@ -127,10 +175,7 @@ struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y) {
 void desk_touch_cancel(struct desk_model *m, int slot) {
     if (slot != m->capture_slot || m->capture_index < 0)
         return;
-    m->control[m->capture_index].pressed = 0;
-    m->capture_slot = NO_CAPTURE;
-    m->capture_index = -1;
-    m->dirty = 1;
+    release(m);
 }
 
 void desk_apply_function(struct desk_model *m, int function_id, int running) {
@@ -175,6 +220,7 @@ void desk_set_link(struct desk_model *m, enum desk_link link) {
         }
         m->capture_slot = NO_CAPTURE;
         m->capture_index = -1;
+        m->capture_placement = -1;
     }
     m->dirty = 1;
 }

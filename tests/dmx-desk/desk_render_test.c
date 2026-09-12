@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_paint.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c
+// SOURCES: desk_model.c desk_paint.c desk_caption.c desk_view.c desk_layout_resolve.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c
 // The desk, built from the generated Vibra map against the real console
 // document, pressed once, and painted. Writes $TEST_OUT/desk.ppm so the screen can be
 // looked at on a laptop before it reaches the tablet.
@@ -9,6 +9,7 @@
 
 #include "canvas.h"
 #include "desk_layout.h"
+#include "desk_layout_resolve.h"
 #include "desk_model.h"
 #include "desk_paint.h"
 #include "showmap.h"
@@ -66,17 +67,17 @@ int main(void) {
     struct desk_model model;
     int enabled = showmap_build(&model, &map, &console);
     assert(enabled > 100);
+    struct desk_layout layout;
+    assert(desk_layout_resolve(&map, map.count, map.count + 1, &layout) == 0);
+    desk_set_layout(&model, &layout);
 
-    // Every tile that has a place lands on the grid, inside the chrome, and
-    // never under the master.
-    for (int i = 0; i < model.count; i++) {
-        const struct desk_control *c = &model.control[i];
-        if (c->w == 0)
-            continue;
-        assert(c->x >= DESK_RAIL_W && c->y >= DESK_BAR_H);
-        assert(c->x + c->w <= DESK_W && c->y + c->h <= DESK_H);
-        if (c->kind == DESK_CUE)
-            assert(c->x + c->w <= DESK_MASTER_X);
+    // Every placement lands inside the chrome, and cues never under the master.
+    for (int i = 0; i < layout.placements; i++) {
+        const struct desk_placement *p = &layout.placement[i];
+        assert(p->x >= DESK_RAIL_W && p->y >= DESK_BAR_H);
+        assert(p->x + p->w <= DESK_W && p->y + p->h <= DESK_H);
+        if (p->tile != TILE_MASTER && p->tile != TILE_PANIC)
+            assert(p->x + p->w <= DESK_MASTER_X);
     }
 
     // Every enabled tile starts from the console document's own state rather
@@ -85,7 +86,8 @@ int main(void) {
 
     // Nothing is pressable while the link is down, however good the map is.
     const struct desk_control *auto_ctl = by_label(&model, "AUTO");
-    int cx = auto_ctl->x + auto_ctl->w / 2, cy = auto_ctl->y + auto_ctl->h / 2;
+    const struct desk_placement *ap = desk_placement_of(&model, (int)(auto_ctl - model.control));
+    int cx = ap->x + ap->w / 2, cy = ap->y + ap->h / 2;
     assert(desk_touch_down(&model, 0, cx, cy).kind == DESK_ACT_NONE);
     assert(desk_touch_up(&model, 0, cx, cy).kind == DESK_ACT_NONE);
 
@@ -94,7 +96,8 @@ int main(void) {
     assert(by_label(&model, "AUTO")->pressed == 1);
     // A second finger cannot fire another tile while the first is captured.
     const struct desk_control *charla = by_label(&model, "CHARLA");
-    assert(desk_touch_down(&model, 1, charla->x + 10, charla->y + 10).kind == DESK_ACT_NONE);
+    const struct desk_placement *chp = desk_placement_of(&model, (int)(charla - model.control));
+    assert(desk_touch_down(&model, 1, chp->x + 10, chp->y + 10).kind == DESK_ACT_NONE);
     assert(by_label(&model, "CHARLA")->pressed == 0);
     // One gesture, one message, on release, and the tile does not light itself.
     struct desk_action fired = desk_touch_up(&model, 0, cx, cy);
@@ -124,6 +127,7 @@ int main(void) {
         font_open("br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf", 22),
         font_open("br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf", 56),
         font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 20),
+        font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 16),
     };
     struct canvas canvas = { calloc(DESK_W * DESK_H, 4), DESK_W, DESK_H };
     assert(canvas.px);
@@ -135,6 +139,18 @@ int main(void) {
     write_ppm(&canvas, path);
     printf("wrote %s\n", path);
 
+    // The COLOR page with the pick lit, and the gobos' second bank.
+    desk_set_view(&model, 1, 0);
+    desk_apply_function(&model, 727, 1);
+    desk_paint(&canvas, &model, &fonts);
+    snprintf(path, sizeof path, "%s/desk-color.ppm", out ? out : "/tmp");
+    write_ppm(&canvas, path);
+    desk_set_view(&model, 4, 1);
+    desk_paint(&canvas, &model, &fonts);
+    snprintf(path, sizeof path, "%s/desk-gobos.ppm", out ? out : "/tmp");
+    write_ppm(&canvas, path);
+    desk_set_view(&model, 0, 0);
+
     // And the same screen with the link down, which is what a gig sees when
     // the Wi-Fi goes.
     desk_set_link(&model, DESK_LINK_DOWN);
@@ -145,6 +161,7 @@ int main(void) {
     font_close(fonts.tile);
     font_close(fonts.value);
     font_close(fonts.label);
+    font_close(fonts.small);
     free(canvas.px);
     vc_free(&console);
     return 0;

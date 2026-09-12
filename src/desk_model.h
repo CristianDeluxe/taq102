@@ -2,11 +2,16 @@
 // its own, no drawing. Everything that reaches the show leaves here as an
 // action for a caller to send, and everything the show says comes back in
 // through desk_apply_*, so the tiles show the rig rather than the finger.
+//
+// A control is a fact about the show; where it is drawn is a placement, and
+// the model holds the layout of every page and the view (page, bank) that is
+// on screen. A touch is resolved against the placements of that view only.
 #ifndef DESK_MODEL_H
 #define DESK_MODEL_H
 
 #include <stdint.h>
 
+#include "desk_layout_resolve.h"
 #include "showmap.h"
 
 #define DESK_MAX_CONTROLS (MAP_MAX_CONTROLS + 2)
@@ -37,7 +42,6 @@ struct desk_control {
     enum map_role role;
     uint32_t swatch[DESK_MAX_SWATCHES];   // 0xAARRGGBB
     int swatches;
-    int x, y, w, h;     // a zero size is a control with no place on screen yet
     enum desk_state state;
     int level;          // DESK_MASTER: 0..255, the master's own word
     int requested_level;// DESK_MASTER: what the finger asked for; never painted as the rig's
@@ -49,13 +53,17 @@ struct desk_control {
 struct desk_model {
     struct desk_control control[DESK_MAX_CONTROLS];
     int count;
+    struct desk_layout layout;
+    int page, bank;         // the view on screen
     enum desk_link link;
     char master_name[64];   // what the desk is talking to, for the rail
     int dirty;
     // One capture at a time: the slot is remembered so a second finger cannot
-    // fire another tile, and so a cancel can only undo its own gesture.
+    // fire another tile, and so a cancel can only undo its own gesture. The
+    // placement is remembered too, since the gesture's geometry is its own.
     int capture_slot;
     int capture_index;
+    int capture_placement;
 };
 
 enum desk_action_kind { DESK_ACT_NONE, DESK_ACT_TOGGLE, DESK_ACT_MASTER, DESK_ACT_STOP_ALL };
@@ -70,6 +78,15 @@ void desk_init(struct desk_model *m);
 
 // Returns the index of the control added, or -1 when there is no room.
 int desk_add(struct desk_model *m, const struct desk_control *control);
+
+// The layout of every page, copied in; the view goes back to page 0, bank 0.
+void desk_set_layout(struct desk_model *m, const struct desk_layout *layout);
+// Changes the view. A capture in flight is cancelled: a finger that came down
+// on one page fires nothing on another. Out-of-range values are clamped.
+void desk_set_view(struct desk_model *m, int page, int bank);
+
+// The placement a control has on the current view, or NULL.
+const struct desk_placement *desk_placement_of(const struct desk_model *m, int control);
 
 // A contact going down, moving and coming up. Coordinates are panel pixels.
 // At most one action comes out of one gesture, and it comes out on release:

@@ -50,7 +50,7 @@ int main(void) {
     }
     // AUTO is the wide tile on LIVE, first row, with CHARLA beside it.
     const struct desk_placement *a = find(&l, auto_ix, 0);
-    assert(a->tile == TILE_WIDE && a->w == 452 && a->x == DESK_GRID_X && a->y == DESK_GRID_Y + 32);
+    assert(a->tile == TILE_WIDE && a->w == 452 && a->x == DESK_GRID_X && a->y == DESK_GRID_Y + 32 && a->h == 88);
     const struct desk_placement *ch = find(&l, control_named(&map, "CHARLA"), 0);
     assert(ch->y == a->y && ch->x == a->x + 452 + 16 && ch->w == 218);
     // The haze tiles are four to a row.
