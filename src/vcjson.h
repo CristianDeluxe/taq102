@@ -45,9 +45,12 @@ struct vc_widget {
     float pos_x, pos_y;
     float h_min, h_max, v_min, v_max;
 
-    // Speed dial: the time it shows and the factor enum it multiplies by.
+    // Speed dial: the time it shows, the factor enum it multiplies by, and
+    // the range its own control allows (the engine does not clamp a time
+    // sent over the socket, so the desk keeps to it).
     int speed_ms;
     int speed_factor;
+    int speed_min_ms, speed_max_ms;   // -1 when the document has none
 };
 
 struct vc_doc {

@@ -32,6 +32,11 @@ void qlc_session_free(struct qlc_session *s);
 
 // Changes the master. Drops any link at once; the next step reconnects.
 void qlc_session_set_host(struct qlc_session *s, const char *host, int port);
+// Re-reads /vc.json on the open connection: the link goes to fetching and
+// comes back ready with a fresh snapshot. For a state the desk cannot
+// otherwise recover (a speed change the master never echoed). No effect
+// unless the link is ready.
+void qlc_session_refresh(struct qlc_session *s, int64_t now_ms);
 
 // Fills up to two pollfds and returns how many. The caller polls them with
 // its own timeout and then calls qlc_session_step.

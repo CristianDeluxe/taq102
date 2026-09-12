@@ -76,6 +76,17 @@ void qlc_session_set_host(struct qlc_session *s, const char *host, int port) {
     s->next_try_ms = 0;
 }
 
+void qlc_session_refresh(struct qlc_session *s, int64_t now_ms) {
+    if (!s || s->link != QLC_READY || s->fetch)
+        return;
+    s->fetch = http_fetch_start(s->cfg.host, s->cfg.port, "/vc.json", s->cfg.snapshot_limit);
+    if (!s->fetch)
+        return;
+    s->link = QLC_FETCHING;
+    s->phase_started_ms = now_ms;
+    snprintf(s->reason, sizeof s->reason, "re-reading the show");
+}
+
 int qlc_session_pollfds(const struct qlc_session *s, struct pollfd *fds, int cap) {
     int n = 0;
     if (!s || !fds)
