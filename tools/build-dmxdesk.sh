@@ -2,10 +2,9 @@
 # Cross-build the lighting desk for the tablet, without rebuilding the image.
 #
 # The Buildroot toolchain and sysroot live in the OrbStack machine; the sources
-# are read from this Mac over the shared mount. Output lands in the machine and
-# is copied back here, so it can be pushed to the tablet with
-# tools/run-dmxdesk.sh while the image it will eventually ship in is still
-# being cooked.
+# are read from this Mac over the shared mount. Intermediates and output stay
+# under DMXDESK_OUT in this checkout; the VM only reads the shared toolchain.
+# The result can later be deployed with tools/run-dmxdesk.sh.
 #
 # cJSON is compiled straight into the binary rather than added to the image:
 # one fewer moving part while the desk is changing every hour. When it settles,
@@ -23,11 +22,12 @@ orb -m "$machine" -u root bash -lc "
 set -eu
 SRC=$here/src
 VENDOR=$here/tools/vendor/cjson
-BUILD=/work/dmxdesk
+BUILD=$out/build
+export TMPDIR=$out/tmp
 SYSROOT=/work/output/host/arm-buildroot-linux-gnueabihf/sysroot
 CC=/work/output/host/bin/arm-buildroot-linux-gnueabihf-gcc
 
-mkdir -p \$BUILD/include/cjson
+mkdir -p \$BUILD/include/cjson \$TMPDIR
 cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
 
 # Third party on its own terms; ours under -Werror.
@@ -45,8 +45,13 @@ cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
     \$SRC/font.c \$SRC/touch_input.c \$SRC/touch_flip.c \$SRC/oneeuro.c \
     \$SRC/desk_setup.c \$SRC/desk_setup_paint.c \$SRC/keyboard.c \$SRC/keyboard_paint.c \
     \$SRC/desk_gear_paint.c \$SRC/desk_power.c \$SRC/backlight.c \$SRC/settings.c \
-    \$SRC/settings_store.c \$SRC/power_policy.c \$SRC/wpa_ctrl.c \$SRC/wifi_scan.c \
-    \$SRC/wifi_conf.c \$SRC/wifi_join.c \$SRC/wifi_status.c \$SRC/action_worker.c \
+    \$SRC/settings_store.c \$SRC/power_policy.c \$SRC/wpa_ctrl_dial.c \$SRC/wpa_ctrl_transact.c \$SRC/wpa_ctrl.c \
+    \$SRC/wpa_ctrl_begin.c \$SRC/wpa_ctrl_request_fd.c \$SRC/wpa_ctrl_reply.c \$SRC/wpa_ctrl_abandon.c \
+    \$SRC/wpa_ctrl_request.c \$SRC/wpa_ctrl_event_fd.c \$SRC/wpa_ctrl_event.c \$SRC/wpa_ctrl_close.c \$SRC/wifi_scan.c \
+    \$SRC/wifi_conf.c \$SRC/wifi_join_network_id.c \$SRC/wifi_join_init.c \$SRC/wifi_join_finish.c \
+    \$SRC/wifi_join_advance.c \$SRC/wifi_join_restore.c \$SRC/wifi_join_fail.c \
+    \$SRC/wifi_join_start.c \$SRC/wifi_join_start_renewal.c \$SRC/wifi_join_event_matches.c \
+    \$SRC/wifi_join.c \$SRC/wifi_join_free.c \$SRC/desk_wifi_request.c \$SRC/wifi_status.c \$SRC/action_worker.c \
     \$SRC/desk_conf.c \$SRC/master_find.c \$SRC/iface_prefix.c \
     \$SRC/speed_factor.c \$SRC/desk_tap.c \$SRC/desk_speed.c \$SRC/desk_speed_paint.c \
     \$BUILD/cJSON.o \
