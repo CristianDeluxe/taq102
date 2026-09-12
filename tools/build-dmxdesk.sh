@@ -43,6 +43,11 @@ cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
     \$SRC/qlc_session.c \$SRC/ws_client.c \$SRC/send_queue.c \$SRC/http_fetch.c \
     \$SRC/status.c \$SRC/statusbar.c \$SRC/canvas.c \$SRC/canvas_blend.c \
     \$SRC/font.c \$SRC/touch_input.c \$SRC/touch_flip.c \$SRC/oneeuro.c \
+    \$SRC/desk_setup.c \$SRC/desk_setup_paint.c \$SRC/keyboard.c \$SRC/keyboard_paint.c \
+    \$SRC/desk_gear_paint.c \$SRC/desk_power.c \$SRC/backlight.c \$SRC/settings.c \
+    \$SRC/settings_store.c \$SRC/power_policy.c \$SRC/wpa_ctrl.c \$SRC/wifi_scan.c \
+    \$SRC/wifi_conf.c \$SRC/wifi_join.c \$SRC/wifi_status.c \$SRC/action_worker.c \
+    \$SRC/desk_conf.c \$SRC/master_find.c \$SRC/iface_prefix.c \
     \$BUILD/cJSON.o \
     -L\$SYSROOT/usr/lib -ldrm -lm
 \$CC -v 2>&1 | tail -1

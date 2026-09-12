@@ -126,6 +126,12 @@ enum qlc_link qlc_session_step(struct qlc_session *s, int64_t now) {
     case QLC_DOWN:
         if (now < s->next_try_ms)
             break;
+        // No master yet: nothing to dial. The reason names it for the card.
+        if (!s->cfg.host[0]) {
+            snprintf(s->reason, sizeof s->reason, "no master set");
+            s->next_try_ms = now + s->cfg.reconnect_ms;
+            break;
+        }
         s->ws = ws_start(s->cfg.host, s->cfg.port, "/qlcplusWS");
         if (!s->ws) {
             drop(s, now, "cannot resolve the master");
