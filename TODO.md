@@ -314,6 +314,25 @@ MacBook as master. Design and evidence:
   `show-operation.md`, `qlcplus-environment.md`, `toolkit.md`). Find out
   whether that work was ever committed, and fix either the repo or the page.
 
+- [ ] Blackout has no route yet. QLC+'s own Blackout button toggles the global
+  blackout on every request and then shows whatever state the sender claimed,
+  so its widget state cannot stand for the rig's, and grand master at zero is
+  not blackout. The tile ships disabled and showing unknown until experiment 1
+  settles a route with an authoritative readback.
+- [ ] The desk needs its own heartbeat. Pushes are change-driven and the
+  server's WebSocket ping is every 5000 ms, so the 750 ms staleness rule would
+  disconnect a healthy idle desk. Acceptance: a scene held untouched for ten
+  minutes with the link still up.
+- [ ] Validation needs a manifest generated on the Mac from the prepared
+  `.qxw` and the fixture definitions: `/vc.json` has no speed-group
+  membership, no fixture or channel bindings, no solo-frame exclusivity and no
+  fog dependency graph, and a different workspace can keep every id while
+  changing what the scenes output.
+- [ ] Show mode: the appliance sleeps the screen after five minutes idle, and
+  a desk waiting for the next cue is idle. Hold the screen on during a show,
+  give the power button a defined behaviour, and cancel every contact on a
+  display transition.
+
 ## Pending decisions
 
 - [!] `GLCUBE_FINISH=1` (a `glFinish` between `eglSwapBuffers` and scanout)
