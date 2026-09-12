@@ -5,6 +5,8 @@ here=$(cd "$(dirname "$0")/.." && pwd)
 out=${TEST_OUT:-$here/output/dmx-desk-host}
 mkdir -p "$here/output" "$out/include/cjson" "$out/include/stb"
 STB_DIR=${STB_DIR:-$here/tools/vendor/stb}
+# The header lived under the audit directory before it was vendored; either will do.
+[ -f "$STB_DIR/stb_truetype.h" ] || STB_DIR=/tmp/taq102-audit/stb
 [ -f "$STB_DIR/stb_truetype.h" ] || { echo "stb_truetype.h not in $STB_DIR" >&2; exit 1; }
 ln -sf "$STB_DIR/stb_truetype.h" "$out/include/stb/stb_truetype.h"
 CC=${CC:-cc}

@@ -817,8 +817,10 @@ int main(int argc, char **argv) {
             static char reply[16384];
             enum desk_wifi_command done = desk_wifi_request_step(&wifi_request, wpa,
                 now, join.running, setup.open, reply, sizeof reply);
+            // FAIL-BUSY means a scan is already under way: its results will
+            // come on the same event, so it is not a refusal.
             if (done == DESK_WIFI_SCAN && (wifi_request.result < 0 ||
-                (strcmp(reply, "OK\n") != 0 && strcmp(reply, "OK") != 0))) {
+                (strncmp(reply, "OK", 2) != 0 && strncmp(reply, "FAIL-BUSY", 9) != 0))) {
                 if (!join.running)
                     setup.wifi_busy[0] = '\0';
                 snprintf(setup.wifi_note, sizeof setup.wifi_note, "Scan refused");
