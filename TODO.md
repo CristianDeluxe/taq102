@@ -386,6 +386,20 @@ MacBook as master. Design and evidence:
   `TODO_LOG.md` 2026-09-12. What remains is gated on I: Phase 5
   finite accents (the fog and bump decisions below) and Phase 6 position (the
   XY pad's range experiment below). The desk is usable for a show as it is.
+- [ ] Interface review leftovers (the reviewer rounds one and two,
+  `docs/evidence/2026-09-12-desk-ui-review-findings.md` and
+  `...-round2-findings.md`), in the reviewer's order of worth: the supplicant
+  requests made asynchronous (today `SCAN`, `STATUS`, `SCAN_RESULTS` block the
+  loop up to 300 ms and a join's `RECONFIGURE`/`SELECT_NETWORK` up to 3 s
+  each); safety captions beside the show's words (`TODO NEGRO` is a black
+  look, not a stop; a haze rhythm fires at once, then repeats) which live in
+  the generator's detail strings; one disabled/unknown look across cue,
+  compact and swatch tiles with a reason line (`Mac only - hold control`);
+  a neutral pending marker on a cue after its frame goes out until the echo
+  or a bounded timeout; the held hits consolidated into one labelled area
+  instead of two banks of dead tiles (the reviewer: last); a way to cancel a
+  running subnet sweep. Smallest action: the asynchronous supplicant, since
+  it holds the panic button hostage during a scan.
 - [!] Phase 3's checks that need a finger on the tablet (the desk runs there
   now with `/data/desk.conf` pointing at this Mac's 9998 instance): tap the
   gear, scan, join `TestNet5` with its key (not in the brain; I

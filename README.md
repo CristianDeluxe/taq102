@@ -1851,3 +1851,51 @@ the Mac's side appeared as 150 with the note, and a run of taps on `Tap both`
 retimed both dials with the echo 39 to 179 ms after the touch-down, 56 in the
 middle, over one Wi-Fi hop. Evidence in `docs/evidence/2026-09-12-desk-phase4/`.
 the reviewer's six answers on the doubts are in `docs/evidence/2026-09-12-desk-speed-findings.md`.
+
+## The interface, reviewed as an operator would (2026-09-12, night)
+
+I said the interface had many defects, and it did. Every page and
+bank was dumped from the tablet and looked at before anything was changed,
+which found six by eye: the master fader read `--` until somebody moved it
+on the Mac, because `desk_add` starts every control unknown and the
+validator never handed it the slider's snapshot value; the bottom row of
+picks touched the panel's edge, because the content end was written as the
+panel's height; bright swatches wore a stray keyline, because the RGB
+integer was compared whole rather than by its brightest channel; the link
+banner flipped wording every second and a half while the master was down;
+the gear was a 56 px lump; and the worst one, found in `dmesg` rather than
+in a frame: I had tapped Join at 17:01 UTC, and the join had killed
+the supplicant's control socket. `RECONFIGURE` re-reads the configuration
+file, and when the file names no `ctrl_interface` the daemon drops the one
+it was started with under `-O`, so every request after that first join was
+answered by nobody. The writer now puts the line first, and the tablet was
+put right with the line and a `SIGHUP`.
+
+Then two second opinions. A reviewer agent read the touch routing and found
+four capture defects a frame cannot show: a second finger on the settings
+sheet ending the first one's drag, the power key leaving the desk's slot
+bookkeeping stale, dead space on the speed page claiming the slot, and a
+Scan button painted dead but alive to touch. the reviewer looked at sixteen frames
+and the code and returned twenty-eight findings, then ten more against the
+diff of the first round. Most were taken. The panic button now takes a
+second finger while a cue is held and ends that cue's gesture when it
+fires. The lock and the gear cancel every capture, the rail's included.
+Tempo is measured from the contact's own timestamp while the echo deadline
+runs on the desk's clock, so a late-drained batch keeps its intervals
+without calling the master silent. The room's states and the family's own
+automation ride every bank in compact form. Colours are clipped segments of
+a round swatch, and a pick with no colour gets its name large instead of a
+grey ring. A choice running on another bank is named in its heading and its
+pill gets an amber dot, amber keeping its one meaning. The settings surface
+lost its amber for ink, gained a Close, a New key path for a known network
+whose old block comes back whole if the new key fails, checked address
+parsing that keeps the keyboard open and says why, and notes where a sweep
+or a save fails. Stale supplicant replies are drained before a request so a
+late `SCAN` answer never reads as `STATUS`. Another show on the Mac is said
+in a banner over the dead tiles instead of `Linked` beside them.
+
+What was not taken is in `TODO.md` in the reviewer's order of worth, the first
+being the supplicant requests made asynchronous, since a scan still holds
+the loop, panic button included, for up to 300 ms. The findings are in
+`docs/evidence/2026-09-12-desk-ui-review-findings.md` and `...-round2-findings.md`,
+the frames before and after in `docs/evidence/2026-09-12-desk-review/`.

@@ -6,6 +6,38 @@
 
 ### 2026-09
 
+- [x] 2026-09-12 - **Desk: the interface review, two rounds with the reviewer.**
+  Every page and bank dumped from the tablet, six defects found by eye and
+  fixed first: the master fader read `--` until somebody moved it on the Mac
+  (`desk_add` starts every control unknown and the validator never set the
+  slider's snapshot value), tiles cut by the panel's bottom edge
+  (`CONTENT_END` was 600, not 584), a stray keyline on bright swatches (the
+  RGB integer compared whole instead of its brightest channel), the link
+  banner flipping words every 1.5 s, a 56 px gear, and the Wi-Fi join
+  killing the supplicant's control socket: `RECONFIGURE` re-reads the file
+  and forgets the `-O` override when the file names no `ctrl_interface`, so
+  my tap on Join (17:01 UTC, seen in dmesg as a deauth by local
+  choice) left `/var/run/wpa_supplicant` gone and every later request dead;
+  `wifi_conf_write_block` now writes the line first, and the tablet was
+  recovered with the line and a `SIGHUP`. A reviewer agent then found four
+  capture defects (a second finger on the settings sheet ending the first's
+  drag; the power key leaving slot bookkeeping stale; dead space on the
+  speed page claiming the slot; a dead Scan alive to touch), fixed. the reviewer
+  reviewed sixteen frames and the code (28 findings) and, after the round,
+  the diff (10 more): applied in `84f828d`, `11d2070`, `3b9c962`, `291c513`:
+  the panic button takes a second finger and ends the other's gesture, the
+  lock and the gear cancel every capture including the rail's, tempo from
+  the contact's timestamp with the echo deadline on the desk's clock, the
+  state strip and the family's own automation on every bank, colours as
+  clipped segments and names where there is no colour, a running choice on
+  another bank named in the heading with an amber dot on its pill, whole
+  bounds on the BPM steps, `Time x2` wording, a neutral palette in the
+  settings (ink, never amber), a New key path for a known network whose old
+  block comes back whole when the new key fails, checked address parsing
+  with the keyboard staying open, an explicit Close, failure notes for the
+  sweep and the saves, stale supplicant replies drained, another show said
+  in a banner, the keyboard's `abc` and a hold-to-show. Evidence: the
+  frames in `docs/evidence/2026-09-12-desk-review/`. Leftovers in `TODO.md`.
 - [x] 2026-09-12 - **Desk, Phase 4: speed.** The map's two dials (`Tempo Show`
   w34, five members; `Vel. Movimiento` w274, eighteen) parsed with their
   per-member multiplier enums; the engine's table mirrored (`speed_factor`:
