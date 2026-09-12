@@ -8,7 +8,7 @@
 #define CONTENT_X DESK_GRID_X                    // 156
 #define CONTENT_W (DESK_MASTER_X - DESK_GRID_X)  // 688
 #define CONTENT_Y DESK_GRID_Y                    // 64
-#define CONTENT_END DESK_H                       // 584
+#define CONTENT_END (DESK_H - DESK_GAP)          // 584
 #define SELECTOR_H 56
 #define HEADING_H 24
 #define HEADING_GAP 8

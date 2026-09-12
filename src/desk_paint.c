@@ -133,7 +133,10 @@ static void paint_swatch(struct canvas *c, const struct desk_control *ctl,
         canvas_round_rect(c, cx - hole / 2, cy + 6, hole, hole, hole / 2, fill);
     }
     // Black and near-black swatches need a keyline to exist on the tile.
-    if (ctl->swatches && (first & 0xFFFFFF) < 0x202020)
+    int brightest = (first >> 16 & 0xFF) > (first >> 8 & 0xFF) ? (first >> 16 & 0xFF) : (first >> 8 & 0xFF);
+    if (brightest < (int)(first & 0xFF))
+        brightest = first & 0xFF;
+    if (ctl->swatches && brightest < 0x20)
         canvas_round_rect(c, cx - SWATCH_D / 2 - 1, cy - 1, 2, SWATCH_D + 2, 1, DESK_MUTED);
     uint32_t ink = on ? DESK_GLASS : DESK_INK;
     if (!ctl->enabled || link != DESK_LINK_READY)

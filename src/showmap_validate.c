@@ -133,11 +133,20 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
     master.enabled = !wrong_show;
     if (wrong_show)
         disable(&master, "show mismatch");
-    // Unknown until the master says; 0 here is never painted.
-    master.level = 0;
-    master.requested_level = 0;
-    if (desk_add(model, &master) >= 0)
+    // The console's own word on the level: the snapshot carries the slider,
+    // so the fader is known from the first frame rather than from the first
+    // time somebody moves it on the Mac.
+    const struct vc_widget *gm = wrong_show ? NULL : vc_find(doc, map->grand_master_widget);
+    int gm_known = gm && gm->type_id == VC_SLIDER;
+    master.level = gm_known ? gm->value : 0;
+    master.requested_level = master.level;
+    int master_index = desk_add(model, &master);
+    if (master_index >= 0) {
         enabled += master.enabled;
+        // desk_add starts every control unknown; the console's word comes after.
+        if (gm_known)
+            model->control[master_index].state = DESK_ON;
+    }
 
     // The panic button: the console's own StopAll, which stops every function
     // whatever started it and never lies about a state of its own.

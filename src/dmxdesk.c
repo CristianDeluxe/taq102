@@ -197,12 +197,14 @@ static void send_action(struct qlc_session *session, struct desk_action action) 
         qlc_session_send(session, frame);
 }
 
-static enum desk_link desk_link_of(enum qlc_link link) {
+// A retry every second and a half is one state to the operator, not a
+// banner flipping between two words; the link is down only without a master.
+static enum desk_link desk_link_of(enum qlc_link link, int have_master) {
     switch (link) {
     case QLC_READY:      return DESK_LINK_READY;
     case QLC_FETCHING:   return DESK_LINK_SYNCING;
     case QLC_CONNECTING: return DESK_LINK_CONNECTING;
-    default:             return DESK_LINK_DOWN;
+    default:             return have_master ? DESK_LINK_CONNECTING : DESK_LINK_DOWN;
     }
 }
 
@@ -822,7 +824,7 @@ int main(int argc, char **argv) {
         char frame[4096];
         while (qlc_session_recv(session, frame, sizeof frame) == 1)
             apply_frame(&model, &speed, frame, now);
-        desk_set_link(&model, desk_link_of(link));
+        desk_set_link(&model, desk_link_of(link, conf.master[0] != '\0'));
         desk_speed_set_link(&speed, link == QLC_READY, now);
         desk_speed_tick(&speed, now);
         if (speed.refresh_wanted) {
@@ -935,7 +937,9 @@ int main(int argc, char **argv) {
             if (log_perf)
                 perf_window_add(&present_ms, (int)(now_ms() - t1));
             flips++;
-            if (dump) {
+            // A dump waits for the link, so the frame shows the show and not
+            // the banner; six seconds without one and it shows that instead.
+            if (dump && (link == QLC_READY || now - start_ms > 6000)) {
                 dump_ppm(&canvas, dump);
                 break;
             }

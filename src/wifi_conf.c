@@ -205,9 +205,27 @@ int wifi_conf_write_block(const char *path, const char *ssid, const char *psk, i
     if (!text && errno != ENOENT)
         return -1;
     const char *body = text ? text : "";
+    // RECONFIGURE re-reads this file and, when it names no control
+    // interface, the daemon drops the one it was started with (-O): the
+    // socket vanishes and every later request fails. The line goes first.
+    static const char header[] = "ctrl_interface=" WIFI_CONF_CTRL_DIR "\n";
+    char *with_header = NULL;
+    if (!strstr(body, "ctrl_interface=")) {
+        with_header = malloc(len + sizeof header);
+        if (!with_header) {
+            free(text);
+            return -1;
+        }
+        memcpy(with_header, header, sizeof header - 1);
+        memcpy(with_header + sizeof header - 1, body, len);
+        len += sizeof header - 1;
+        with_header[len] = '\0';
+        body = with_header;
+    }
     size_t start = len, end = len;
     find_block(body, ssid, &start, &end);
     int rc = write_atomic(path, body, start, ssid, psk, priority, body + end, len - end);
+    free(with_header);
     free(text);
     return rc;
 }
