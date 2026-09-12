@@ -46,6 +46,23 @@ record() {
         "$(grep -E '^21: ' /sys/kernel/debug/regmap/2-001a/registers 2>/dev/null | cut -d' ' -f2)" \
         "$(grep -E '^a1: ' /sys/kernel/debug/regmap/2-001a/registers 2>/dev/null | cut -d' ' -f2)" \
         "$(val /sys/class/power_supply/usb/input_current_limit)"
+    # VBUS, which nothing in the kernel exposes: the RK816's USB ADC (0xC0/C1)
+    # read straight off the bus, beside the battery ADC (0xC4/C5) it is
+    # calibrated like. The vendor driver scales USB by 1400/1100 relative to
+    # the battery, so vbus_mv is that ratio applied to the battery's own
+    # reading: a trend, good to a few percent, not a calibrated volt.
+    # Through the driver's own regmap, which reads these live (checked against
+    # a forced i2cget on 2026-09-12: same bytes), so nothing else touches the
+    # bus.
+    rm=/sys/kernel/debug/regmap/2-001a/registers
+    usb_adc=$(( 0x$(grep -E '^c0: ' $rm 2>/dev/null | cut -d' ' -f2)$(grep -E '^c1: ' $rm 2>/dev/null | cut -d' ' -f2) ))
+    bat_adc=$(( 0x$(grep -E '^c4: ' $rm 2>/dev/null | cut -d' ' -f2)$(grep -E '^c5: ' $rm 2>/dev/null | cut -d' ' -f2) ))
+    bat_uv=$(val /sys/class/power_supply/battery/voltage_now)
+    vbus_mv=0
+    # bat_mv = vol*1100/1000 and usb_mv = vol*1400/1100 in the vendor driver,
+    # so usb over bat is the ADC ratio times 1400*1000/(1100*1100).
+    [ "$bat_adc" -gt 0 ] && vbus_mv=$(( ${bat_uv:-0} / 1000 * usb_adc / bat_adc * 1400000 / 1210000 ))
+    printf '%s vbus usb_adc=%s bat_adc=%s vbus_mv=%s\n' "$up" "$usb_adc" "$bat_adc" "$vbus_mv"
     for r in /sys/class/regulator/regulator.*; do
         n=$(val "$r/name")
         case "$n" in ldo4|ldo5|ldo6|*lcd*|*panel*)
