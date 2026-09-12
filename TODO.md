@@ -314,6 +314,13 @@ MacBook as master. Design and evidence:
   `show-operation.md`, `qlcplus-environment.md`, `toolkit.md`). Find out
   whether that work was ever committed, and fix either the repo or the page.
 
+- [ ] The XY pad's range disagrees between the two sources: the workspace's
+  `<Pan Min="0" Max="255"/>` and `<Tilt Min="0" Max="255"/>` against
+  `/vc.json`'s `horizontalRange {min:0,max:0}` and `verticalRange
+  {min:0,max:256}` for the same widget 0 (2026-09-12). One of them is not the
+  window the engine clamps to. Settle it in experiment 1 by sending the
+  extremes and reading the resulting DMX, before the desk maps a finger onto
+  either.
 - [ ] Blackout has no route yet. QLC+'s own Blackout button toggles the global
   blackout on every request and then shows whatever state the sender claimed,
   so its widget state cannot stand for the rig's, and grand master at zero is
@@ -328,6 +335,10 @@ MacBook as master. Design and evidence:
   membership, no fixture or channel bindings, no solo-frame exclusivity and no
   fog dependency graph, and a different workspace can keep every id while
   changing what the scenes output.
+- [ ] Only 24 of this show's 376 functions stop on their own
+  (`tools/show-manifest.py`). That is the general case behind the fog rule:
+  most cues run until something stops them, so any control the desk fires has
+  to have a stopping story, not just a starting one.
 - [ ] Show mode: the appliance sleeps the screen after five minutes idle, and
   a desk waiting for the next cue is idle. Hold the screen on during a show,
   give the power button a defined behaviour, and cancel every contact on a
