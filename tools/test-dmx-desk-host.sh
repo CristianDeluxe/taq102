@@ -3,8 +3,12 @@
 set -eu
 here=$(cd "$(dirname "$0")/.." && pwd)
 out=${TEST_OUT:-/tmp/taq102-audit/dmx-desk}
-mkdir -p "$out/include/cjson"
+mkdir -p "$out/include/cjson" "$out/include/stb"
+STB_DIR=${STB_DIR:-/tmp/taq102-audit/stb}
+[ -f "$STB_DIR/stb_truetype.h" ] || { echo "stb_truetype.h not in $STB_DIR" >&2; exit 1; }
+ln -sf "$STB_DIR/stb_truetype.h" "$out/include/stb/stb_truetype.h"
 CC=${CC:-cc}
+export TEST_OUT="$out"
 # cJSON comes from Buildroot on the device; the host compiles the same pinned
 # sources, fetched by tools/get-cjson.sh.
 CJSON_DIR=${CJSON_DIR:-$here/tools/vendor/cjson}
