@@ -270,6 +270,50 @@ appliance back. The journal is `README.md` here and
   the ACM console open (seen when the Mac rebooted). Harmless; a report for
   the gadget list some day.
 
+## DMX desk (Phase A)
+
+The tablet as a control surface for the Vibra QLC+ show, with the show
+MacBook as master. Design and evidence:
+`docs/2026-09-12-dmx-desk-design.md`, the reviewer review in
+`docs/evidence/2026-09-12-dmx-desk-findings.md`.
+
+- [!] Fog cannot be a held button from the tablet. The show's `HUMO` cue is
+  VC widget 125, `actionType: 1` (Flash), function 364: on while held, off on
+  release. If the link drops between press and release the machine stays on
+  and the tablet cannot stop it, and QLC+ 5.2.2 has no master-side timeout
+  (checked in the 5.2.2 sources). Unblock: add a finite fog cue (single-step
+  chaser with a duration) to the prepared workspace and bind the tablet to
+  that. Until then the desk refuses to load a map with a `momentary` fog
+  control.
+- [ ] Experiment 1, the protocol against a prepared show: on the 5.2.2 Mac
+  with the DMX interface unplugged, drive widgets 108, 35, 28, the grand
+  master, speed dial 54, XY pad 0, a new colour slider and the fog cue from a
+  WebSocket probe. Confirm one message per Toggle gesture, solo-frame
+  behaviour when Mac and tablet alternate, the coarse/fine values the XY pad
+  produces once its `hMin=0, hMax=0` range is fixed, colour takeover and
+  release, and resynchronisation after a reconnect. Then kill the client
+  between a flash press and its release and watch the fog stay on.
+- [ ] Experiment 2, the link cold with no venue Internet: Mac as AP from a
+  cold start (band, security, DHCP, firewall, reachability), repeated after a
+  reboot, then the same on the travel router. Thirty minutes of timestamped
+  traffic while dragging two controls, reporting p50/p95/p99 of the
+  application round trip. Then pull the Wi-Fi: controls must disable within
+  750 ms, nothing may replay, the Mac must still run the show.
+- [ ] Experiment 3, the panel under a desk's load: throwaway benchmark with
+  the existing painter (XY pad, cached colour field, two faders, warmed text,
+  status updates, live network traffic) recording p50/p95/p99 paint and
+  present, missed flips, input-to-queued-command, RSS, `MemAvailable`, packed
+  image size and battery current. A fresh touch drag test comes first, since
+  the v75 and v85 notes disagree about the touch stack.
+- [ ] Prepare the gig copy of the workspace: save `DeluxeEventos.qxw` as a
+  tablet copy in 5.2.2, fix the XY pad horizontal range, add the Click-and-Go
+  colour sliders the desk needs, add the finite fog cue, and publish the show
+  map against that copy's hash. The original stays untouched.
+- [ ] `DMX-Fixtures` has no `docs/` in its tip, although the brain page
+  describes five documents there (`qxw-format.md`, `rig.md`,
+  `show-operation.md`, `qlcplus-environment.md`, `toolkit.md`). Find out
+  whether that work was ever committed, and fix either the repo or the page.
+
 ## Pending decisions
 
 - [!] `GLCUBE_FINISH=1` (a `glFinish` between `eglSwapBuffers` and scanout)
