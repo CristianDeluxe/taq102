@@ -45,6 +45,9 @@ int main(void) {
     desk_setup_init(&s);
     desk_setup_open(&s);
     assert(s.open);
+    // Without a supplicant the scan button is dead to touch as it is to the eye.
+    assert(tap(&s, SETUP_WIFI_X + 20, SETUP_BUTTONS_Y + 10).kind == SETUP_NONE);
+    s.wifi_available = 1;
 
     // Scan: the button asks once; while busy it is dead.
     int bx = SETUP_WIFI_X + 20, by = SETUP_BUTTONS_Y + 10;

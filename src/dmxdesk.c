@@ -466,7 +466,7 @@ int main(int argc, char **argv) {
     else
         snprintf(exe, sizeof exe, "%s", argv[0]);
     int64_t scan_started_ms = 0;
-    int setup_owned[TOUCH_MAX_SLOTS] = { 0 };
+    int setup_slot = -1;        // the one finger the settings surface owns
     int gear_slot = -1;
     if (start_setup) {
         desk_setup_open(&setup);
@@ -550,6 +550,11 @@ int main(int argc, char **argv) {
             power_key_read(&power_key, power_fd)) {
             desk_lock_power_key(&lock, now);
             desk_cancel_all(&model);
+            // Every finger's claim goes with the display: the desk's own
+            // slot bookkeeping too, or a reused slot would inherit a gesture.
+            desk_speed_touch_cancel(&speed);
+            desk_setup_touch_cancel(&setup);
+            gear_slot = setup_slot = speed_slot = -1;
             if (setup.open) {
                 desk_setup_close(&setup);
                 bar_ready = 0;
@@ -611,18 +616,23 @@ int main(int argc, char **argv) {
                         }
                         continue;
                     }
-                    // The surface owns a contact that landed on it; the master
-                    // column beside it stays the desk's.
-                    if (setup.open && events[i].kind == TOUCH_DOWN && x < SETUP_SHEET_W)
-                        setup_owned[slot] = 1;
-                    if (setup_owned[slot]) {
+                    // The surface owns one contact, the first that lands on
+                    // it; a second finger on the sheet is swallowed so it can
+                    // neither steal nor end the first one's gesture. The
+                    // master column beside the sheet stays the desk's.
+                    if (setup.open && events[i].kind == TOUCH_DOWN && x < SETUP_SHEET_W) {
+                        if (setup_slot >= 0)
+                            continue;
+                        setup_slot = slot;
+                    }
+                    if (slot == setup_slot) {
                         struct setup_action act;
                         memset(&act, 0, sizeof act);
                         switch (events[i].kind) {
                         case TOUCH_DOWN: act = desk_setup_touch_down(&setup, x, y); break;
                         case TOUCH_MOVE: act = desk_setup_touch_move(&setup, x, y); break;
-                        case TOUCH_UP: act = desk_setup_touch_up(&setup, x, y); setup_owned[slot] = 0; break;
-                        case TOUCH_CANCEL: desk_setup_touch_cancel(&setup); setup_owned[slot] = 0; break;
+                        case TOUCH_UP: act = desk_setup_touch_up(&setup, x, y); setup_slot = -1; break;
+                        case TOUCH_CANCEL: desk_setup_touch_cancel(&setup); setup_slot = -1; break;
                         }
                         switch (act.kind) {
                         case SETUP_NONE:
@@ -731,8 +741,12 @@ int main(int argc, char **argv) {
                                              (int)events[i].x, (int)events[i].y);
                     if (layout.speed_page >= 0 && model.page == layout.speed_page &&
                         model.capture_slot != slot && speed_slot < 0) {
-                        speed_slot = slot;
-                        send_speed(session, desk_speed_touch_down(&speed, x, y, now), now);
+                        struct speed_action sa = desk_speed_touch_down(&speed, x, y, now);
+                        // Dead space claims nothing: another finger may still
+                        // reach a target while this one rests on the card.
+                        if (speed.capture != SPEED_T_NONE)
+                            speed_slot = slot;
+                        send_speed(session, sa, now);
                         continue;
                     }
                     break;

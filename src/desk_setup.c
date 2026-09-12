@@ -221,7 +221,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
         a.kind = SETUP_CLOSE;
         return a;
     case T_SCAN:
-        if (s->wifi_busy[0])
+        if (s->wifi_busy[0] || !s->wifi_available)
             return none();
         a.kind = SETUP_SCAN;
         return a;
