@@ -6,6 +6,32 @@
 
 ### 2026-09
 
+- [x] 2026-09-12 - **Desk, Phase 0 and Phase 1.** Phase 0: the WebSocket
+  client's pong buffer (`pong[4+125]` written with up to 131 bytes, a stack
+  overflow on a 124/125-byte ping) fixed and tested; connect, handshake and
+  the console fetch made non-blocking (`ws_client`, `http_fetch`, a bounded
+  `send_queue`); the connect sequence a state machine (`qlc_session`) that
+  reaches READY only on a fresh parsed snapshot, with every drop carrying its
+  reason; the master unknown until its first push; the status bar in the
+  desk's palette with an unknown battery drawn as such; the desk draws before
+  it dials. On the tablet against QLC+ 5.2.2 (Vibra, port 9998): a 3 s frozen
+  master dropped at 805 ms and relinked by itself; a dead host reported as
+  `connect timeout` every ten seconds with the loop alive; 30 min of
+  heartbeats: 2744 samples, p50 19 ms, p95 47, p99 50, max 319, zero drops
+  (`docs/evidence/2026-09-12-desk-phase1/heartbeat-rtt-30min.log`).
+  Phase 1: the reviewer found and the source confirmed that every generated solo
+  frame carried `ExcludeMonitored=True`, so a pick never stopped the wheel
+  AUTO started (5.2.2 `vcbutton.cpp:258`); fixed in qlctool for the seven
+  handoff frames with a new check rule `marco solo sordo` and a dated
+  regression; the three shows regenerated, validated headless and clean.
+  `qlctool deskmap` now emits the tablet's map (132 controls, 7 pages, 2
+  dials) and the desk reads schema 2, validates each control against the
+  live console (widget, type, action, function, solo ancestry, QLC+ line)
+  and lays out the room states with PARAR TODO under the master. Measured
+  live through the probe (`handoff.txt` in the same evidence folder): AUTO
+  starts 720/706/640; the Rig Rojo pick stops the wheel 706; CHARLA stops
+  720 and 640 and releases the pick 727; PARAR TODO stops the rest. The
+  hand-written June map and `tools/show-manifest.py` are gone.
 - [x] 2026-09-10 - **Mainline:** 8 hour unattended soak of the cube on v85,
   clean. The check that matters is progress rather than liveness: the VOP
   interrupt advanced 168 counts in 3 s at the end, exactly the panel's 56 Hz.
