@@ -204,6 +204,17 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
 }
 
 struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y) {
+    if (slot == m->panic_slot && m->panic_placement >= 0) {
+        // The outline follows the truth: off the button, nothing will fire.
+        const struct desk_placement *pp = &m->layout.placement[m->panic_placement];
+        struct desk_control *pc = &m->control[pp->control];
+        int in = inside(pp, x, y);
+        if (pc->pressed != in) {
+            pc->pressed = in;
+            damage_control(m, pp->control);
+        }
+        return none();
+    }
     if (slot != m->capture_slot || m->capture_index < 0)
         return none();
     struct desk_control *c = &m->control[m->capture_index];
@@ -254,6 +265,9 @@ struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y) {
     // shape of gesture, a completed tap, with nothing to light afterwards.
     struct desk_action a = { c->kind == DESK_STOP_ALL ? DESK_ACT_STOP_ALL : DESK_ACT_TOGGLE,
                              c->widget_id, 255 };
+    // One stop is enough: a second finger on the same button fires nothing.
+    if (c->kind == DESK_STOP_ALL && m->panic_placement >= 0)
+        release_panic(m);
     return a;
 }
 
@@ -303,7 +317,8 @@ void desk_apply_function(struct desk_model *m, int function_id, int running) {
             continue;
         for (int k = 0; k < m->layout.placements; k++) {
             const struct desk_placement *p = &m->layout.placement[k];
-            if (p->control == i && p->page == m->page && p->bank != m->bank)
+            // Only a page with banks has a dot or a heading word to move.
+            if (p->control == i && p->page == m->page && m->layout.banks[m->page] > 1)
                 damage_all(m);
         }
     }

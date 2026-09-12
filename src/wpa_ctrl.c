@@ -13,6 +13,8 @@
 struct wpa_ctrl {
     int fd, event_fd;
     char local[108], local_event[108];
+    char path[108];
+    int generation;
 };
 
 // A datagram client needs a bound address of its own for the daemon to
@@ -54,8 +56,10 @@ static int transact(int fd, const char *cmd, char *buf, size_t cap, int timeout_
     if (send(fd, cmd, len, 0) != (ssize_t)len)
         return -1;
     struct pollfd p = { .fd = fd, .events = POLLIN, .revents = 0 };
-    if (poll(&p, 1, timeout_ms) <= 0 || !(p.revents & POLLIN))
+    if (poll(&p, 1, timeout_ms) <= 0 || !(p.revents & POLLIN)) {
+        errno = ETIMEDOUT;
         return -1;
+    }
     // One datagram is one reply; a reply that would not fit is refused whole
     // rather than handed back cut, so a caller never parses half a table.
     ssize_t n = recv(fd, buf, cap, MSG_TRUNC);
@@ -75,6 +79,7 @@ struct wpa_ctrl *wpa_ctrl_open(const char *path) {
     struct wpa_ctrl *c = calloc(1, sizeof *c);
     if (!c)
         return NULL;
+    snprintf(c->path, sizeof c->path, "%s", path);
     snprintf(c->local, sizeof c->local, "/tmp/dmxdesk-ctrl-%d", (int)getpid());
     snprintf(c->local_event, sizeof c->local_event, "/tmp/dmxdesk-ctrl-%d-ev", (int)getpid());
     c->fd = dial(path, c->local);
@@ -98,7 +103,17 @@ int wpa_ctrl_request(struct wpa_ctrl *c, const char *cmd, char *buf, size_t cap,
                      int timeout_ms) {
     if (!c || c->fd < 0 || !cmd || !buf || cap < 2)
         return -1;
-    return transact(c->fd, cmd, buf, cap, timeout_ms);
+    int n = transact(c->fd, cmd, buf, cap, timeout_ms);
+    if (n < 0 && errno != EMSGSIZE) {
+        // The reply, if it ever comes, goes to an address nobody reads: the
+        // request socket is replaced so it cannot answer the next command.
+        close(c->fd);
+        unlink(c->local);
+        c->generation++;
+        snprintf(c->local, sizeof c->local, "/tmp/dmxdesk-ctrl-%d-%d", (int)getpid(), c->generation);
+        c->fd = dial(c->path, c->local);
+    }
+    return n;
 }
 
 int wpa_ctrl_event_fd(const struct wpa_ctrl *c) { return c ? c->event_fd : -1; }
