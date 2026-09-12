@@ -2,6 +2,8 @@
 
 void desk_gear_paint(struct canvas *c, int x, int y, int w, int h, uint32_t ink, uint32_t hole) {
     int size = w < h ? w : h;
+    if (size > 28)
+        size = 28;
     int r = size * 3 / 8;
     int cx = x + w / 2, cy = y + h / 2;
     // Teeth: four rectangles through the centre, straight and diagonal.

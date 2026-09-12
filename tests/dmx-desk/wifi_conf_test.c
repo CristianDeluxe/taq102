@@ -28,6 +28,14 @@ int main(void) {
     struct wifi_conf conf;
     assert(wifi_conf_read(path, &conf) == 0 && conf.count == 0);
     assert(wifi_conf_write_block(path, "TestNet", "correct horse battery", 1) == 0);
+    {
+        // A file without a control interface line gets one, first, once.
+        FILE *r = fopen(path, "r");
+        char first[80] = "";
+        assert(r && fgets(first, sizeof first, r));
+        fclose(r);
+        assert(strcmp(first, "ctrl_interface=/var/run/wpa_supplicant\n") == 0);
+    }
     assert(wifi_conf_read(path, &conf) == 1 && strcmp(conf.network[0].ssid, "TestNet") == 0);
     assert(conf.network[0].priority == 1 && wifi_conf_knows(&conf, "TestNet"));
 

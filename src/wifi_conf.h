@@ -10,6 +10,9 @@
 #include <stddef.h>
 
 #define WIFI_CONF_MAX_NETWORKS 32
+// The daemon's control directory; a written file always names it, since
+// RECONFIGURE forgets the -O override otherwise.
+#define WIFI_CONF_CTRL_DIR "/var/run/wpa_supplicant"
 #define WIFI_CONF_SSID_MAX 33
 
 struct wifi_known {

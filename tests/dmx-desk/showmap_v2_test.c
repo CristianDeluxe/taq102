@@ -157,7 +157,8 @@ int main(void) {
     assert(sp && sp->y == DESK_PANIC_Y);
     assert(strcmp(stop->detail, "1.0 s fade") == 0);
     const struct desk_control *master = by_kind(&model, DESK_MASTER);
-    assert(master && master->enabled && master->state == DESK_UNKNOWN);
+    // Known from the snapshot: the console carries the slider's level.
+    assert(master && master->enabled && master->state == DESK_ON && master->level == 255);
     // Everything but the seventeen held hits (seven on LIVE, ten colour
     // golpes) is enabled: 115, plus the master and the panic button.
     assert(enabled == 115 + 2);
