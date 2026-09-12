@@ -54,7 +54,7 @@ int main(void) {
     const struct desk_placement *ch = find(&l, control_named(&map, "CHARLA"), 0);
     assert(ch->y == a->y && ch->x == a->x + 452 + 16 && ch->w == 218);
     // The haze tiles are four to a row.
-    const struct desk_placement *h1 = find(&l, control_named(&map, "HUMO cada 1 min"), 0);
+    const struct desk_placement *h1 = find(&l, control_named(&map, "cada 1 min"), 0);
     const struct desk_placement *h4 = find(&l, control_named(&map, "cada 8 min"), 0);
     assert(h1 && h4 && h1->tile == TILE_HAZE && h1->y == h4->y && h4->x + h4->w <= DESK_MASTER_X);
     // Picks are swatch tiles, six to a row.

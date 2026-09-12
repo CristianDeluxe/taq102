@@ -271,6 +271,10 @@ int main(int argc, char **argv) {
     // prints their p50/p95 with RSS and MemAvailable every ten seconds: the
     // numbers the perf gate is argued from.
     int log_perf = getenv("DMXDESK_PERF") != NULL;
+    // DMXDESK_DRAG=1 moves the master's requested level every loop and
+    // repaints, sending nothing: the load of a finger dragging a fader all
+    // night, for the perf gate, on a kernel with no uinput to fake a finger.
+    int fake_drag = getenv("DMXDESK_DRAG") != NULL;
     struct perf_window paint_ms, present_ms;
     perf_window_init(&paint_ms);
     perf_window_init(&present_ms);
@@ -302,8 +306,16 @@ int main(int argc, char **argv) {
         }
         count += qlc_session_pollfds(session, fds + count, 2);
         // Forced flips run at the panel's own pace, not the loop's.
-        poll(fds, (nfds_t)count, force_flip ? 0 : 100);
+        poll(fds, (nfds_t)count, force_flip || fake_drag ? 0 : 100);
         int64_t now = now_ms();
+        if (fake_drag) {
+            for (int i = 0; i < model.count; i++)
+                if (model.control[i].kind == DESK_MASTER) {
+                    model.control[i].pressed = 1;
+                    model.control[i].requested_level = (int)((now / 8) % 256);
+                }
+            model.dirty = 1;
+        }
 
         if (power_slot >= 0 && (fds[power_slot].revents & POLLIN) &&
             power_key_read(&power_key, power_fd)) {
