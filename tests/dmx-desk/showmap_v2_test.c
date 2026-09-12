@@ -105,6 +105,14 @@ int main(void) {
     }
     assert(red_found);
     assert(map.count == 132);
+    // The two dials, as the workspace has them.
+    assert(map.dials == 2);
+    assert(strcmp(map.dial[0].key, "tempo-show") == 0 && map.dial[0].widget_id == 34);
+    assert(map.dial[0].time_ms == 500 && map.dial[0].members == 5);
+    assert(map.dial[0].member[0].function_id == 706 && map.dial[0].member[0].duration == 9);
+    assert(map.dial[0].member[0].fade_in == 0);
+    assert(strcmp(map.dial[1].key, "vel-movimiento") == 0 && map.dial[1].widget_id == 274);
+    assert(map.dial[1].members == 18 && map.dial[1].member[0].duration == 10);
 
     // Refusals: a widget listed twice, a section naming a missing control, a
     // swatch that is not a colour, a wrong schema.

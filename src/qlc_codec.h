@@ -20,13 +20,15 @@ enum qlc_kind {
     QLC_GRAND_MASTER,   // GM_VALUE|<value>|<display>
     QLC_FUNCTION,       // FUNCTION|<fID>|Running|Stopped
     QLC_API,            // QLC+API|<query>|<payload>
+    QLC_SPEED_STATE,    // <wID>|SPEED_STATE|<ms>|<factor enum>
 };
 
 struct qlc_msg {
     enum qlc_kind kind;
     int widget_id;      // QLC_BUTTON, QLC_SLIDER
     int function_id;    // QLC_FUNCTION
-    int value;          // QLC_BUTTON, QLC_SLIDER, QLC_GRAND_MASTER
+    int value;          // QLC_BUTTON, QLC_SLIDER, QLC_GRAND_MASTER; QLC_SPEED_STATE: ms
+    int factor;         // QLC_SPEED_STATE: the multiplier enum, 0..10
     int running;        // QLC_FUNCTION: 1 running, 0 stopped
     char query[32];     // QLC_API: the query name, without the payload
     char payload[64];   // QLC_API: the rest of the frame, truncated to fit
@@ -54,6 +56,9 @@ int qlc_encode_grand_master(char *buf, size_t cap, int value);
 // A speed dial, in milliseconds, before the dial applies its per-function
 // factors. Negative durations are refused; QLC+ reads 0 as "infinite".
 int qlc_encode_speed_ms(char *buf, size_t cap, int widget_id, int ms);
+// A speed dial's time multiplier, by the engine's enum: 2..10 = 1/16 .. 16.
+// None (0) and Zero (1) are refused: the desk never asks for either.
+int qlc_encode_speed_factor(char *buf, size_t cap, int widget_id, int factor);
 // An XY pad, from normalised 0..1 screen coordinates to the pad's own units:
 // DMX coarse plus a fine fraction, 0.00 to 255.99, clamped to the widget's
 // configured range. y is already top-down, as the pad's own axis is.

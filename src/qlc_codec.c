@@ -117,6 +117,17 @@ int qlc_decode(const char *frame, size_t len, struct qlc_msg *out) {
         out->kind = field_is(&type, "BUTTON") ? QLC_BUTTON : QLC_SLIDER;
         return 0;
     }
+    if (field_is(&type, "SPEED_STATE")) {
+        struct field ms = { frame, 0 }, factor = { frame, 0 };
+        if (more != 1 || next_field(frame, len, &pos, &ms) != 1)
+            return -1;
+        next_field(frame, len, &pos, &factor);
+        if (field_int(&ms, 0, 0x7FFFFFF, &out->value) != 0 ||
+            field_int(&factor, 0, 10, &out->factor) != 0)
+            return -1;
+        out->kind = QLC_SPEED_STATE;
+        return 0;
+    }
     out->kind = QLC_UNKNOWN;
     return 0;
 }
@@ -166,6 +177,12 @@ int qlc_encode_speed_ms(char *buf, size_t cap, int widget_id, int ms) {
     if (!widget_ok(widget_id) || ms < 0)
         return -1;
     return emit(buf, cap, "%d|SPEED_TIME|%d", widget_id, ms);
+}
+
+int qlc_encode_speed_factor(char *buf, size_t cap, int widget_id, int factor) {
+    if (!widget_ok(widget_id) || factor < 2 || factor > 10)
+        return -1;
+    return emit(buf, cap, "%d|SPEED_FACTOR|%d", widget_id, factor);
 }
 
 int qlc_encode_xy(char *buf, size_t cap, int widget_id, float x, float y,

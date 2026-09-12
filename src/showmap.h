@@ -17,6 +17,8 @@
 #define MAP_KEY_MAX 48
 #define MAP_CAPTION_MAX 48
 #define MAP_MAX_SWATCHES 4
+#define MAP_MAX_DIALS 4
+#define MAP_MAX_DIAL_MEMBERS 24
 
 enum map_role {
     MAP_ROLE_STATE,     // the room's one state at a time
@@ -58,6 +60,23 @@ struct map_page {
     int sections;
 };
 
+// A speed dial and the functions it retimes. The three per-member fields
+// are the engine's multiplier enum, raw: 0 None (the field is untouched),
+// 1 Zero, 2..10 = 1/16 .. 16 with 6 = 1. Interpretation is speed_factor's.
+struct map_dial_member {
+    int function_id;
+    int fade_in, fade_out, duration;
+};
+
+struct map_dial {
+    char key[MAP_KEY_MAX];
+    char caption[MAP_CAPTION_MAX];
+    int widget_id;
+    int time_ms;        // the base time saved in the workspace
+    struct map_dial_member member[MAP_MAX_DIAL_MEMBERS];
+    int members;
+};
+
 struct show_map {
     int schema;
     char qlc_version[16];
@@ -71,12 +90,15 @@ struct show_map {
     int pages;
     struct map_control control[MAP_MAX_CONTROLS];
     int count;
+    struct map_dial dial[MAP_MAX_DIALS];
+    int dials;
 };
 
 // Parses `len` bytes of map JSON. 0 on success, -1 on anything malformed, with
 // the reason on stderr: a wrong schema, a section naming a control that is
 // not there, a control no section lists, two controls on one widget, a swatch
-// that is not #rrggbb, or any string past its bound.
+// that is not #rrggbb, a dial member's enum outside 0..10, or any string past
+// its bound. Dials are optional: a map without them has none.
 int showmap_parse(const char *json, size_t len, struct show_map *out);
 
 // Reads the file, with the same rules and a size cap.
