@@ -6,6 +6,26 @@
 
 ### 2026-09
 
+- [x] 2026-09-13 - **Desk: the review's leftovers, all six, the reviewer writing
+  the hardest.** the reviewer implemented the asynchronous supplicant in its own
+  worktree (`review-async`, three commits, merged as `a1a4921`; its own log
+  entry follows). A reviewer agent read the merge adversarially: ship, two
+  minor points (a queued scan's busy word and clock started at queue time;
+  fixed to dispatch time) and one pre-existing nit (a failed redial after
+  abandon leaves the channel dead; in the backlog). The other five done
+  here: a neutral pending mark on a cue after its frame goes out, refusing
+  a second tap until the echo or 1.5 s; one disabled/unknown look (glass
+  tile, muted words, "Mac only - hold it there", "unknown"); the held hits
+  compact, seven to a row, under a heading that says Mac only, so LIVE and
+  COLOR lost a bank of dead tiles each; safety captions from the generator
+  (`SAFETY_DETAIL_BY_KEY/ROLE` in `desk_policy.py`, regenerated map,
+  DMX-Fixtures `60059dd`, `f7e00ad`): `TODO NEGRO - look a negro, no un
+  stop`, haze tiles `dispara ya`; a Stop on the sweep's own button through
+  a new `aw_cancel`. On the tablet after the merge: the surface's scan lists
+  networks without a link drop; worst heartbeat round trip 40 ms plain,
+  219 ms with the surface open and a scan running (a full-sheet paint, not
+  a wait). Host runner fixed to find the font header in either place after
+  the reviewer moved it.
 - [x] 2026-09-13 - **Desk: asynchronous supplicant requests and recovery.**
   SCAN, STATUS, SCAN_RESULTS, join requests, and rollback now share one
   non-blocking request transport driven by the desk poll loop. Late replies
