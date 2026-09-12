@@ -1,9 +1,8 @@
-// SOURCES: wifi_join.c wpa_ctrl.c wifi_conf.c action_worker.c
+// SOURCES: wifi_join_network_id.c wifi_join_init.c wifi_join_finish.c wifi_join_advance.c wifi_join_restore.c wifi_join_fail.c wifi_join_start.c wifi_join_start_renewal.c wifi_join_event_matches.c wifi_join.c wifi_join_free.c wpa_ctrl_dial.c wpa_ctrl_transact.c wpa_ctrl.c wpa_ctrl_begin.c wpa_ctrl_request_fd.c wpa_ctrl_reply.c wpa_ctrl_abandon.c wpa_ctrl_request.c wpa_ctrl_event_fd.c wpa_ctrl_event.c wpa_ctrl_close.c wifi_conf.c action_worker.c
 // A fake supplicant that keeps a network list, answers RECONFIGURE,
 // LIST_NETWORKS and SELECT_NETWORK, and after a select pushes CONNECTED or
-// a wrong-key disable, by mode. Three joins: one succeeds and the block
-// stays; one fails on the key and the block is gone with the previous
-// network selected again; one never associates and times out the same way.
+// a wrong-key disable, by mode. Joins advance only through step, with bounded
+// calls, whole-file rollback, retained backups, and request-deadline failures.
 #include <assert.h>
 #include <poll.h>
 #include <signal.h>
@@ -15,6 +14,7 @@
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "wifi_conf.h"
 #include "wifi_join.h"
@@ -34,7 +34,7 @@ struct fake {
 
 static void fake_open(struct fake *k) {
     memset(k, 0, sizeof *k);
-    snprintf(k->path, sizeof k->path, "/tmp/dmxdesk-fake-join-%d", (int)getpid());
+    snprintf(k->path, sizeof k->path, "./output/dmxdesk-fake-join-%d", (int)getpid());
     unlink(k->path);
     k->fd = socket(AF_UNIX, SOCK_DGRAM, 0);
     assert(k->fd >= 0);
@@ -83,8 +83,10 @@ static void fake_service(struct fake *k, const char *conf) {
             k->has_attached = 1;
             strcpy(reply, "OK\n");
         } else if (strcmp(cmd, "DETACH") == 0 || strcmp(cmd, "ENABLE_NETWORK all") == 0) {
-            strcpy(reply, "OK\n");
+            strcpy(reply, k->mode == 4 && strcmp(cmd, "ENABLE_NETWORK all") == 0 ? "FAIL\n" : "OK\n");
         } else if (strcmp(cmd, "RECONFIGURE") == 0) {
+            if (k->mode == 3)
+                continue;
             reload(k, conf);
             strcpy(reply, "OK\n");
         } else if (strcmp(cmd, "LIST_NETWORKS") == 0) {
@@ -102,14 +104,18 @@ static void fake_service(struct fake *k, const char *conf) {
             } else {
                 k->selected = id;
                 strcpy(reply, "OK\n");
-                sendto(k->fd, reply, strlen(reply), 0, (struct sockaddr *)&from, flen);
-                // The events a real daemon would push after a select.
-                if (id == 0)
+                // Deliver the event before the SELECT_NETWORK reply to
+                // exercise the independent sockets' ordering explicitly.
+                if (id == 0 && k->mode != 2 && k->mode != 1)
                     push(k, "<3>CTRL-EVENT-CONNECTED - Connection to 00:00:5e:00:53:01 completed [id=0 id_str=]");
-                else if (k->mode == 0)
+                else if (k->mode == 0 || k->mode == 4)
                     push(k, "<3>CTRL-EVENT-CONNECTED - Connection to 00:00:5e:00:53:02 completed [id=1 id_str=]");
-                else if (k->mode == 1)
-                    push(k, "<3>CTRL-EVENT-SSID-TEMP-DISABLED id=1 ssid=\"TestNet5\" auth_failures=1 duration=10 reason=WRONG_KEY");
+                else if (k->mode == 1) {
+                    char event[256];
+                    snprintf(event, sizeof event, "<3>CTRL-EVENT-SSID-TEMP-DISABLED id=%d reason=WRONG_KEY", id);
+                    push(k, event);
+                }
+                sendto(k->fd, reply, strlen(reply), 0, (struct sockaddr *)&from, flen);
                 continue;
             }
         }
@@ -119,148 +125,171 @@ static void fake_service(struct fake *k, const char *conf) {
 
 static const char *const QUIET_RENEW[] = { "/bin/sh", "-c", "true", NULL };
 
-// Drives the join until it settles or `budget` steps pass, feeding events
-// from the daemon and the address the caller says the interface has.
-static enum wifi_join_state drive(struct wifi_join *j, struct wpa_ctrl *c, int64_t *now,
-                                  const char *address, int budget) {
-    enum wifi_join_state st = WIFI_JOIN_RUNNING;
-    for (int i = 0; i < budget && st == WIFI_JOIN_RUNNING; i++) {
-        struct pollfd p = { .fd = wpa_ctrl_event_fd(c), .events = POLLIN, .revents = 0 };
-        poll(&p, 1, 10);
+enum { POLL_MS = 50 };
+static int64_t max_call_ms;
+
+static int64_t now_ms(void) {
+    struct timespec ts;
+    assert(clock_gettime(CLOCK_MONOTONIC, &ts) == 0);
+    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+static enum wifi_join_state step(struct wifi_join *j, int64_t offset,
+                                 const char *event, const char *address) {
+    int64_t begin = now_ms();
+    enum wifi_join_state state = wifi_join_step(j, begin + offset, event, address);
+    int64_t took = now_ms() - begin;
+    if (took > max_call_ms) max_call_ms = took;
+    assert(took < POLL_MS);
+    return state;
+}
+
+static enum wifi_join_state drive(struct wifi_join *j, struct wpa_ctrl *c,
+                                  int64_t offset, const char *address, int budget) {
+    for (int i = 0; i < budget && j->running; i++) {
+        struct pollfd p[2] = {
+            { .fd = wpa_ctrl_event_fd(c), .events = POLLIN },
+            { .fd = wpa_ctrl_request_fd(c), .events = POLLIN },
+        };
+        poll(p, 2, POLL_MS);
         char ev[512];
         const char *event = wpa_ctrl_event(c, ev, sizeof ev) == 1 ? ev : NULL;
-        *now += 10;
-        st = wifi_join_step(j, *now, event, address);
+        step(j, offset, event, address);
     }
-    return st;
+    return j->state;
+}
+
+static void start(struct wifi_join *j, const char *ssid, const char *key,
+                  int known, const char *previous) {
+    int64_t begin = now_ms();
+    assert(wifi_join_start(j, ssid, key, known, previous, begin) == 0);
+    assert(now_ms() - begin < POLL_MS);
+    assert(j->running && j->state == WIFI_JOIN_RUNNING);
+    // start must not put even the first request on the socket.
+    assert(!j->sent);
 }
 
 int main(void) {
     char conf[128];
-    snprintf(conf, sizeof conf, "/tmp/dmxdesk-join-%d.conf", (int)getpid());
+    snprintf(conf, sizeof conf, "./output/dmxdesk-join-%d.conf", (int)getpid());
     unlink(conf);
     assert(wifi_conf_write_block(conf, "TestNet", "firstkey1", 1) == 0);
-
+    char *original;
+    size_t original_len;
+    assert(wifi_conf_snapshot(conf, &original, &original_len) == 0);
     struct fake k;
     fake_open(&k);
-    // The fake needs to be told its mode before the helper forks, so one
-    // helper per scenario; the socket path stays.
-    struct wpa_ctrl *c = NULL;
-    int64_t now = 1000;
 
-    // Scenario 1: the key is right, an address arrives: DONE, block kept.
-    pid_t helper = fork();
-    assert(helper >= 0);
-    if (helper == 0) {
-        for (int i = 0; i < 2000; i++)
-            fake_service(&k, conf);
-        _exit(0);
+    // Success, wrong key, association silence, replaced known block, known
+    // block unchanged, and a daemon that never answers RECONFIGURE.
+    for (int scenario = 0; scenario < 8; scenario++) {
+        assert(wifi_conf_restore(conf, original, original_len) == 0);
+        k.mode = scenario == 7 ? 4 : scenario == 0 ? 0 : scenario == 5 ? 3 : scenario == 1 || scenario == 3 || scenario == 6 ? 1 : 2;
+        k.has_attached = 0;
+        k.selected = -1;
+        pid_t helper = fork();
+        assert(helper >= 0);
+        if (helper == 0) {
+            alarm(30);
+            for (;;) fake_service(&k, conf);
+        }
+        struct wpa_ctrl *c = wpa_ctrl_open(k.path);
+        assert(c);
+        struct wifi_join j;
+        wifi_join_init(&j, c, conf);
+        j.renew_argv = QUIET_RENEW;
+        const char *ssid = scenario == 3 || scenario == 4 ? "TestNet" : "Cafe";
+        struct stat before_st;
+        assert(stat(conf, &before_st) == 0);
+        int64_t began = now_ms();
+        start(&j, ssid, scenario == 4 ? NULL : "examplekey", scenario == 4, "TestNet");
+        int64_t offset = 0;
+        if (scenario == 6) {
+            char obstacle[160];
+            snprintf(obstacle, sizeof obstacle, "%s.tmp", conf);
+            assert(mkdir(obstacle, 0700) == 0);
+            assert(drive(&j, c, 0, "", 30) == WIFI_JOIN_FAILED);
+            assert(!j.running && j.restore_failed && j.before);
+            assert(j.before_len == original_len && memcmp(j.before, original, original_len) == 0);
+            char *backup = j.before;
+            assert(wifi_join_start(&j, "Short", "abc", 0, "", now_ms()) == -1);
+            assert(j.before == backup && j.restore_failed);
+            assert(rmdir(obstacle) == 0);
+            // A retry first restores the retained snapshot, even if the new
+            // request itself is invalid and never reaches the daemon.
+            assert(wifi_join_start(&j, "Short", "abc", 0, "", now_ms()) == -1);
+            assert(!j.restore_failed && !j.before);
+            char *restored;
+            size_t len;
+            assert(wifi_conf_snapshot(conf, &restored, &len) == 0);
+            assert(len == original_len && memcmp(restored, original, len) == 0);
+            free(restored);
+        } else if (scenario == 0) {
+            assert(drive(&j, c, 0, "", 20) == WIFI_JOIN_RUNNING);
+            assert(strcmp(j.word, "Getting an address") == 0);
+            assert(drive(&j, c, 0, "192.168.1.120", 10) == WIFI_JOIN_DONE);
+            assert(!j.running);
+            struct wifi_conf after;
+            assert(wifi_conf_read(conf, &after) >= 0 && wifi_conf_knows(&after, "Cafe"));
+            assert(wifi_conf_top_priority(&after) == 2);
+        } else {
+            if (scenario == 2 || scenario == 4) {
+                assert(drive(&j, c, 0, "", 15) == WIFI_JOIN_RUNNING);
+                assert(strcmp(j.word, "Associating") == 0);
+                offset = WIFI_JOIN_STAGE_MS + 1;
+                assert(step(&j, offset, NULL, "") == WIFI_JOIN_FAILED);
+                assert(strcmp(j.reason, "No association") == 0);
+            } else if (scenario == 5) {
+                // Stop at the initial failure, before waiting for daemon
+                // recovery: the on-disk rollback must already be complete.
+                while (j.state == WIFI_JOIN_RUNNING && now_ms() - began < 4000)
+                    drive(&j, c, 0, "", 1);
+                int64_t elapsed = now_ms() - began;
+                assert(j.state == WIFI_JOIN_FAILED && j.running);
+                assert(elapsed >= 3000 && elapsed < 3500);
+                assert(strstr(j.reason, "RECONFIGURE timed out"));
+                printf("silent RECONFIGURE: failed and restored at %lld ms\n", (long long)elapsed);
+            } else if (scenario == 7) {
+                assert(drive(&j, c, 0, "192.168.1.120", 30) == WIFI_JOIN_FAILED);
+                assert(strcmp(j.reason, "ENABLE_NETWORK all refused") == 0);
+            } else {
+                assert(drive(&j, c, 0, "", 30) == WIFI_JOIN_FAILED);
+                assert(strcmp(j.reason, "Wrong key") == 0);
+            }
+            char *restored;
+            size_t restored_len;
+            assert(wifi_conf_snapshot(conf, &restored, &restored_len) == 0);
+            assert(restored_len == original_len && memcmp(restored, original, original_len) == 0);
+            free(restored);
+            // The failed outcome retains ownership while recovery is active.
+            assert(drive(&j, c, offset, "", 80) == WIFI_JOIN_FAILED);
+            assert(!j.running);
+            if (scenario != 5) {
+                char buf[4096];
+                assert(wpa_ctrl_request(c, "LIST_NETWORKS", buf, sizeof buf, 500) > 0);
+                assert(strstr(buf, "0\tTestNet\tany\t[CURRENT]"));
+            } else {
+                assert(strstr(j.reason, "recovery timed out"));
+            }
+        }
+        if (scenario == 4) {
+            struct stat after_st;
+            assert(stat(conf, &after_st) == 0 && before_st.st_ino == after_st.st_ino &&
+                   before_st.st_mtime == after_st.st_mtime);
+        }
+        // Invalid keys are refused without a request or a changed file.
+        assert(wifi_join_start(&j, "Short", "abc", 0, "TestNet", now_ms()) == -1);
+        struct wifi_conf after;
+        assert(wifi_conf_read(conf, &after) >= 0 && !wifi_conf_knows(&after, "Short"));
+        wifi_join_free(&j);
+        wpa_ctrl_close(c);
+        kill(helper, SIGKILL);
+        waitpid(helper, NULL, 0);
     }
-    c = wpa_ctrl_open(k.path);
-    assert(c);
-    struct wifi_join j;
-    wifi_join_init(&j, c, conf);
-    j.renew_argv = QUIET_RENEW;
-    assert(wifi_join_start(&j, "TestNet5", "correct horse", 0, "TestNet", now) == 0);
-    assert(j.state == WIFI_JOIN_RUNNING && strcmp(j.word, "Associating") == 0);
-    // No address yet: it sits in the address stage after CONNECTED.
-    assert(drive(&j, c, &now, "", 30) == WIFI_JOIN_RUNNING);
-    assert(strcmp(j.word, "Getting an address") == 0);
-    assert(drive(&j, c, &now, "192.168.1.120", 5) == WIFI_JOIN_DONE);
-    struct wifi_conf after;
-    assert(wifi_conf_read(conf, &after) >= 0 && wifi_conf_knows(&after, "TestNet5"));
-    assert(wifi_conf_top_priority(&after) == 2);
-    wifi_join_free(&j);
-    wpa_ctrl_close(c);
-    kill(helper, 9);
-    waitpid(helper, NULL, 0);
-
-    // Scenario 2: wrong key: FAILED with the reason, block removed, the
-    // previous network selected again.
-    assert(wifi_conf_remove(conf, "TestNet5") == 0);
-    k.mode = 1;
-    k.has_attached = 0;
-    helper = fork();
-    assert(helper >= 0);
-    if (helper == 0) {
-        for (int i = 0; i < 2000; i++)
-            fake_service(&k, conf);
-        _exit(0);
-    }
-    c = wpa_ctrl_open(k.path);
-    assert(c);
-    wifi_join_init(&j, c, conf);
-    j.renew_argv = QUIET_RENEW;
-    assert(wifi_join_start(&j, "TestNet5", "wrong horse", 0, "TestNet", now) == 0);
-    assert(drive(&j, c, &now, "", 30) == WIFI_JOIN_FAILED);
-    assert(strcmp(j.reason, "Wrong key") == 0);
-    assert(wifi_conf_read(conf, &after) >= 0 && !wifi_conf_knows(&after, "TestNet5"));
-    assert(wifi_conf_knows(&after, "TestNet"));
-    // The rollback asked for the previous network by its id.
-    char buf[4096];
-    assert(wpa_ctrl_request(c, "LIST_NETWORKS", buf, sizeof buf, 500) > 0);
-    assert(strstr(buf, "0\tTestNet\tany\t[CURRENT]"));
-    wifi_join_free(&j);
-    wpa_ctrl_close(c);
-    kill(helper, 9);
-    waitpid(helper, NULL, 0);
-
-    // Scenario 3: silence: the association stage times out and rolls back.
-    k.mode = 2;
-    k.has_attached = 0;
-    k.selected = -1;
-    helper = fork();
-    assert(helper >= 0);
-    if (helper == 0) {
-        for (int i = 0; i < 2000; i++)
-            fake_service(&k, conf);
-        _exit(0);
-    }
-    c = wpa_ctrl_open(k.path);
-    assert(c);
-    wifi_join_init(&j, c, conf);
-    j.renew_argv = QUIET_RENEW;
-    assert(wifi_join_start(&j, "Cafe", NULL, 0, "TestNet", now) == 0);
-    assert(drive(&j, c, &now, "", 10) == WIFI_JOIN_RUNNING);
-    now += WIFI_JOIN_STAGE_MS + 1;
-    assert(wifi_join_step(&j, now, NULL, "") == WIFI_JOIN_FAILED);
-    assert(strcmp(j.reason, "No association") == 0);
-    assert(wifi_conf_read(conf, &after) >= 0 && !wifi_conf_knows(&after, "Cafe"));
-    // A new key for a known network that turns out wrong: the old block
-    // comes back whole, its key included.
-    assert(wifi_join_start(&j, "TestNet", "wrongkey12", 0, "", now) == 0);
-    assert(j.wrote_block && j.before);
-    now += WIFI_JOIN_STAGE_MS + 1;
-    assert(wifi_join_step(&j, now, NULL, "") == WIFI_JOIN_FAILED);
-    {
-        FILE *r = fopen(conf, "r");
-        char text[4096];
-        size_t n = fread(text, 1, sizeof text - 1, r);
-        text[n] = '\0';
-        fclose(r);
-        assert(strstr(text, "psk=\"firstkey1\"") && !strstr(text, "wrongkey12"));
-    }
-    // A key that breaks the rules never reaches the file or the daemon.
-    assert(wifi_join_start(&j, "Short", "abc", 0, "TestNet", now) == -1);
-    assert(wifi_conf_read(conf, &after) >= 0 && !wifi_conf_knows(&after, "Short"));
-    // A known network's block is used as it is: nothing written, and a
-    // failure leaves it in place with its key.
-    struct stat before_st, after_st;
-    assert(stat(conf, &before_st) == 0);
-    assert(wifi_join_start(&j, "TestNet", NULL, 1, "", now) == 0);
-    assert(!j.wrote_block);
-    now += WIFI_JOIN_STAGE_MS + 1;
-    assert(wifi_join_step(&j, now, NULL, "") == WIFI_JOIN_FAILED);
-    assert(stat(conf, &after_st) == 0 && before_st.st_mtime == after_st.st_mtime);
-    assert(wifi_conf_read(conf, &after) >= 0 && wifi_conf_knows(&after, "TestNet"));
-    wifi_join_free(&j);
-    wpa_ctrl_close(c);
-    kill(helper, 9);
-    waitpid(helper, NULL, 0);
-
+    free(original);
     close(k.fd);
     unlink(k.path);
     unlink(conf);
-    printf("wifi_join ok\n");
+    printf("wifi_join ok; longest step %lld ms (poll %d ms)\n", (long long)max_call_ms, POLL_MS);
     return 0;
 }

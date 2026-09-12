@@ -67,6 +67,7 @@
 #include "vcjson.h"
 #include "wifi_conf.h"
 #include "wifi_join.h"
+#include "desk_wifi_request.h"
 #include "wifi_scan.h"
 #include "wifi_status.h"
 #include "wpa_ctrl.h"
@@ -465,13 +466,14 @@ int main(int argc, char **argv) {
         exe[exe_len] = '\0';
     else
         snprintf(exe, sizeof exe, "%s", argv[0]);
+    struct desk_wifi_request wifi_request = {0};
     int64_t scan_started_ms = 0;
     int setup_slot = -1;        // the one finger the settings surface owns
     int gear_slot = -1;
     if (start_setup) {
         desk_setup_open(&setup);
-        char reply[32];
-        if (wpa && wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 500) > 0) {
+        if (wpa) {
+            wifi_request.scan_queued = 1;
             snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
             scan_started_ms = start_ms;
         }
@@ -527,6 +529,10 @@ int main(int argc, char **argv) {
         }
         if (wpa) {
             fds[count].fd = wpa_ctrl_event_fd(wpa);
+            fds[count].events = POLLIN;
+            fds[count].revents = 0;
+            count++;
+            fds[count].fd = wpa_ctrl_request_fd(wpa);
             fds[count].events = POLLIN;
             fds[count].revents = 0;
             count++;
@@ -613,12 +619,10 @@ int main(int argc, char **argv) {
                                     desk_setup_close(&setup);
                                 } else {
                                     desk_setup_open(&setup);
-                                    if (wpa && !setup.wifi_busy[0] && join.state != WIFI_JOIN_RUNNING) {
-                                        char reply[32];
-                                        if (wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 150) > 0) {
-                                            snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
-                                            scan_started_ms = now;
-                                        }
+                                    if (wpa && !setup.wifi_busy[0] && !join.running) {
+                                        wifi_request.scan_queued = 1;
+                                        snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
+                                        scan_started_ms = now;
                                     }
                                 }
                                 bar_ready = 0;
@@ -654,8 +658,8 @@ int main(int argc, char **argv) {
                             last_status_ms = 0;
                             break;
                         case SETUP_SCAN: {
-                            char reply[32];
-                            if (wpa && wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 150) > 0) {
+                            if (wpa) {
+                                wifi_request.scan_queued = 1;
                                 snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
                                 scan_started_ms = now;
                             } else {
@@ -671,12 +675,13 @@ int main(int argc, char **argv) {
                             if (wifi_join_start(&join, act.ssid, act.psk[0] ? act.psk : NULL,
                                                 act.known, setup.ssid, now) != 0) {
                                 setup.wifi_busy[0] = '\0';
-                                snprintf(setup.wifi_note, sizeof setup.wifi_note, "%s", join.reason);
+                                snprintf(setup.wifi_note, sizeof setup.wifi_note, "%.*s",
+                                         (int)sizeof setup.wifi_note - 1, join.reason);
                             } else {
                                 snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "%s", join.word);
                             }
                             fprintf(stderr, "desk: join %s: %s\n", act.ssid,
-                                    join.state == WIFI_JOIN_RUNNING ? "started" : join.reason);
+                                    join.running ? "started" : join.reason);
                             break;
                         case SETUP_FIND:
                             setup.master_note[0] = '\0';
@@ -797,27 +802,43 @@ int main(int argc, char **argv) {
         // reaches a running join, which also watches the address.
         if (wpa) {
             char ev[512];
-            int fed = 0;
             while (wpa_ctrl_event(wpa, ev, sizeof ev) == 1) {
-                if (strstr(ev, "CTRL-EVENT-SCAN-RESULTS")) {
-                    static char table[16384];
-                    int n = wpa_ctrl_request(wpa, "SCAN_RESULTS", table, sizeof table, 300);
-                    struct wifi_scan scan;
-                    if (n > 0) {
-                        wifi_scan_parse(table, (size_t)n, &scan);
-                        mark_known(&setup, &scan);
-                    }
-                    if (strcmp(setup.wifi_busy, "Scanning") == 0)
-                        setup.wifi_busy[0] = '\0';
-                }
-                if (join.state == WIFI_JOIN_RUNNING) {
+                if (strstr(ev, "CTRL-EVENT-SCAN-RESULTS"))
+                    wifi_request.results_queued = 1;
+                if (join.running && wifi_request.pending == DESK_WIFI_NONE)
                     wifi_join_step(&join, now, ev, status.addr);
-                    fed = 1;
-                }
             }
-            if (join.state == WIFI_JOIN_RUNNING && !fed)
+            static char reply[16384];
+            enum desk_wifi_command done = desk_wifi_request_step(&wifi_request, wpa,
+                now, join.running, setup.open, reply, sizeof reply);
+            if (done == DESK_WIFI_SCAN && (wifi_request.result < 0 ||
+                (strcmp(reply, "OK\n") != 0 && strcmp(reply, "OK") != 0))) {
+                if (!join.running)
+                    setup.wifi_busy[0] = '\0';
+                snprintf(setup.wifi_note, sizeof setup.wifi_note, "Scan refused");
+                setup.dirty = 1;
+            } else if (done == DESK_WIFI_RESULTS) {
+                if (wifi_request.result > 0 && strncmp(reply, "FAIL", 4) != 0) {
+                    struct wifi_scan scan;
+                    wifi_scan_parse(reply, strlen(reply), &scan);
+                    mark_known(&setup, &scan);
+                } else {
+                    snprintf(setup.wifi_note, sizeof setup.wifi_note, "Scan results unavailable");
+                }
+                if (strcmp(setup.wifi_busy, "Scanning") == 0)
+                    setup.wifi_busy[0] = '\0';
+                setup.dirty = 1;
+            } else if (done == DESK_WIFI_STATUS && wifi_request.result > 0 && setup.open) {
+                char ssid[WIFI_SSID_MAX], state[SETUP_WORD_MAX];
+                status_field(reply, "ssid", ssid, sizeof ssid);
+                status_field(reply, "wpa_state", state, sizeof state);
+                if (strcmp(ssid, setup.ssid) != 0 || strcmp(state, setup.wifi_state) != 0 ||
+                    strcmp(status.addr, setup.address) != 0)
+                    desk_setup_set_wifi(&setup, ssid, state, status.addr);
+            }
+            if (join.running && wifi_request.pending == DESK_WIFI_NONE)
                 wifi_join_step(&join, now, NULL, status.addr);
-            if (join.state == WIFI_JOIN_RUNNING) {
+            if (join.running) {
                 if (strcmp(setup.wifi_busy, join.word) != 0) {
                     snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "%s", join.word);
                     setup.dirty = 1;
@@ -826,7 +847,8 @@ int main(int argc, char **argv) {
                 if (join.state == WIFI_JOIN_DONE)
                     snprintf(setup.wifi_note, sizeof setup.wifi_note, "Joined %s", join.ssid);
                 else
-                    snprintf(setup.wifi_note, sizeof setup.wifi_note, "%s", join.reason);
+                    snprintf(setup.wifi_note, sizeof setup.wifi_note, "%.*s",
+                                         (int)sizeof setup.wifi_note - 1, join.reason);
                 fprintf(stderr, "desk: join %s: %s\n", join.ssid, setup.wifi_note);
                 join.state = WIFI_JOIN_IDLE;
                 setup.wifi_busy[0] = '\0';
@@ -923,16 +945,7 @@ int main(int argc, char **argv) {
                     setup.brightness_unsaved = power.save_failed;
                     setup.dirty = 1;
                 }
-                if (wpa) {
-                    char reply[2048], ssid[WIFI_SSID_MAX], state[SETUP_WORD_MAX];
-                    if (wpa_ctrl_request(wpa, "STATUS", reply, sizeof reply, 100) > 0) {
-                        status_field(reply, "ssid", ssid, sizeof ssid);
-                        status_field(reply, "wpa_state", state, sizeof state);
-                        if (strcmp(ssid, setup.ssid) != 0 || strcmp(state, setup.wifi_state) != 0 ||
-                            strcmp(next.addr, setup.address) != 0)
-                            desk_setup_set_wifi(&setup, ssid, state, next.addr);
-                    }
-                } else if (strcmp(next.addr, setup.address) != 0) {
+                if (!wpa && strcmp(next.addr, setup.address) != 0) {
                     char ssid[WIFI_SSID_MAX] = "";
                     wifi_read_ssid(WIFI_CONF_PATH, ssid, sizeof ssid);
                     desk_setup_set_wifi(&setup, ssid, next.have_wifi ? "COMPLETED" : "", next.addr);

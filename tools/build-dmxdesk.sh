@@ -48,7 +48,10 @@ cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
     \$SRC/settings_store.c \$SRC/power_policy.c \$SRC/wpa_ctrl_dial.c \$SRC/wpa_ctrl_transact.c \$SRC/wpa_ctrl.c \
     \$SRC/wpa_ctrl_begin.c \$SRC/wpa_ctrl_request_fd.c \$SRC/wpa_ctrl_reply.c \$SRC/wpa_ctrl_abandon.c \
     \$SRC/wpa_ctrl_request.c \$SRC/wpa_ctrl_event_fd.c \$SRC/wpa_ctrl_event.c \$SRC/wpa_ctrl_close.c \$SRC/wifi_scan.c \
-    \$SRC/wifi_conf.c \$SRC/wifi_join.c \$SRC/desk_wifi_request.c \$SRC/wifi_status.c \$SRC/action_worker.c \
+    \$SRC/wifi_conf.c \$SRC/wifi_join_network_id.c \$SRC/wifi_join_init.c \$SRC/wifi_join_finish.c \
+    \$SRC/wifi_join_advance.c \$SRC/wifi_join_restore.c \$SRC/wifi_join_fail.c \
+    \$SRC/wifi_join_start.c \$SRC/wifi_join_start_renewal.c \$SRC/wifi_join_event_matches.c \
+    \$SRC/wifi_join.c \$SRC/wifi_join_free.c \$SRC/desk_wifi_request.c \$SRC/wifi_status.c \$SRC/action_worker.c \
     \$SRC/desk_conf.c \$SRC/master_find.c \$SRC/iface_prefix.c \
     \$SRC/speed_factor.c \$SRC/desk_tap.c \$SRC/desk_speed.c \$SRC/desk_speed_paint.c \
     \$BUILD/cJSON.o \
