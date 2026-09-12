@@ -261,6 +261,7 @@ int main(int argc, char **argv) {
     const char *touch_device = "/dev/input/event1";
     const char *power_device = NULL;
     int view_page = 0, view_bank = 0;    // --view P,B: the first page shown, for dumps
+    int start_setup = 0;                 // --setup: the surface open at start, for dumps
 
     if (argc == 4 && !strcmp(argv[1], "--find"))
         return master_find_run(argv[2], atoi(argv[3]), stdout) < 0 ? 2 : 0;
@@ -272,6 +273,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--card") && i + 1 < argc) card = argv[++i];
         else if (!strcmp(argv[i], "--touch") && i + 1 < argc) touch_device = argv[++i];
         else if (!strcmp(argv[i], "--power") && i + 1 < argc) power_device = argv[++i];
+        else if (!strcmp(argv[i], "--setup")) start_setup = 1;
         else if (!strcmp(argv[i], "--view") && i + 1 < argc) {
             if (sscanf(argv[++i], "%d,%d", &view_page, &view_bank) != 2)
                 view_page = view_bank = 0;
@@ -279,7 +281,7 @@ int main(int argc, char **argv) {
         else {
             fprintf(stderr, "usage: %s [--host H] [--port P] [--map FILE]"
                             " [--card /dev/dri/cardN] [--touch /dev/input/eventN]"
-                            " [--power /dev/input/eventN] [--view PAGE,BANK]\n"
+                            " [--power /dev/input/eventN] [--view PAGE,BANK] [--setup]\n"
                             "       %s --find ADDR/PREFIX PORT\n",
                     argv[0], argv[0]);
             return 2;
@@ -422,6 +424,14 @@ int main(int argc, char **argv) {
     int64_t scan_started_ms = 0;
     int setup_owned[TOUCH_MAX_SLOTS] = { 0 };
     int gear_slot = -1;
+    if (start_setup) {
+        desk_setup_open(&setup);
+        char reply[32];
+        if (wpa && wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 500) > 0) {
+            snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
+            scan_started_ms = start_ms;
+        }
+    }
 
     const char *dump = getenv("DMXDESK_DUMP");
     // DMXDESK_RTT=1 prints every heartbeat's round trip: the raw material for

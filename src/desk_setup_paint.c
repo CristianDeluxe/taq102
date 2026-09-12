@@ -142,7 +142,7 @@ static void footer(struct canvas *c, const struct desk_setup *s, const struct de
     canvas_round_rect(c, SETUP_TOGGLE_X, SETUP_TOGGLE_Y, SETUP_TOGGLE_W, SETUP_TOGGLE_H, 20,
                       s->power_aware ? DESK_AMBER : DESK_TILE);
     uint32_t ink = s->power_aware ? DESK_GLASS : DESK_INK;
-    text_at(c, fonts->small, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + 16, SETUP_TOGGLE_W - 40, "Screen off on battery", ink);
+    text_at(c, fonts->small, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + 16, SETUP_TOGGLE_W - 40, "Dim on battery", ink);
     text_at(c, fonts->tile, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + SETUP_TOGGLE_H - 16 - text_h(fonts->tile),
             SETUP_TOGGLE_W - 40, s->power_aware ? "On" : "Off", ink);
 }

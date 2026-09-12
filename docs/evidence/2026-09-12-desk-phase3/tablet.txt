@@ -1,0 +1,31 @@
+2026-09-12, tablet on TestNet (192.168.1.71/24), bench QLC+ 5.2.2 on this Mac at 192.168.1.65:9998 with Vibra.qxw.
+
+Scan (the desk, `--setup` at start; setup.png) against wpa_cli on the same tablet:
+  wpa_cli scan_results: TestNet, ArloBase-0000000000, SUN2000-HV0000000000,
+    DIRECT-00-Printer Model 0000, TestNet5, MOVISTAR-WIFI6-C2B0, Maximu...
+  desk card page 1 of 2: ArloBase-00000..., TestNet (known), SUN2000-HV000..., TestNet5
+  (same networks, sorted by the desk's own scan levels; the second page holds the rest)
+
+Find, run on the tablet as the desk runs it:
+  # time /tmp/dmxdesk --find 192.168.1.71/24 9998
+  192.168.1.65
+  192.168.1.78
+  real 0m 1.97s
+  (both addresses are this Mac: Wi-Fi and Ethernet; 9999 lists the same two)
+
+Master from the tablet's own file, no --host on the command line:
+  # cat /data/desk.conf
+  master=192.168.1.65
+  port=9998
+  desk: link connecting (not connected yet)
+  desk: link reading the show (not connected yet)
+  desk: link ready (linked)
+  desk: 117 of 132 controls enabled against the master's console
+  rtt 23
+
+Without the file: "desk: no master set; the gear in the status bar sets one",
+link down (no master set), the card says "No master set".
+
+Owner's checks still open: a finger on the gear, a scan, a join of TestNet5
+with its key, the fader against /sys/class/backlight/backlight/brightness and
+across a restart, the toggle.
