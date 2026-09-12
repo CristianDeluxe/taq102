@@ -16,15 +16,15 @@ static void tile_base(struct canvas *c, const struct desk_control *ctl,
     canvas_round_rect(c, ctl->x, ctl->y, ctl->w, ctl->h, DESK_RADIUS, fill);
 }
 
-// A pressed tile gets an amber outline and nothing else. The fill is the
-// show's to give: the tile lights when the master says the function runs.
-static void press_ring(struct canvas *c, const struct desk_control *ctl) {
-    for (int i = 0; i < BORDER; i++) {
-        canvas_round_rect(c, ctl->x + i, ctl->y + i, ctl->w - 2 * i,
-                          ctl->h - 2 * i, DESK_RADIUS - i, DESK_AMBER);
-    }
+// A pressed tile gets an ink outline and nothing else. The fill is the show's
+// to give: the tile lights when the master says the function runs, and a
+// finger must not paint amber, since amber means on. The interior is put
+// back in whatever fill the tile already had.
+static void press_outline(struct canvas *c, const struct desk_control *ctl,
+                          uint32_t fill) {
+    canvas_round_rect(c, ctl->x, ctl->y, ctl->w, ctl->h, DESK_RADIUS, DESK_INK);
     canvas_round_rect(c, ctl->x + BORDER, ctl->y + BORDER, ctl->w - 2 * BORDER,
-                      ctl->h - 2 * BORDER, DESK_RADIUS - BORDER, DESK_TILE);
+                      ctl->h - 2 * BORDER, DESK_RADIUS - BORDER, fill);
 }
 
 static void centred(struct canvas *c, struct font *f, int x, int y, int w,
@@ -51,7 +51,7 @@ static void paint_cue(struct canvas *c, const struct desk_control *ctl,
     }
     tile_base(c, ctl, fill);
     if (ctl->pressed)
-        press_ring(c, ctl);
+        press_outline(c, ctl, fill);
 
     int text_y = ctl->y + ctl->h / 2 - 16;
     if (!ctl->enabled || link != DESK_LINK_READY)
@@ -70,11 +70,13 @@ static void paint_cue(struct canvas *c, const struct desk_control *ctl,
 static void paint_master(struct canvas *c, const struct desk_control *ctl,
                          const struct desk_fonts *fonts, enum desk_link link) {
     tile_base(c, ctl, DESK_TILE);
-    // With no link the level is the last thing heard, not the rig's: it is
-    // drawn grey so nobody reads a number off a dead connection.
+    // The fill is the master's word and nothing else: unknown draws no fill,
+    // and with no link the last level heard is drawn grey so nobody reads a
+    // number off a dead connection.
     int live = link == DESK_LINK_READY;
+    int known = ctl->state != DESK_UNKNOWN;
     uint32_t fill_colour = live ? DESK_AMBER : DESK_MUTED;
-    int fill_h = ctl->level * ctl->h / 255;
+    int fill_h = known ? ctl->level * ctl->h / 255 : 0;
     if (fill_h > 0) {
         // The fill is a rounded rectangle clipped to the tile's own corners by
         // being drawn inside it: at full height it is the tile.
@@ -82,15 +84,25 @@ static void paint_master(struct canvas *c, const struct desk_control *ctl,
                           fill_h < DESK_RADIUS ? fill_h / 2 : DESK_RADIUS,
                           fill_colour);
     }
+    // A finger on the fader gets a thumb at the level it is asking for; the
+    // fill waits for the master to agree.
+    if (ctl->pressed) {
+        int span = ctl->h > 1 ? ctl->h - 1 : 1;
+        int thumb_y = ctl->y + ctl->h - 1 - ctl->requested_level * span / 255;
+        if (thumb_y > ctl->y + ctl->h - BORDER)
+            thumb_y = ctl->y + ctl->h - BORDER;
+        canvas_fill_rect(c, ctl->x, thumb_y, ctl->w, BORDER, DESK_INK);
+    }
     char text[16];
-    if (live)
+    if (live && known)
         snprintf(text, sizeof text, "%d", ctl->level * 100 / 255);
     else
         snprintf(text, sizeof text, "--");
+    int dark_text = known && ctl->level > 140;
     centred(c, fonts->value, ctl->x, ctl->y + ctl->h / 2 - 28, ctl->w, text,
-            ctl->level > 140 ? DESK_GLASS : DESK_INK);
+            dark_text ? DESK_GLASS : DESK_INK);
     centred(c, fonts->label, ctl->x, ctl->y + 16, ctl->w, ctl->label,
-            ctl->level > 220 ? DESK_GLASS : DESK_MUTED);
+            known && ctl->level > 220 ? DESK_GLASS : DESK_MUTED);
 }
 
 static void paint_blackout(struct canvas *c, const struct desk_control *ctl,

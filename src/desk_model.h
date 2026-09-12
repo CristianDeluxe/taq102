@@ -31,7 +31,8 @@ struct desk_control {
     int function_id;    // -1 when it drives no function
     int x, y, w, h;
     enum desk_state state;
-    int level;          // DESK_MASTER: 0..255
+    int level;          // DESK_MASTER: 0..255, the master's own word
+    int requested_level;// DESK_MASTER: what the finger asked for; never painted as the rig's
     int enabled;
     char reason[DESK_REASON_MAX];   // why it is disabled, shown in its place
     int pressed;        // a finger is on it now: local feedback only
