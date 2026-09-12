@@ -86,6 +86,16 @@ int desk_take_damage(struct desk_model *m, int *x, int *y, int *w, int *h) {
     return 1;
 }
 
+static void release_panic(struct desk_model *m) {
+    if (m->panic_placement >= 0) {
+        int control = m->layout.placement[m->panic_placement].control;
+        m->control[control].pressed = 0;
+        damage_control(m, control);
+    }
+    m->panic_slot = NO_CAPTURE;
+    m->panic_placement = -1;
+}
+
 static void release(struct desk_model *m) {
     if (m->capture_index >= 0) {
         m->control[m->capture_index].pressed = 0;
@@ -94,6 +104,7 @@ static void release(struct desk_model *m) {
     m->capture_slot = NO_CAPTURE;
     m->capture_index = -1;
     m->capture_placement = -1;
+    release_panic(m);
     m->dirty = 1;
 }
 
@@ -104,6 +115,8 @@ void desk_init(struct desk_model *m) {
     m->capture_slot = NO_CAPTURE;
     m->capture_index = -1;
     m->capture_placement = -1;
+    m->panic_slot = NO_CAPTURE;
+    m->panic_placement = -1;
     damage_all(m);
 }
 
@@ -157,8 +170,6 @@ static int usable(const struct desk_model *m, const struct desk_control *c) {
 }
 
 struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y) {
-    if (m->capture_slot != NO_CAPTURE)
-        return none();
     int index = hit(m, x, y);
     if (index < 0)
         return none();
@@ -166,6 +177,16 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
     struct desk_control *c = &m->control[p->control];
     if (!usable(m, c))
         return none();
+    if (m->capture_slot != NO_CAPTURE) {
+        // Another finger is busy: only the panic button takes a second one.
+        if (c->kind == DESK_STOP_ALL && m->panic_slot == NO_CAPTURE) {
+            m->panic_slot = slot;
+            m->panic_placement = index;
+            c->pressed = 1;
+            damage_control(m, p->control);
+        }
+        return none();
+    }
 
     m->capture_slot = slot;
     m->capture_index = p->control;
@@ -206,6 +227,17 @@ struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y)
 }
 
 struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y) {
+    if (slot == m->panic_slot && m->panic_placement >= 0) {
+        const struct desk_placement *pp = &m->layout.placement[m->panic_placement];
+        struct desk_control *pc = &m->control[pp->control];
+        int fired = inside(pp, x, y) && usable(m, pc);
+        release_panic(m);
+        m->dirty = 1;
+        if (!fired)
+            return none();
+        struct desk_action a = { DESK_ACT_STOP_ALL, pc->widget_id, 255 };
+        return a;
+    }
     if (slot != m->capture_slot || m->capture_index < 0)
         return none();
     struct desk_control *c = &m->control[m->capture_index];
@@ -224,13 +256,18 @@ struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y) {
 }
 
 void desk_touch_cancel(struct desk_model *m, int slot) {
+    if (slot == m->panic_slot && m->panic_placement >= 0) {
+        release_panic(m);
+        m->dirty = 1;
+        return;
+    }
     if (slot != m->capture_slot || m->capture_index < 0)
         return;
     release(m);
 }
 
 void desk_cancel_all(struct desk_model *m) {
-    if (m->capture_index >= 0)
+    if (m->capture_index >= 0 || m->panic_placement >= 0)
         release(m);
 }
 
@@ -285,6 +322,8 @@ void desk_set_link(struct desk_model *m, enum desk_link link) {
         m->capture_slot = NO_CAPTURE;
         m->capture_index = -1;
         m->capture_placement = -1;
+        m->panic_slot = NO_CAPTURE;
+        m->panic_placement = -1;
     }
     damage_all(m);
 }

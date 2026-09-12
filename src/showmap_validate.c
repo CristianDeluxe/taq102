@@ -68,7 +68,7 @@ static const struct vc_widget *check_cue(struct desk_control *c,
 // this side and the same QLC+ line on the master's. A mismatch disables the
 // whole desk, because a map read against another show cannot be reasoned
 // about, only misread.
-static int mismatch(const struct show_map *map, const struct vc_doc *doc) {
+int showmap_mismatch(const struct show_map *map, const struct vc_doc *doc) {
     if (map->schema != 2)
         return 1;
     if (doc->app_version[0] && strcmp(doc->app_version, map->qlc_version) != 0)
@@ -80,7 +80,7 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
                   const struct vc_doc *doc) {
     desk_init(model);
     snprintf(model->master_name, sizeof model->master_name, "%s", map->key);
-    int wrong_show = mismatch(map, doc);
+    int wrong_show = showmap_mismatch(map, doc);
 
     int enabled = 0;
     for (int i = 0; i < map->count; i++) {

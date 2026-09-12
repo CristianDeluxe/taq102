@@ -17,7 +17,7 @@ struct desk_rect desk_view_lock_target(void) {
 
 struct desk_rect desk_view_bank_button(int index) {
     struct desk_rect r = { DESK_GRID_X + index * (DESK_BANK_PILL_W + DESK_GAP),
-                           DESK_H - DESK_SELECTOR_H + 8, DESK_BANK_PILL_W, DESK_SELECTOR_H - 16 };
+                           DESK_H - DESK_SELECTOR_H + 4, DESK_BANK_PILL_W, DESK_SELECTOR_H - 8 };
     return r;
 }
 

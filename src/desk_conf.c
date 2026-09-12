@@ -22,7 +22,30 @@ int desk_conf_valid_host(const char *host) {
         if (!(isalnum((unsigned char)ch) || ch == '.' || ch == '-'))
             return 0;
     }
-    return host[0] != '.' && host[n - 1] != '.';
+    if (host[0] == '.' || host[n - 1] == '.')
+        return 0;
+    // All digits and dots is an address, and an address has four octets
+    // under 256; "192.168.1" or "1.2.3.999" is a typo, not a hostname.
+    int numeric = 1;
+    for (size_t i = 0; i < n; i++)
+        if (!isdigit((unsigned char)host[i]) && host[i] != '.')
+            numeric = 0;
+    if (numeric) {
+        int octets = 0, value = 0, digits = 0;
+        for (size_t i = 0; i <= n; i++) {
+            if (i == n || host[i] == '.') {
+                if (digits == 0 || value > 255)
+                    return 0;
+                octets++;
+                value = digits = 0;
+            } else {
+                value = value * 10 + (host[i] - '0');
+                digits++;
+            }
+        }
+        return octets == 4;
+    }
+    return 1;
 }
 
 int desk_conf_valid_port(int port) { return port >= 1 && port <= 65535; }
