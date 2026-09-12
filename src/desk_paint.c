@@ -324,7 +324,7 @@ static void paint_headings(struct canvas *c, const struct desk_model *model,
         const struct desk_heading *h = &model->layout.heading[i];
         if (h->page != model->page || h->bank != model->bank)
             continue;
-        char text[96];
+        char text[192];
         // A section of hits held on the Mac says so in its heading, once,
         // instead of on every dead tile.
         int held_only = 1, any = 0;
@@ -352,7 +352,7 @@ static void paint_headings(struct canvas *c, const struct desk_model *model,
                     elsewhere = ctl->label;
             }
             if (elsewhere)
-                snprintf(text, sizeof text, "%s  %d/%d  \xc2\xb7  %s", title, h->part, h->parts, elsewhere);
+                snprintf(text, sizeof text, "%.79s  %d/%d  \xc2\xb7  %.47s", title, h->part, h->parts, elsewhere);
             else
                 snprintf(text, sizeof text, "%s  %d/%d", title, h->part, h->parts);
         } else {
