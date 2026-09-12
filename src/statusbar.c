@@ -6,8 +6,6 @@
 #include "font.h"
 #include "statusbar.h"
 
-#define GREEN 0xFF34C759u   // iOS systemGreen, the charging fill
-#define RED   0xFFFF3B30u   // iOS systemRed, the low-battery fill
 
 // The charging bolt as the six-point polygon iOS draws, in a unit box with y
 // running down. It replaced a 5-by-7 bitmap: scaled up to the icon's height
@@ -72,18 +70,20 @@ static void wifi_fan(struct canvas *c, int ax, int ay, int size, int lit, const 
 
 // The battery: an outline with a nub, the charge as a fill, and a bolt
 // while current flows in. (x, y) is the top-left of the body.
-static void battery_icon(struct canvas *c, int x, int y, int w, int h, int cap, int charging, const struct statusbar_style *sty) {
+// `known` is whether the driver reported a capacity at all: without one the
+// outline stands empty, with no fill and no bolt, rather than claiming 0%.
+static void battery_icon(struct canvas *c, int x, int y, int w, int h, int cap, int charging, int known, const struct statusbar_style *sty) {
     int r = h / 3, line = h / 10 > 1 ? h / 10 : 1, gap = line;
     int inner_r = r - line > 0 ? r - line : 1;
     canvas_round_rect(c, x, y, w, h, r, sty->ink);
     canvas_round_rect(c, x + line, y + line, w - 2 * line, h - 2 * line, inner_r, sty->hollow);
     canvas_fill_rect(c, x + w, y + h / 3, line + 1, h / 3, sty->ink);           // the nub
     int inner_w = w - 2 * (line + gap), inner_h = h - 2 * (line + gap);
-    int fill_w = inner_w * (cap < 0 ? 0 : cap > 100 ? 100 : cap) / 100;
-    uint32_t col = charging ? GREEN : cap <= 20 ? RED : sty->ink;
+    int fill_w = known ? inner_w * (cap < 0 ? 0 : cap > 100 ? 100 : cap) / 100 : 0;
+    uint32_t col = charging ? sty->charge : cap <= 20 ? sty->low : sty->ink;
     if (fill_w > 0)
         canvas_round_rect(c, x + line + gap, y + line + gap, fill_w, inner_h, inner_r, col);
-    if (charging) {
+    if (charging && known) {
         // Sized to the cell, not to a glyph grid: the bolt stands as tall as
         // the fill it sits on, less a hair of margin.
         int bh = inner_h * 6 / 7, bw = bh * 3 / 5;
@@ -149,16 +149,24 @@ static void paint_at(struct canvas *c, const struct status *st, const struct sta
     int right = c->w - margin - icon_w - s - 1;
     // iOS: plugged in is the bolt and the green, whatever the current does;
     // the rescue screen's text line still prints the milliamps.
-    battery_icon(c, right, y, icon_w, icon_h, st->have_batt ? st->cap : 0, st->plugged, sty);
+    battery_icon(c, right, y, icon_w, icon_h, st->cap, st->plugged, st->have_batt, sty);
     char pct[8];
-    snprintf(pct, sizeof pct, "%d%%", st->have_batt ? st->cap : 0);
+    if (st->have_batt)
+        snprintf(pct, sizeof pct, "%d%%", st->cap);
+    else
+        snprintf(pct, sizeof pct, "--%%");
     struct font *f = get_bar_font(sty->font_path);
-    right -= 2 * s + (f ? font_width(f, pct) : canvas_text7_width(pct, s));
+    // The 5x7 face has digits and the percent sign only; the unknown mark
+    // falls back to the 3x5 face, which has the dash.
+    int seven = f == NULL && st->have_batt;
+    right -= 2 * s + (f ? font_width(f, pct) : seven ? canvas_text7_width(pct, s) : canvas_text_width(pct, s));
     if (f) {
         int baseline = (bar_h - font_height(f)) / 2 + font_baseline(f);
         font_draw(f, c, right, baseline, pct, sty->ink);
-    } else {
+    } else if (seven) {
         canvas_text7(c, right, (bar_h - 7 * s) / 2, pct, s, sty->ink);
+    } else {
+        canvas_text(c, right, (bar_h - 5 * s) / 2, pct, s, sty->ink);
     }
     right -= 3 * s + icon_h;
     wifi_fan(c, right, y + icon_h, icon_h, status_wifi_bars(st), sty);

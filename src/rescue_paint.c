@@ -18,7 +18,7 @@ void rescue_paint(struct canvas *c, const char *kernel, const char *build,
                   const struct status *st, struct font *title, struct font *body,
                   const char *bar_font_path) {
     for (int i = 0; i < c->w * c->h; i++) c->px[i] = AMBER;
-    const struct statusbar_style bar = { DIM, AMBER, INK, DIM, PALE, bar_font_path };
+    const struct statusbar_style bar = { DIM, AMBER, INK, DIM, PALE, 0xFF34C759u, 0xFFFF3B30u, bar_font_path };
     statusbar_paint(c, st, &bar);
     int inter = title && body;
     if (inter) {

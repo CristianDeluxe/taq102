@@ -15,6 +15,8 @@ struct statusbar_style {
     uint32_t ink;     // lit shapes and text
     uint32_t dim;     // unlit Wi-Fi arcs
     uint32_t pale;    // the charging bolt
+    uint32_t charge;  // the fill while current flows in
+    uint32_t low;     // the fill at or under 20 %
     const char *font_path; // SemiBold TTF; NULL or unreadable keeps bitmap text
 };
 
