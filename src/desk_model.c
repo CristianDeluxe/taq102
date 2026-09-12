@@ -178,6 +178,18 @@ void desk_touch_cancel(struct desk_model *m, int slot) {
     release(m);
 }
 
+void desk_cancel_all(struct desk_model *m) {
+    if (m->capture_index >= 0)
+        release(m);
+}
+
+void desk_set_locked(struct desk_model *m, int locked) {
+    if (m->locked == !!locked)
+        return;
+    m->locked = !!locked;
+    release(m);
+}
+
 void desk_apply_function(struct desk_model *m, int function_id, int running) {
     for (int i = 0; i < m->count; i++) {
         struct desk_control *c = &m->control[i];
