@@ -48,6 +48,7 @@ cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
     \$SRC/settings_store.c \$SRC/power_policy.c \$SRC/wpa_ctrl.c \$SRC/wifi_scan.c \
     \$SRC/wifi_conf.c \$SRC/wifi_join.c \$SRC/wifi_status.c \$SRC/action_worker.c \
     \$SRC/desk_conf.c \$SRC/master_find.c \$SRC/iface_prefix.c \
+    \$SRC/speed_factor.c \$SRC/desk_tap.c \$SRC/desk_speed.c \$SRC/desk_speed_paint.c \
     \$BUILD/cJSON.o \
     -L\$SYSROOT/usr/lib -ldrm -lm
 \$CC -v 2>&1 | tail -1

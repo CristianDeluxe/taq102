@@ -46,6 +46,9 @@
 #include "desk_setup.h"
 #include "desk_setup_layout.h"
 #include "desk_setup_paint.h"
+#include "desk_speed.h"
+#include "desk_speed_layout.h"
+#include "desk_speed_paint.h"
 #include "desk_view.h"
 #include "display_power.h"
 #include "font.h"
@@ -120,7 +123,14 @@ static void dump_ppm(const struct canvas *c, const char *path) {
     fclose(f);
 }
 
-static void apply_frame(struct desk_model *model, const char *frame) {
+// The dial's echo, logged with its clock beside the frame that asked for it.
+static void desk_apply_speed_echo(struct desk_speed *speed, int widget_id, int ms, int factor, int64_t now) {
+    desk_speed_apply(speed, widget_id, ms, factor, now);
+    fprintf(stderr, "speed: echo %d|SPEED_STATE|%d|%d at %lld\n", widget_id, ms, factor, (long long)now);
+}
+
+static void apply_frame(struct desk_model *model, struct desk_speed *speed, const char *frame,
+                        int64_t now) {
     struct qlc_msg msg;
     if (qlc_decode(frame, strlen(frame), &msg) != 0)
         return;
@@ -131,8 +141,36 @@ static void apply_frame(struct desk_model *model, const char *frame) {
     case QLC_GRAND_MASTER:
         desk_apply_master(model, msg.value);
         break;
+    case QLC_SPEED_STATE:
+        desk_apply_speed_echo(speed, msg.widget_id, msg.value, msg.factor, now);
+        break;
     default:
         break;
+    }
+}
+
+// A speed frame, logged with its clock so touch-to-echo can be read off the
+// log: the tap's down edge is the frame's time, the echo is the push's.
+static void send_speed(struct qlc_session *session, struct speed_action action, int64_t now) {
+    char frame[64];
+    int n = -1;
+    switch (action.kind) {
+    case SPEED_ACT_TIME:
+    case SPEED_ACT_TIME_BOTH:
+        n = qlc_encode_speed_ms(frame, sizeof frame, action.widget_id, action.ms);
+        break;
+    case SPEED_ACT_FACTOR:
+        n = qlc_encode_speed_factor(frame, sizeof frame, action.widget_id, action.factor);
+        break;
+    case SPEED_ACT_NONE:
+        return;
+    }
+    if (n > 0 && qlc_session_send(session, frame) == 0)
+        fprintf(stderr, "speed: sent %s at %lld\n", frame, (long long)now);
+    if (action.kind == SPEED_ACT_TIME_BOTH && action.widget_id2 >= 0) {
+        n = qlc_encode_speed_ms(frame, sizeof frame, action.widget_id2, action.ms2);
+        if (n > 0 && qlc_session_send(session, frame) == 0)
+            fprintf(stderr, "speed: sent %s at %lld\n", frame, (long long)now);
     }
 }
 
@@ -347,6 +385,10 @@ int main(int argc, char **argv) {
     desk_set_view(&model, view_page, view_bank);
     struct desk_input input;
     desk_input_init(&input);
+    struct desk_speed speed;
+    desk_speed_init(&speed, &map);
+    int speed_slot = -1;        // the finger the speed cards own, if any
+    int last_page = model.page;
 
     // The controller reports in its own units on the mainline driver and in
     // screen pixels on the vendor one, so its declared maxima decide the
@@ -643,6 +685,18 @@ int main(int argc, char **argv) {
                         continue;
                     }
                 }
+                // On the SPEED page the content under the state row is the
+                // cards': a contact the model does not take goes to them.
+                if (layout.speed_page >= 0 && model.page == layout.speed_page && slot == speed_slot) {
+                    if (events[i].kind == TOUCH_UP) {
+                        send_speed(session, desk_speed_touch_up(&speed, x, y, now), now);
+                        speed_slot = -1;
+                    } else if (events[i].kind == TOUCH_CANCEL) {
+                        desk_speed_touch_cancel(&speed);
+                        speed_slot = -1;
+                    }
+                    continue;
+                }
                 enum desk_target target = desk_input_feed(&input, &model, &events[i], &index);
                 if (target == TARGET_LOCK) {
                     int changed = events[i].kind == TOUCH_DOWN ? desk_lock_target_down(&lock, now)
@@ -673,6 +727,12 @@ int main(int argc, char **argv) {
                 case TOUCH_DOWN:
                     action = desk_touch_down(&model, events[i].slot,
                                              (int)events[i].x, (int)events[i].y);
+                    if (layout.speed_page >= 0 && model.page == layout.speed_page &&
+                        model.capture_slot != slot && speed_slot < 0) {
+                        speed_slot = slot;
+                        send_speed(session, desk_speed_touch_down(&speed, x, y, now), now);
+                        continue;
+                    }
                     break;
                 case TOUCH_MOVE:
                     action = desk_touch_move(&model, events[i].slot,
@@ -755,13 +815,32 @@ int main(int argc, char **argv) {
             enabled = showmap_build(&model, &map, &console);
             desk_set_layout(&model, &layout);
             desk_set_view(&model, page, bank);
+            desk_speed_validate(&speed, &console);
             printf("desk: %d of %d controls enabled against the master's console\n",
                    enabled, map.count);
         }
         char frame[4096];
         while (qlc_session_recv(session, frame, sizeof frame) == 1)
-            apply_frame(&model, frame);
+            apply_frame(&model, &speed, frame, now);
         desk_set_link(&model, desk_link_of(link));
+        desk_speed_set_link(&speed, link == QLC_READY, now);
+        desk_speed_tick(&speed, now);
+        if (speed.refresh_wanted) {
+            speed.refresh_wanted = 0;
+            qlc_session_refresh(session, now);
+            fprintf(stderr, "speed: no echo, re-reading the show\n");
+        }
+        if (model.page != last_page) {
+            last_page = model.page;
+            desk_speed_reset_taps(&speed);
+            desk_speed_touch_cancel(&speed);
+            speed_slot = -1;
+        }
+        if (speed.dirty && layout.speed_page >= 0 && model.page == layout.speed_page) {
+            desk_damage_rect(&model, SPEED_CARD_X, SPEED_CARD_Y(0), SPEED_CARD_W,
+                             SPEED_BOTH_Y + SPEED_BOTH_H - SPEED_CARD_Y(0));
+        }
+        speed.dirty = 0;
         desk_set_locked(&model, lock.state != DESK_UNLOCKED);
         if (log_rtt && link == QLC_READY && qlc_session_last_rtt(session) != last_rtt_logged) {
             last_rtt_logged = qlc_session_last_rtt(session);
@@ -841,6 +920,8 @@ int main(int argc, char **argv) {
                 if (dw > 0)
                     canvas_set_clip(&canvas, dx, dy, dw, dh);
                 desk_paint(&canvas, &model, &fonts);
+                if (layout.speed_page >= 0 && model.page == layout.speed_page)
+                    desk_speed_paint(&canvas, &speed, &fonts);
                 desk_setup_paint(&canvas, &setup, &fonts);
                 canvas_clear_clip(&canvas);
                 if (bar_ready && (dw < 0 || dy < bar.h))

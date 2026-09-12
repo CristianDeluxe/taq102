@@ -381,9 +381,11 @@ MacBook as master. Design and evidence:
   The show is `Vibra.qxw` on DMX-Fixtures' `qlctool` branch (worktree
   `~/p/DMX-Fixtures-qlctool`). Phases 0 (link trust), 1 (qualify the show,
   generated map, LIVE states and PARAR TODO), 2 (pages, lock, power key,
-  damage repaint) and 3 (setup without ssh) are done and measured; see
-  `TODO_LOG.md` 2026-09-12. Next: Phase 4, speed (two dial cards, tap tempo,
-  `SPEED_STATE` decode), then finite accents (owner-blocked) and position.
+  damage repaint), 3 (setup without ssh) and 4 (speed: two cards, tap, BPM
+  steps, half and double time, Tap both) are done and measured; see
+  `TODO_LOG.md` 2026-09-12. What remains is gated on I: Phase 5
+  finite accents (the fog and bump decisions below) and Phase 6 position (the
+  XY pad's range experiment below). The desk is usable for a show as it is.
 - [!] Phase 3's checks that need a finger on the tablet (the desk runs there
   now with `/data/desk.conf` pointing at this Mac's 9998 instance): tap the
   gear, scan, join `TestNet5` with its key (not in the brain; I

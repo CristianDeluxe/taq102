@@ -1817,3 +1817,37 @@ one write, and the battery policy of the control centre behind the toggle.
 What remains is a finger: the join, the fader and the toggle are my
 checks, listed in `TODO.md`; the scan, the sweep and the file-driven link
 were run on the tablet and are in `docs/evidence/2026-09-12-desk-phase3/`.
+
+## Speed is two dials, not a show BPM (2026-09-12)
+
+The show has two speed dials and the desk gives each a card on a SPEED page:
+`Tempo Show` over the colour and effect chasers, `Vel. Movimiento` over the
+movements. A card reads its base time off the master (the snapshot carries
+`currentTime` and `currentFactor`, so nothing is a guess even before the
+first push) and shows it as BPM large with the milliseconds and the time
+multiplier beneath, then Tap, a BPM either way, half and double time, and an
+explicit `x1`. That last one exists because the engine's multiplier enum has
+two values a desk must never send but a Mac can leave behind: `None` and
+`Zero` both multiply by zero in `applyFunctionsTime`, so while a dial sits on
+either the steps are dead and `x1` is the way back. A `Tap both` strip under
+the cards retimes both from one tap, sending up to two frames, the one
+amendment to "one gesture, one frame" that the reviewer allowed, and it is dead
+while either dial waits for an echo.
+
+Two engine facts shaped the model, both read in `vcspeeddial.cpp` rather
+than assumed. The setters return on equality and push nothing, so a same
+value is never sent: a steady tap at the current tempo would otherwise wait
+for an echo that never comes and call the master silent. And `SPEED_STATE`
+names no sender, so a push the desk did not ask for is `State updated`, never
+"changed on master": a late echo of our own would be mislabelled. One change
+is outstanding per dial; an echo that matches clears it in silence, and 1500
+ms without one makes the dial unconfirmed and asks the session to re-read the
+console, which is the recovery for a state the socket cannot otherwise give.
+Tap commits on the down edge (tempo is the down edge) as the median of the
+last four intervals, with a 200 ms bounce floor and a two-second reset.
+
+On the tablet the cards read 120 BPM from the snapshot, a probe's change on
+the Mac's side appeared as 150 with the note, and a run of taps on `Tap both`
+retimed both dials with the echo 39 to 179 ms after the touch-down, 56 in the
+middle, over one Wi-Fi hop. Evidence in `docs/evidence/2026-09-12-desk-phase4/`.
+the reviewer's six answers on the doubts are in `docs/evidence/2026-09-12-desk-speed-findings.md`.

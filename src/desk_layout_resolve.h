@@ -29,9 +29,12 @@ struct desk_layout {
     int banks[MAP_MAX_PAGES];
     char title[MAP_MAX_PAGES][MAP_CAPTION_MAX];
     int pages;
+    int speed_page;     // the SPEED page's index after the map's pages, or -1
 };
 
 // `master` and `panic` are the model indices of the two chrome controls.
+// A map with dials gets one more page, `SPEED`, carrying only the compact
+// state row and the chrome; the speed cards under it are another model's.
 // Returns 0, or -1 when a page needs more banks or placements than the
 // layout holds, which no map this size can cause.
 int desk_layout_resolve(const struct show_map *map, int master, int panic,
