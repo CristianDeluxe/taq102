@@ -229,6 +229,7 @@ int desk_layout_resolve(const struct show_map *map, int master, int panic,
                         struct desk_layout *out) {
     memset(out, 0, sizeof *out);
     out->pages = map->pages;
+    out->speed_page = -1;
     for (int page = 0; page < map->pages; page++)
         snprintf(out->title[page], sizeof out->title[page], "%s", map->page[page].title);
     const struct map_section *state = NULL;
@@ -252,6 +253,20 @@ int desk_layout_resolve(const struct show_map *map, int master, int panic,
             if (cur.failed)
                 return -1;
         }
+    }
+    if (map->dials > 0 && map->pages < MAP_MAX_PAGES) {
+        int page = map->pages;
+        struct cursor cur = { out, page, 0, CONTENT_Y, CONTENT_END, 0 };
+        cur.page = page;
+        chrome(&cur, master, panic);
+        if (state)
+            compact_row(&cur, state);
+        if (cur.failed)
+            return -1;
+        out->banks[page] = 1;
+        snprintf(out->title[page], sizeof out->title[page], "SPEED");
+        out->speed_page = page;
+        out->pages = page + 1;
     }
     return 0;
 }

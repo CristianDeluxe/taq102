@@ -6,6 +6,28 @@
 
 ### 2026-09
 
+- [x] 2026-09-12 - **Desk, Phase 4: speed.** The map's two dials (`Tempo Show`
+  w34, five members; `Vel. Movimiento` w274, eighteen) parsed with their
+  per-member multiplier enums; the engine's table mirrored (`speed_factor`:
+  1/16 is 62 thousandths, None is a skipped field, Zero is zero); the codec
+  decodes `w|SPEED_STATE|ms|enum` and encodes `SPEED_FACTOR`. A SPEED page as
+  the rail's eighth entry with the compact state row and two cards: BPM large
+  (`round(60000/ms)`), `563 ms  Time x1`, the member count; Tap (commits on
+  the down edge, median of the last four intervals, 200 ms bounce, 2 s
+  reset), -1/+1 BPM, x1/2, x2 and an explicit x1 (the way back from a None or
+  Zero factor, which the engine multiplies by zero); `Tap both` sends up to
+  two frames from one tap and is dead while either dial waits. One change
+  outstanding per dial, same values never sent (the engine's setters return
+  on equality and push nothing), an echo that matches clears it, any other
+  push is adopted and noted `State updated` (the broadcast names no sender);
+  1500 ms without an echo makes the dial unconfirmed and asks the session to
+  re-read the console (`qlc_session_refresh`). Bounds 200..min(2000, timeMax)
+  with steps past them dead, never clamped. the reviewer adjudicated six doubts
+  (`docs/evidence/2026-09-12-desk-speed-findings.md`), all adopted. On the
+  tablet: the cards read 120 BPM off the snapshot, a probe's change on the
+  Mac's side showed as 150 BPM with the note, and a run of taps on `Tap
+  both` retimed both dials with the master's echo 39..179 ms after the
+  touch-down, median 56 (`docs/evidence/2026-09-12-desk-phase4/`).
 - [x] 2026-09-12 - **Desk, Phase 3: setup without ssh.** A gear at the left
   of the status bar opens a settings surface over the rail and content, the
   master column staying live. The Wi-Fi card talks to wpa_supplicant over its

@@ -1,0 +1,28 @@
+2026-09-12, tablet against the bench QLC+ 5.2.2 (this Mac, 192.168.1.65:9998, Vibra.qxw),
+desk started with `--view 7,0` (the SPEED page).
+
+speed-connecting.png: before the snapshot both cards say "waiting for the master",
+every target dead, "--" for the BPM.
+speed-linked.png: after the snapshot and a run of taps on `Tap both` (a finger on the
+tablet while the desk ran; the desk has no way to fake one), both dials at 563 ms,
+107 BPM, "Time x1", x1 dead because the factor is one already, the rest live.
+
+The probe changed the dial from the Mac's side and the desk adopted it:
+  >> 34|SPEED_TIME|400
+  <<    64.9 ms  34|SPEED_STATE|400|6
+  speed: echo 34|SPEED_STATE|400|6 at 84630431        (150 BPM on the card, "State updated")
+
+Touch-to-echo, from the tablet's log (ms on the desk's monotonic clock; a tap commits
+on its down edge, so "sent" is the touch-down and "echo" is the master's push):
+  speed: sent 34|SPEED_TIME|563 at 84641300   echo at 84641445   145 ms
+  speed: sent 34|SPEED_TIME|669 at 84642075   echo at 84642120    45 ms
+  speed: sent 34|SPEED_TIME|563 at 84642518   echo at 84642558    40 ms
+  speed: sent 34|SPEED_TIME|592 at 84643139   echo at 84643178    39 ms
+  speed: sent 34|SPEED_TIME|621 at 84643760   echo at 84643816    56 ms
+  speed: sent 34|SPEED_TIME|610 at 84644360   echo at 84644418    58 ms
+  speed: sent 34|SPEED_TIME|621 at 84645024   echo at 84645203   179 ms
+  Seven taps, both dials each time (14 frames, 14 echoes), worst 179 ms, median 56 ms:
+  under the 100 ms p95 the spec asks for on five of seven, over it on two, all within
+  the 1500 ms the desk waits before calling a change unanswered. Wi-Fi, one hop.
+
+Restored afterwards: 34 and 274 back to 500 ms with the probe.

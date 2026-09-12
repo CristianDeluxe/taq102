@@ -33,7 +33,7 @@ int main(void) {
     int master = map.count, panic = map.count + 1;
     struct desk_layout l;
     assert(desk_layout_resolve(&map, master, panic, &l) == 0);
-    assert(l.pages == 7);
+    assert(l.pages == 8 && l.speed_page == 7 && strcmp(l.title[7], "SPEED") == 0);
 
     // Every control has a placement on its own page; the states also on every
     // other page, compact.
