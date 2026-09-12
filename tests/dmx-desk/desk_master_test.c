@@ -45,7 +45,7 @@ int main(void) {
     const struct desk_placement *mp = &layout.placement[0], *cp = &layout.placement[1];
     assert(m.control[im].state == DESK_UNKNOWN);
 
-    struct canvas c = { calloc(DESK_W * DESK_H, 4), DESK_W, DESK_H };
+    struct canvas c = { .px = calloc(DESK_W * DESK_H, 4), .w = DESK_W, .h = DESK_H };
     struct desk_fonts fonts = { NULL, NULL, NULL, NULL };
     desk_paint(&c, &m, &fonts);
     // Unknown: not one amber pixel in the master tile.

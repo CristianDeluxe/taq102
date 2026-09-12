@@ -5,7 +5,7 @@
 #include <string.h>
 #include "control_center_paint.h"
 int main(void) {
-    struct canvas full = {calloc(560*400,4),560,400}, partial = {calloc(560*400,4),560,400};
+    struct canvas full = { .px = calloc(560*400,4), .w = 560, .h = 400 }, partial = { .px = calloc(560*400,4), .w = 560, .h = 400 };
     uint32_t *uploaded = calloc(560*400,4);
     assert(full.px && partial.px && uploaded);
     struct cc_fonts fonts = {

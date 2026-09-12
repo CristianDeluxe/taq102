@@ -1,0 +1,28 @@
+Perf gate, 2026-09-12, tablet on mainline 7.3.0-rc2 (build 20260908), QLC+
+5.2.2 with Vibra.qxw on the Mac at 192.168.1.65:9998, DMXDESK_PERF=1
+DMXDESK_DRAG=1 (the fader's requested level moves every loop and the tile
+repaints, sending nothing: the load of a finger dragging the master).
+
+Each line is the desk's own ten-second report: p50/p95 of the last thousand
+paint and present times in ms, the sample count, RSS and MemAvailable.
+
+1. Full repaint every frame, per-pixel rounded rectangles, the status bar
+   supersampled on every frame:
+   perf: paint p50 217 p95 248 ms (161) present p50 20 p95 25 ms (161) rss 7844 kB memavail 890284 kB
+
+2. Rounded rectangles as row spans, the status bar painted once per change
+   and copied:
+   perf: paint p50 41 p95 81 ms (497) present p50 14 p95 23 ms (497) rss 8040 kB memavail 892900 kB
+
+3. Damage per control, every primitive clipped to it, the presenter copying
+   only the union of this frame's and the other buffer's pending damage
+   (the background clear still unclipped):
+   perf: paint p50 31 p95 63 ms (738) present p50 5 p95 16 ms (738) rss 8044 kB memavail 892956 kB
+
+4. The background clear clipped as well:
+   perf: paint p50 14 p95 16 ms (1557) present p50 4 p95 5 ms (1557) rss 7976 kB memavail 892968 kB
+
+Verdict: under the 33 ms p95 budget of the design with margin; a full-page
+repaint (a page or bank change) still costs about 41 ms once, which is one
+frame at the panel's rate and is not on the drag path. No GLES presentation
+needed.

@@ -201,7 +201,7 @@ static void downsample(struct canvas *dst, const struct canvas *src, int rows) {
 void statusbar_paint(struct canvas *c, const struct status *st, const struct statusbar_style *sty) {
     int rows = statusbar_height(c->w);
     if (rows > c->h) rows = c->h;
-    struct canvas big = { calloc((size_t)c->w * SS * rows * SS, 4), c->w * SS, rows * SS };
+    struct canvas big = { .px = calloc((size_t)c->w * SS * rows * SS, 4), .w = c->w * SS, .h = rows * SS };
     if (!big.px) return;
     paint_at(&big, st, sty, UNIT(c->w) * SS);
     downsample(c, &big, rows);

@@ -109,7 +109,7 @@ int main(void) {
     struct cc_model m; cc_init(&m, 214, 255, 1, 5);
     strcpy(m.ssid, "TestNet"); strcpy(m.addr, "192.168.1.57"); m.level_dbm = -37;
     m.cap = 100; m.plugged = 1; strcpy(m.batt_word, "Full"); strcpy(m.build, "20260907-162319-23127e9"); strcpy(m.kernel, "4.4.167");
-    struct canvas c = {calloc(560 * 400, 4), 560, 400}; assert(c.px);
+    struct canvas c = { .px = calloc(560 * 400, 4), .w = 560, .h = 400 }; assert(c.px);
     FILE *manifest = fopen("/tmp/taq102-audit/task7-png-manifest.txt", "w"); assert(manifest);
     const char *states[] = {"wifi-off", "wifi-starting", "wifi-associating", "connected", "wifi-failed"};
     for (int i = 0; i < 5; i++) { m.wifi = (enum wifi_state)i; snapshot(states[i], &c, &m, &f, manifest); }

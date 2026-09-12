@@ -17,8 +17,8 @@ int main(void) {
     struct status st = { .have_batt = 1, .cap = 87, .mv = 4120, .ma = 120,
         .plugged = 1, .word = "Charging", .have_wifi = 1, .level = -40,
         .quality = 70, .addr = "192.168.1.57" };
-    struct canvas inter = { calloc(1024 * 600, 4), 1024, 600 };
-    struct canvas fallback = { calloc(1024 * 600, 4), 1024, 600 };
+    struct canvas inter = { .px = calloc(1024 * 600, 4), .w = 1024, .h = 600 };
+    struct canvas fallback = { .px = calloc(1024 * 600, 4), .w = 1024, .h = 600 };
     assert(inter.px && fallback.px);
     rescue_paint(&inter, "4.4.167", "20260907-162319-23127e9", &st, title, body, semibold);
     rescue_paint(&fallback, "4.4.167", "20260907-162319-23127e9", &st, NULL, body, NULL);

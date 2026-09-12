@@ -38,7 +38,7 @@ uint32_t canvas_over(uint32_t dst, uint32_t src) {
 }
 
 void canvas_blend(struct canvas *c, int x, int y, uint32_t col) {
-    if (x < 0 || y < 0 || x >= c->w || y >= c->h) return;
+    if (!canvas_visible(c, x, y)) return;
     uint32_t *p = &c->px[(size_t)y * c->w + x];
     *p = canvas_over(*p, col);
 }
@@ -84,6 +84,7 @@ void canvas_blend_round_rect(struct canvas *c, int x, int y, int w, int h, int r
             }
             unsigned a = (col >> 24) * inside / 16;
             uint32_t src = (a << 24) | (col & 0x00FFFFFFu);
+            if (!canvas_visible(c, i, j)) continue;
             uint32_t *dst = &c->px[(size_t)j * c->w + i];
             /* Solid glass/tile runs have identical operands: avoid repeating
                three software integer divisions per pixel on Cortex-A7. */

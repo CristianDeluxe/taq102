@@ -5,7 +5,7 @@
 #include "statusbar.h"
 int main(void) {
     int W = 1024, h = statusbar_height(W);
-    struct canvas c = { calloc(W * h, 4), W, h };
+    struct canvas c = { .px = calloc(W * h, 4), .w = W, .h = h };
     struct status st = { .have_batt = 1, .cap = 87, .ma = 120, .have_wifi = 1, .level = -40, .plugged = 1 };
     struct statusbar_style sty = { 0x00000000u, 0x00000000u, 0xFFFFFFFFu, 0x66FFFFFFu, 0xFFFFFFFFu,
         0xFF34C759u, 0xFFFF3B30u,

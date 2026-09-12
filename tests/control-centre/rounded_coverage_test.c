@@ -28,7 +28,7 @@ static void reference(struct canvas *c, int x, int y, int w, int h, int r, uint3
 }
 int main(void) {
     uint32_t a[32*24], b[32*24];
-    struct canvas actual = {a, 32, 24}, expected = {b, 32, 24};
+    struct canvas actual = { .px = a, .w = 32, .h = 24 }, expected = { .px = b, .w = 32, .h = 24 };
     uint32_t seed = 42;
     const uint32_t colors[] = {0, 0x00123456, 0xc7141416, 0xeb2a2a2e, 0xffe08a00, 0x0188ff00};
     for (int test = 0; test < 300; test++) {

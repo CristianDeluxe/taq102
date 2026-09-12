@@ -308,8 +308,9 @@ static void paint_link_banner(struct canvas *c, const struct desk_model *model,
 
 void desk_paint(struct canvas *canvas, const struct desk_model *model,
                 const struct desk_fonts *fonts) {
-    for (int i = 0; i < canvas->w * canvas->h; i++)
-        canvas->px[i] = DESK_GLASS;
+    // The background, inside the clip only: a full clear is 614k pixels,
+    // which is most of a frame's cost on this CPU when one tile changed.
+    canvas_fill_rect(canvas, 0, 0, canvas->w, canvas->h, DESK_GLASS);
 
     paint_rail(canvas, model, fonts);
     paint_headings(canvas, model, fonts);

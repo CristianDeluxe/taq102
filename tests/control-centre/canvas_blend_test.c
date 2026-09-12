@@ -10,7 +10,7 @@ int main(void) {
     uint32_t m = canvas_over(0xFF000000u, 0x80FFFFFFu);             // half white over black
     assert((m >> 24) == 0xFF && ((m >> 16) & 0xFF) >= 0x7F && ((m >> 16) & 0xFF) <= 0x81);
     assert(canvas_over(0xFF123456u, 0x00FFFFFFu) == 0xFF123456u);   // alpha 0 leaves dst
-    struct canvas c = { calloc(8 * 8, 4), 8, 8 };
+    struct canvas c = { .px = calloc(8 * 8, 4), .w = 8, .h = 8 };
     canvas_blend(&c, -1, 0, 0xFFFFFFFFu); canvas_blend(&c, 8, 8, 0xFFFFFFFFu);  // clipped, no crash
     canvas_blend_rect(&c, 2, 2, 4, 4, 0xFFE08A00u);
     assert(c.px[2 * 8 + 2] == 0xFFE08A00u && c.px[0] == 0);

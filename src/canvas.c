@@ -14,24 +14,65 @@ static const unsigned char GLYPH[41][5] = {
     {0,0,0,0,2},{0,2,0,2,0},{0,0,7,0,0},{1,1,2,4,4},{5,1,2,4,5}
 };
 
+void canvas_set_clip(struct canvas *c, int x, int y, int w, int h) {
+    c->clip_x = x; c->clip_y = y; c->clip_w = w; c->clip_h = h;
+}
+
+void canvas_clear_clip(struct canvas *c) { c->clip_w = 0; c->clip_h = 0; }
+
 void canvas_put(struct canvas *c, int x, int y, uint32_t col) {
-    if (x >= 0 && x < c->w && y >= 0 && y < c->h) c->px[y * c->w + x] = col;
+    if (canvas_visible(c, x, y)) c->px[y * c->w + x] = col;
+}
+
+// A row segment clipped to the canvas, written directly: the primitives
+// below are what every frame is made of, and a bounds check per pixel is
+// what made a full repaint cost a fifth of a second on the tablet.
+static void span(struct canvas *c, int x, int y, int w, uint32_t col) {
+    if (y < 0 || y >= c->h)
+        return;
+    int x0 = x < 0 ? 0 : x, x1 = x + w > c->w ? c->w : x + w;
+    if (c->clip_w > 0) {
+        if (y < c->clip_y || y >= c->clip_y + c->clip_h)
+            return;
+        if (x0 < c->clip_x) x0 = c->clip_x;
+        if (x1 > c->clip_x + c->clip_w) x1 = c->clip_x + c->clip_w;
+    }
+    uint32_t *row = c->px + (size_t)y * c->w;
+    for (int i = x0; i < x1; i++)
+        row[i] = col;
 }
 
 void canvas_fill_rect(struct canvas *c, int x, int y, int w, int h, uint32_t col) {
     for (int j = 0; j < h; j++)
-        for (int i = 0; i < w; i++)
-            canvas_put(c, x + i, y + j, col);
+        span(c, x, y + j, w, col);
 }
 
+// The same pixels as the per-pixel test it replaces: a row between the
+// corner bands is full width, a row within them is full between the corner
+// squares, and only the corner squares need the circle test.
 void canvas_round_rect(struct canvas *c, int x, int y, int w, int h, int r, uint32_t col) {
-    for (int j = 0; j < h; j++)
-        for (int i = 0; i < w; i++) {
-            int cx = i < r ? r : (i >= w - r ? w - 1 - r : i);
-            int cy = j < r ? r : (j >= h - r ? h - 1 - r : j);
-            float dx = i - cx, dy = j - cy;
-            if (dx * dx + dy * dy <= (float)r * r + 0.5f) canvas_put(c, x + i, y + j, col);
+    if (r < 0) r = 0;
+    if (2 * r > w) r = w / 2;
+    if (2 * r > h) r = h / 2;
+    for (int j = 0; j < h; j++) {
+        if (j >= r && j < h - r) {
+            span(c, x, y + j, w, col);
+            continue;
         }
+        int cy = j < r ? r : h - 1 - r;
+        float dy = j - cy;
+        // The corners: the first pixel in from the left that is inside is
+        // mirrored on the right, since the test is symmetric.
+        int first = r;
+        for (int i = 0; i < r; i++) {
+            float dx = i - r;
+            if (dx * dx + dy * dy <= (float)r * r + 0.5f) {
+                first = i;
+                break;
+            }
+        }
+        span(c, x + first, y + j, w - 2 * first, col);
+    }
 }
 
 static int glyph_index(char ch) {

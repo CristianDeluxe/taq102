@@ -20,7 +20,7 @@ int main(void) {
     int w = 1024, h = statusbar_height(w);
     struct statusbar_style desk = { 0xFF141416u, 0xFF141416u, 0xFFF5F5F7u, 0xFF9A9AA0u,
         0xFFF5F5F7u, 0xFFE08A00u, 0xFFC03020u, NULL };
-    struct canvas c = { calloc((size_t)w * h, 4), w, h };
+    struct canvas c = { .px = calloc((size_t)w * h, 4), .w = w, .h = h };
 
     // Charging paints the fill in the style's charge colour, never in green.
     struct status charging = { .have_batt = 1, .cap = 60, .plugged = 1, .have_wifi = 1 };

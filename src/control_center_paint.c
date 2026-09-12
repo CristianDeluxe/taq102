@@ -28,7 +28,7 @@ static void text(struct canvas *c, struct font *font, struct cc_rect box,
         return;
     }
     /* The legacy glyph writer overwrites pixels, so composite its mask instead. */
-    struct canvas mask = {calloc((size_t)box.w * 15, sizeof(uint32_t)), box.w, 15};
+    struct canvas mask = { .px = calloc((size_t)box.w * 15, sizeof(uint32_t)), .w = box.w, .h = 15 };
     if (!mask.px) return;
     char fit[128]; size_t count = strlen(value);
     if (count >= sizeof fit) count = sizeof fit - 1;
@@ -48,7 +48,7 @@ static void warm(struct font *font) {
     char ascii[96];
     for (int i = 0; i < 95; i++) ascii[i] = (char)(32 + i);
     ascii[95] = 0;
-    struct canvas empty = {NULL, 0, 0};
+    struct canvas empty = { .px = NULL, .w = 0, .h = 0 };
     font_draw(font, &empty, 0, 0, ascii, INK);
     font_draw(font, &empty, 0, 0, "\xc2\xb7\xe2\x80\xa6", INK);
 }

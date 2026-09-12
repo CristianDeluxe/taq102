@@ -5,7 +5,21 @@
 #define CANVAS_H
 #include <stdint.h>
 
-struct canvas { uint32_t *px; int w, h; };
+// A clip of zero width means none: the initialisers `{ px, w, h }` all over
+// the tree keep painting the whole canvas. A painter that repaints damage
+// sets one, and every primitive here and in canvas_blend honours it.
+struct canvas { uint32_t *px; int w, h; int clip_x, clip_y, clip_w, clip_h; };
+
+void canvas_set_clip(struct canvas *c, int x, int y, int w, int h);
+void canvas_clear_clip(struct canvas *c);
+// Whether a pixel is on the canvas and inside its clip.
+static inline int canvas_visible(const struct canvas *c, int x, int y) {
+    if (x < 0 || y < 0 || x >= c->w || y >= c->h)
+        return 0;
+    if (c->clip_w <= 0)
+        return 1;
+    return x >= c->clip_x && x < c->clip_x + c->clip_w && y >= c->clip_y && y < c->clip_y + c->clip_h;
+}
 
 void canvas_put(struct canvas *c, int x, int y, uint32_t col);
 void canvas_fill_rect(struct canvas *c, int x, int y, int w, int h, uint32_t col);

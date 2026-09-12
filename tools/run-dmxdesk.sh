@@ -19,6 +19,7 @@ master=""
 port=""
 map=$here/show/vibra.desk.json
 dump=""
+view=""
 stop=0
 
 while [ $# -gt 0 ]; do
@@ -27,8 +28,9 @@ while [ $# -gt 0 ]; do
 	--port) port=$2; shift 2 ;;
 	--map) map=$2; shift 2 ;;
 	--dump) dump=$2; shift 2 ;;
+	--view) view=$2; shift 2 ;;
 	--stop) stop=1; shift ;;
-	*) echo "usage: $0 [--host H] [--port P] [--map FILE] [--dump FILE] [--stop]" >&2; exit 2 ;;
+	*) echo "usage: $0 [--host H] [--port P] [--map FILE] [--dump FILE] [--view P,B] [--stop]" >&2; exit 2 ;;
 	esac
 done
 
@@ -41,7 +43,7 @@ remote() {
 	remote_dump=$2
 	# shellcheck disable=SC2086
 	ssh $ssh_opts "root@$tablet" \
-		"MASTER='$master' PORT='$port' MAP='$remote_map' DUMP='$remote_dump' sh -s" <<'REMOTE'
+		"MASTER='$master' PORT='$port' MAP='$remote_map' DUMP='$remote_dump' VIEW='$view' sh -s" <<'REMOTE'
 set -eu
 # The appliance holds the display, and taq102-app restarts glcube when it
 # dies, so the supervisor goes first. busybox here has no killall and pidof
@@ -66,6 +68,7 @@ done
 # keeps for itself (a later phase) is not overridden on every relaunch.
 set -- --map "$MAP" --touch "$touch_node"
 [ -n "$power_node" ] && set -- "$@" --power "$power_node"
+[ -n "$VIEW" ] && set -- "$@" --view "$VIEW"
 [ -n "$MASTER" ] && set -- "$@" --host "$MASTER"
 [ -n "$PORT" ] && set -- "$@" --port "$PORT"
 if [ -n "$DUMP" ]; then

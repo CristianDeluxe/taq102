@@ -40,9 +40,57 @@ static int master_level_at(const struct desk_placement *p, int y) {
     return from_bottom * 255 / span;
 }
 
+static void damage_all(struct desk_model *m) {
+    m->damage_all = 1;
+    m->dirty = 1;
+}
+
+void desk_damage_rect(struct desk_model *m, int x, int y, int w, int h) {
+    if (w <= 0 || h <= 0)
+        return;
+    m->dirty = 1;
+    if (m->damage_all)
+        return;
+    if (m->damage_w <= 0) {
+        m->damage_x = x; m->damage_y = y; m->damage_w = w; m->damage_h = h;
+        return;
+    }
+    int x0 = m->damage_x < x ? m->damage_x : x;
+    int y0 = m->damage_y < y ? m->damage_y : y;
+    int x1 = m->damage_x + m->damage_w > x + w ? m->damage_x + m->damage_w : x + w;
+    int y1 = m->damage_y + m->damage_h > y + h ? m->damage_y + m->damage_h : y + h;
+    m->damage_x = x0; m->damage_y = y0; m->damage_w = x1 - x0; m->damage_h = y1 - y0;
+}
+
+// A control's every placement on the current view joins the damage.
+static void damage_control(struct desk_model *m, int control) {
+    for (int i = 0; i < m->layout.placements; i++) {
+        const struct desk_placement *p = &m->layout.placement[i];
+        if (on_view(m, p) && p->control == control)
+            desk_damage_rect(m, p->x, p->y, p->w, p->h);
+    }
+}
+
+int desk_take_damage(struct desk_model *m, int *x, int *y, int *w, int *h) {
+    if (!m->dirty)
+        return 0;
+    if (m->damage_all || m->damage_w <= 0) {
+        *x = 0; *y = 0; *w = -1; *h = -1;
+    } else {
+        *x = m->damage_x; *y = m->damage_y; *w = m->damage_w; *h = m->damage_h;
+    }
+    m->damage_all = 0;
+    m->damage_w = 0;
+    m->damage_h = 0;
+    m->dirty = 0;
+    return 1;
+}
+
 static void release(struct desk_model *m) {
-    if (m->capture_index >= 0)
+    if (m->capture_index >= 0) {
         m->control[m->capture_index].pressed = 0;
+        damage_control(m, m->capture_index);
+    }
     m->capture_slot = NO_CAPTURE;
     m->capture_index = -1;
     m->capture_placement = -1;
@@ -56,6 +104,7 @@ void desk_init(struct desk_model *m) {
     m->capture_slot = NO_CAPTURE;
     m->capture_index = -1;
     m->capture_placement = -1;
+    damage_all(m);
 }
 
 int desk_add(struct desk_model *m, const struct desk_control *control) {
@@ -64,7 +113,7 @@ int desk_add(struct desk_model *m, const struct desk_control *control) {
     m->control[m->count] = *control;
     m->control[m->count].state = DESK_UNKNOWN;
     m->control[m->count].pressed = 0;
-    m->dirty = 1;
+    damage_all(m);
     return m->count++;
 }
 
@@ -73,6 +122,7 @@ void desk_set_layout(struct desk_model *m, const struct desk_layout *layout) {
     m->page = 0;
     m->bank = 0;
     release(m);
+    damage_all(m);
 }
 
 void desk_set_view(struct desk_model *m, int page, int bank) {
@@ -90,6 +140,7 @@ void desk_set_view(struct desk_model *m, int page, int bank) {
     m->page = page;
     m->bank = bank;
     release(m);
+    damage_all(m);
 }
 
 const struct desk_placement *desk_placement_of(const struct desk_model *m, int control) {
@@ -120,7 +171,7 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
     m->capture_index = p->control;
     m->capture_placement = index;
     c->pressed = 1;
-    m->dirty = 1;
+    damage_control(m, p->control);
 
     // A fader follows the finger from the first contact; a cue waits for the
     // release, so sliding off it is a way to change your mind.
@@ -141,7 +192,7 @@ struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y)
         int level = master_level_at(p, y);
         if (level != c->requested_level) {
             c->requested_level = level;
-            m->dirty = 1;
+            damage_control(m, m->capture_index);
             struct desk_action a = { DESK_ACT_MASTER, c->widget_id, level };
             return a;
         }
@@ -150,7 +201,7 @@ struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y)
     int was = c->pressed;
     c->pressed = inside(p, x, y);
     if (c->pressed != was)
-        m->dirty = 1;
+        damage_control(m, m->capture_index);
     return none();
 }
 
@@ -188,6 +239,7 @@ void desk_set_locked(struct desk_model *m, int locked) {
         return;
     m->locked = !!locked;
     release(m);
+    damage_all(m);
 }
 
 void desk_apply_function(struct desk_model *m, int function_id, int running) {
@@ -197,7 +249,7 @@ void desk_apply_function(struct desk_model *m, int function_id, int running) {
             enum desk_state state = running ? DESK_ON : DESK_OFF;
             if (c->state != state) {
                 c->state = state;
-                m->dirty = 1;
+                damage_control(m, i);
             }
         }
     }
@@ -217,7 +269,7 @@ void desk_apply_master(struct desk_model *m, int value) {
         c->state = DESK_ON;
         if (m->capture_index != i)
             c->requested_level = value;
-        m->dirty = 1;
+        damage_control(m, i);
     }
 }
 
@@ -234,5 +286,5 @@ void desk_set_link(struct desk_model *m, enum desk_link link) {
         m->capture_index = -1;
         m->capture_placement = -1;
     }
-    m->dirty = 1;
+    damage_all(m);
 }

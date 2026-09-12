@@ -21,6 +21,11 @@ int present_height(const struct present *p);
 // until that is measured to be necessary, copying 2.4 MB is the version that
 // cannot show a stale pixel.
 int present_frame(struct present *p, const struct canvas *canvas);
+// Copies only `rect` into the back buffer, plus whatever that buffer missed
+// while the other was on screen, and flips. A negative width means the whole
+// canvas. Damage is remembered per buffer so a stale pixel cannot come back.
+int present_frame_damage(struct present *p, const struct canvas *canvas,
+                         int x, int y, int w, int h);
 
 void present_close(struct present *p);
 
