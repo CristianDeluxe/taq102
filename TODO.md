@@ -386,18 +386,6 @@ MacBook as master. Design and evidence:
   `TODO_LOG.md` 2026-09-12. What remains is gated on I: Phase 5
   finite accents (the fog and bump decisions below) and Phase 6 position (the
   XY pad's range experiment below). The desk is usable for a show as it is.
-- [ ] Interface review leftovers (the reviewer rounds one and two,
-  `docs/evidence/2026-09-12-desk-ui-review-findings.md` and
-  `...-round2-findings.md`), after the asynchronous supplicant work recorded
-  in `docs/evidence/2026-09-13-desk-async-supplicant-findings.md`: safety captions beside the show's words (`TODO NEGRO` is a black
-  look, not a stop; a haze rhythm fires at once, then repeats) which live in
-  the generator's detail strings; one disabled/unknown look across cue,
-  compact and swatch tiles with a reason line (`Mac only - hold control`);
-  a neutral pending marker on a cue after its frame goes out until the echo
-  or a bounded timeout; the held hits consolidated into one labelled area
-  instead of two banks of dead tiles (the reviewer: last); a way to cancel a
-  running subnet sweep. Smallest action: surface the generator's safety
-  detail strings beside the show captions.
 - [ ] Supplicant lifecycle waits remain outside the desk loop:
   `wpa_ctrl_open` waits up to 1 s for `ATTACH`, and `wpa_ctrl_close` waits up
   to 200 ms for `DETACH` (including cleanup after a failed open). Runtime
