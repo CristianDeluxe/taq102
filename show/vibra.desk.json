@@ -38,7 +38,7 @@
      "title": "HUMO AMBIENTE",
      "solo": 29,
      "controls": [
-      "humo-cada-1-min",
+      "cada-1-min",
       "cada-2-min",
       "cada-4-min",
       "cada-8-min"
@@ -531,12 +531,12 @@
    "enabled": true,
    "reason": ""
   },
-  "humo-cada-1-min": {
+  "cada-1-min": {
    "widget": 30,
    "function": 640,
    "functionType": "Chaser",
    "action": "toggle",
-   "caption": "HUMO cada 1 min",
+   "caption": "cada 1 min",
    "detail": "",
    "role": "haze",
    "solo": 29,
