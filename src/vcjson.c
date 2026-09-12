@@ -113,6 +113,8 @@ static int collect(const cJSON *node, int parent_id, int page,
     string_field(node, "clickAndGoType", w->cng_type, sizeof w->cng_type);
     w->speed_ms = number_field(node, "currentTime", 0, 0x7FFFFFF, -1);
     w->speed_factor = number_field(node, "currentFactor", 0, 255, -1);
+    w->speed_min_ms = number_field(node, "timeMin", 0, 0x7FFFFFF, -1);
+    w->speed_max_ms = number_field(node, "timeMax", 0, 0x7FFFFFF, -1);
 
     // A pad with no window in the document may travel the whole universe;
     // one with a window may not, and the desk has to know which before it
