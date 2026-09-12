@@ -15,13 +15,13 @@
 enum kb_layout { KB_TEXT, KB_NUMERIC };
 enum kb_layer { KB_LOWER, KB_UPPER, KB_SYMBOLS_1, KB_SYMBOLS_2 };
 enum kb_result { KB_NONE, KB_CHANGED, KB_DONE, KB_CANCEL };
-enum kb_kind { KEY_CHAR, KEY_BACKSPACE, KEY_SHIFT, KEY_LAYER, KEY_SPACE, KEY_CANCEL,
-               KEY_SHOW, KEY_DONE };
+enum kb_kind { KB_KEY_CHAR, KB_KEY_BACKSPACE, KB_KEY_SHIFT, KB_KEY_LAYER, KB_KEY_SPACE, KB_KEY_CANCEL,
+               KB_KEY_SHOW, KB_KEY_DONE };
 
 struct kb_key {
     int x, y, w, h;
     enum kb_kind kind;
-    char ch;            // KEY_CHAR: the character it types
+    char ch;            // KB_KEY_CHAR: the character it types
     char label[8];      // what the painter writes on it
     int enabled;        // Done below the minimum length is drawn but dead
 };

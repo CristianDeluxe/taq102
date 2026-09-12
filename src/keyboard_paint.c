@@ -57,9 +57,9 @@ void keyboard_paint(struct canvas *c, const struct keyboard *kb, const struct de
         uint32_t fill = DESK_TILE;
         // Shift shows its state: amber when upper case is on, and it stays on
         // when locked; the layer key likewise names where it goes.
-        if (k->kind == KEY_SHIFT && kb->layer == KB_UPPER)
+        if (k->kind == KB_KEY_SHIFT && kb->layer == KB_UPPER)
             fill = DESK_AMBER;
-        if (k->kind == KEY_DONE && k->enabled)
+        if (k->kind == KB_KEY_DONE && k->enabled)
             fill = DESK_AMBER;
         canvas_round_rect(c, k->x, k->y, k->w, k->h, KB_RADIUS, fill);
         if (i == kb->pressed) {

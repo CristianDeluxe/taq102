@@ -4,7 +4,12 @@
 // tiles are drawn, and one message goes out per gesture. What lights up is
 // what the master says is running.
 //
-//   dmxdesk --host 192.168.1.50 --map /etc/taq102/show-map.json
+//   dmxdesk [--host 192.168.1.50] --map /etc/taq102/show-map.json
+//
+// The master comes from --host, else from /data/desk.conf, which the gear in
+// the status bar writes: the settings surface joins a Wi-Fi, finds a running
+// QLC+ on the subnet or takes a typed address, and sets the brightness.
+// `dmxdesk --find 192.168.1.71/24 9999` is the sweep, run as a child.
 //
 // DMXDESK_DUMP=<file.ppm> writes the first frame and exits, so the screen can
 // be checked from a laptop without a camera. SIGUSR1 writes the same file
@@ -26,16 +31,26 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "action_worker.h"
 #include "canvas.h"
+#include "desk_conf.h"
+#include "desk_gear_paint.h"
 #include "desk_input.h"
 #include "desk_lock.h"
 #include "desk_layout.h"
 #include "desk_layout_resolve.h"
 #include "desk_model.h"
 #include "desk_paint.h"
+#include "desk_power.h"
 #include "desk_present_drm.h"
+#include "desk_setup.h"
+#include "desk_setup_layout.h"
+#include "desk_setup_paint.h"
+#include "desk_view.h"
 #include "display_power.h"
 #include "font.h"
+#include "iface_prefix.h"
+#include "master_find.h"
 #include "qlc_codec.h"
 #include "perf_window.h"
 #include "power_key.h"
@@ -47,6 +62,11 @@
 #include "touch_flip.h"
 #include "touch_input.h"
 #include "vcjson.h"
+#include "wifi_conf.h"
+#include "wifi_join.h"
+#include "wifi_scan.h"
+#include "wifi_status.h"
+#include "wpa_ctrl.h"
 
 #define VC_LIMIT (1024 * 1024)
 // The master pushes only when something changes, and its own ping is every
@@ -58,6 +78,15 @@
 #define CONNECT_TIMEOUT_MS 3000
 #define FETCH_TIMEOUT_MS 4000
 #define STATUS_MS 1000
+#define SCAN_TIMEOUT_MS 15000
+#define FIND_TIMEOUT_S 40
+
+#define DESK_CONF_PATH "/data/desk.conf"
+#define WIFI_CONF_PATH "/data/wifi.conf"
+#define SETTINGS_PATH "/data/taq102.conf"
+#define WPA_SOCKET "/var/run/wpa_supplicant/wlan0"
+#define FIND_OUT "/tmp/dmxdesk-find.txt"
+#define FIND_TMP "/tmp/dmxdesk-find.tmp"
 
 static volatile sig_atomic_t stop;
 static void on_signal(int sig) { (void)sig; stop = 1; }
@@ -139,6 +168,85 @@ static enum desk_link desk_link_of(enum qlc_link link) {
     }
 }
 
+// One `key=value` line out of a STATUS reply.
+static void status_field(const char *reply, const char *key, char *out, size_t cap) {
+    out[0] = '\0';
+    size_t klen = strlen(key);
+    for (const char *p = reply; p && *p; ) {
+        const char *end = strchr(p, '\n');
+        size_t len = end ? (size_t)(end - p) : strlen(p);
+        if (len > klen && strncmp(p, key, klen) == 0 && p[klen] == '=') {
+            size_t n = len - klen - 1;
+            if (n >= cap)
+                n = cap - 1;
+            memcpy(out, p + klen + 1, n);
+            out[n] = '\0';
+            return;
+        }
+        p = end ? end + 1 : NULL;
+    }
+}
+
+// The subnet sweep in a child, its output in a file the loop reads when the
+// worker exits. The shell gets the addresses as arguments, never in its text.
+static int finder_start(struct action_worker *w, const char *exe, const char *addr, int port) {
+    int prefix = iface_prefix("wlan0");
+    if (prefix < 8 || prefix > 30)
+        prefix = 24;
+    char cidr[64], port_text[16];
+    snprintf(cidr, sizeof cidr, "%.40s/%d", addr, prefix);
+    snprintf(port_text, sizeof port_text, "%d", port);
+    const char *argv[] = {
+        "/bin/sh", "-c", "exec \"$0\" --find \"$1\" \"$2\" > " FIND_TMP " && mv " FIND_TMP " " FIND_OUT,
+        exe, cidr, port_text, NULL,
+    };
+    unlink(FIND_OUT);
+    return aw_start(w, argv, FIND_TIMEOUT_S);
+}
+
+static void finder_collect(struct desk_setup *setup) {
+    char hosts[SETUP_FOUND_MAX][SETUP_HOST_MAX];
+    int count = 0, partial = 0;
+    FILE *f = fopen(FIND_OUT, "r");
+    if (f) {
+        char line[128];
+        while (fgets(line, sizeof line, f)) {
+            line[strcspn(line, "\n")] = '\0';
+            if (strcmp(line, "partial") == 0)
+                partial = 1;
+            else if (desk_conf_valid_host(line) && count < SETUP_FOUND_MAX)
+                snprintf(hosts[count++], SETUP_HOST_MAX, "%s", line);
+        }
+        fclose(f);
+    }
+    desk_setup_set_found(setup, hosts, count, partial);
+    setup->master_busy[0] = '\0';
+}
+
+// The known networks, matched against a scan for the card's "known" tag.
+static void mark_known(struct desk_setup *setup, const struct wifi_scan *scan) {
+    struct wifi_conf conf;
+    int known[WIFI_SCAN_MAX] = { 0 };
+    if (wifi_conf_read(WIFI_CONF_PATH, &conf) >= 0)
+        for (int i = 0; i < scan->count; i++)
+            known[i] = wifi_conf_knows(&conf, scan->network[i].ssid);
+    desk_setup_set_scan(setup, scan, known);
+}
+
+static const char *link_word_of(enum qlc_link link) {
+    switch (link) {
+    case QLC_READY:      return "Linked";
+    case QLC_FETCHING:   return "Reading the show";
+    case QLC_CONNECTING: return "Connecting";
+    default:             return "Not linked";
+    }
+}
+
+static int in_gear(int x, int y) {
+    return x >= SETUP_GEAR_X && x < SETUP_GEAR_X + SETUP_GEAR_W &&
+           y >= SETUP_GEAR_Y && y < SETUP_GEAR_Y + SETUP_GEAR_H;
+}
+
 // The bar's status is read once a second; only a change repaints.
 static int status_changed(const struct status *a, const struct status *b) {
     return a->have_batt != b->have_batt || a->cap != b->cap || a->plugged != b->plugged ||
@@ -154,6 +262,9 @@ int main(int argc, char **argv) {
     const char *power_device = NULL;
     int view_page = 0, view_bank = 0;    // --view P,B: the first page shown, for dumps
 
+    if (argc == 4 && !strcmp(argv[1], "--find"))
+        return master_find_run(argv[2], atoi(argv[3]), stdout) < 0 ? 2 : 0;
+
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--host") && i + 1 < argc) host = argv[++i];
         else if (!strcmp(argv[i], "--port") && i + 1 < argc) port = atoi(argv[++i]);
@@ -166,17 +277,29 @@ int main(int argc, char **argv) {
                 view_page = view_bank = 0;
         }
         else {
-            fprintf(stderr, "usage: %s --host H [--port P] [--map FILE]"
+            fprintf(stderr, "usage: %s [--host H] [--port P] [--map FILE]"
                             " [--card /dev/dri/cardN] [--touch /dev/input/eventN]"
-                            " [--power /dev/input/eventN] [--view PAGE,BANK]\n",
-                    argv[0]);
+                            " [--power /dev/input/eventN] [--view PAGE,BANK]\n"
+                            "       %s --find ADDR/PREFIX PORT\n",
+                    argv[0], argv[0]);
             return 2;
         }
     }
-    if (!host || port <= 0 || port > 65535) {
-        fprintf(stderr, "dmxdesk: --host is required until the tablet keeps one of its own\n");
+    // --host is for the bench; the tablet keeps its master in its own file.
+    struct desk_conf conf;
+    desk_conf_defaults(&conf);
+    if (desk_conf_load(&conf, DESK_CONF_PATH) != 0)
+        fprintf(stderr, "desk: cannot read %s\n", DESK_CONF_PATH);
+    if (host) {
+        snprintf(conf.master, sizeof conf.master, "%s", host);
+        conf.port = port;
+    }
+    if (!desk_conf_valid_port(conf.port)) {
+        fprintf(stderr, "dmxdesk: bad port\n");
         return 2;
     }
+    if (!conf.master[0])
+        fprintf(stderr, "desk: no master set; the gear in the status bar sets one\n");
 
     struct show_map map;
     if (showmap_load(map_path, &map) != 0)
@@ -263,10 +386,42 @@ int main(int argc, char **argv) {
         .reconnect_ms = RECONNECT_MS, .connect_timeout_ms = CONNECT_TIMEOUT_MS,
         .fetch_timeout_ms = FETCH_TIMEOUT_MS, .snapshot_limit = VC_LIMIT,
     };
-    snprintf(cfg.host, sizeof cfg.host, "%s", host);
+    snprintf(cfg.host, sizeof cfg.host, "%s", conf.master);
+    cfg.port = conf.port;
     struct qlc_session *session = qlc_session_new(&cfg);
     if (!session)
         return 1;
+
+    // The settings surface and what it drives: the backlight, the
+    // supplicant, the join, the finder. Each is optional; the card says so.
+    int64_t start_ms = now_ms();
+    struct desk_power power;
+    if (desk_power_init(&power, SETTINGS_PATH, "/sys/class/backlight", start_ms) != 0)
+        return 1;
+    struct desk_setup setup;
+    desk_setup_init(&setup);
+    setup.brightness_max = power.max;
+    setup.brightness = power.level;
+    setup.power_aware = desk_power_aware(&power);
+    desk_setup_set_master(&setup, conf.master, conf.port, conf.master[0] != '\0');
+    struct wpa_ctrl *wpa = wpa_ctrl_open(WPA_SOCKET);
+    setup.wifi_available = wpa != NULL;
+    if (!wpa)
+        fprintf(stderr, "desk: no supplicant control at %s: the Wi-Fi card is read-only\n", WPA_SOCKET);
+    struct wifi_join join;
+    wifi_join_init(&join, wpa, WIFI_CONF_PATH);
+    struct action_worker *finder = aw_new();
+    if (!finder)
+        return 1;
+    char exe[256];
+    ssize_t exe_len = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    if (exe_len > 0)
+        exe[exe_len] = '\0';
+    else
+        snprintf(exe, sizeof exe, "%s", argv[0]);
+    int64_t scan_started_ms = 0;
+    int setup_owned[TOUCH_MAX_SLOTS] = { 0 };
+    int gear_slot = -1;
 
     const char *dump = getenv("DMXDESK_DUMP");
     // DMXDESK_RTT=1 prints every heartbeat's round trip: the raw material for
@@ -300,7 +455,7 @@ int main(int argc, char **argv) {
     char last_reason[96] = "";
 
     while (!stop) {
-        struct pollfd fds[4];
+        struct pollfd fds[6];
         int count = 0, touch_slot = -1, power_slot = -1;
         if (touch) {
             touch_slot = count;
@@ -312,6 +467,12 @@ int main(int argc, char **argv) {
         if (power_fd >= 0) {
             power_slot = count;
             fds[count].fd = power_fd;
+            fds[count].events = POLLIN;
+            fds[count].revents = 0;
+            count++;
+        }
+        if (wpa) {
+            fds[count].fd = wpa_ctrl_event_fd(wpa);
             fds[count].events = POLLIN;
             fds[count].revents = 0;
             count++;
@@ -335,6 +496,11 @@ int main(int argc, char **argv) {
             power_key_read(&power_key, power_fd)) {
             desk_lock_power_key(&lock, now);
             desk_cancel_all(&model);
+            if (setup.open) {
+                desk_setup_close(&setup);
+                bar_ready = 0;
+                last_status_ms = 0;
+            }
             if (touch) {
                 struct touch_event dropped[32];
                 touch_input_cancel_all(touch, dropped, 32);
@@ -360,6 +526,113 @@ int main(int argc, char **argv) {
                 else if (events[i].kind == TOUCH_UP || events[i].kind == TOUCH_CANCEL)
                     desk_lock_contact(&lock, 0);
                 int index;
+                int slot = events[i].slot;
+                int x = (int)events[i].x, y = (int)events[i].y;
+                // The gear: a tap opens or closes the settings surface, when
+                // the surface is allowed at all.
+                if (slot >= 0 && slot < TOUCH_MAX_SLOTS) {
+                    if (events[i].kind == TOUCH_DOWN && in_gear(x, y) && desk_lock_allows(&lock)) {
+                        gear_slot = slot;
+                        continue;
+                    }
+                    if (slot == gear_slot) {
+                        if (events[i].kind == TOUCH_UP || events[i].kind == TOUCH_CANCEL) {
+                            gear_slot = -1;
+                            if (events[i].kind == TOUCH_UP && in_gear(x, y)) {
+                                if (setup.open) {
+                                    desk_setup_close(&setup);
+                                } else {
+                                    desk_setup_open(&setup);
+                                    if (wpa && !setup.wifi_busy[0] && join.state != WIFI_JOIN_RUNNING) {
+                                        char reply[32];
+                                        if (wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 500) > 0) {
+                                            snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
+                                            scan_started_ms = now;
+                                        }
+                                    }
+                                }
+                                bar_ready = 0;
+                                last_status_ms = 0;
+                            }
+                        }
+                        continue;
+                    }
+                    // The surface owns a contact that landed on it; the master
+                    // column beside it stays the desk's.
+                    if (setup.open && events[i].kind == TOUCH_DOWN && x < SETUP_SHEET_W)
+                        setup_owned[slot] = 1;
+                    if (setup_owned[slot]) {
+                        struct setup_action act;
+                        memset(&act, 0, sizeof act);
+                        switch (events[i].kind) {
+                        case TOUCH_DOWN: act = desk_setup_touch_down(&setup, x, y); break;
+                        case TOUCH_MOVE: act = desk_setup_touch_move(&setup, x, y); break;
+                        case TOUCH_UP: act = desk_setup_touch_up(&setup, x, y); setup_owned[slot] = 0; break;
+                        case TOUCH_CANCEL: desk_setup_touch_cancel(&setup); setup_owned[slot] = 0; break;
+                        }
+                        switch (act.kind) {
+                        case SETUP_NONE:
+                            break;
+                        case SETUP_CLOSE:
+                            desk_setup_close(&setup);
+                            bar_ready = 0;
+                            last_status_ms = 0;
+                            break;
+                        case SETUP_SCAN: {
+                            char reply[32];
+                            if (wpa && wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 500) > 0) {
+                                snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
+                                scan_started_ms = now;
+                            } else {
+                                snprintf(setup.wifi_note, sizeof setup.wifi_note, "Scan refused");
+                            }
+                            break;
+                        }
+                        case SETUP_JOIN:
+                            if (!wpa) {
+                                setup.wifi_busy[0] = '\0';
+                                break;
+                            }
+                            if (wifi_join_start(&join, act.ssid, act.psk[0] ? act.psk : NULL,
+                                                setup.ssid, now) != 0) {
+                                setup.wifi_busy[0] = '\0';
+                                snprintf(setup.wifi_note, sizeof setup.wifi_note, "%s", join.reason);
+                            } else {
+                                snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "%s", join.word);
+                            }
+                            fprintf(stderr, "desk: join %s: %s\n", act.ssid,
+                                    join.state == WIFI_JOIN_RUNNING ? "started" : join.reason);
+                            break;
+                        case SETUP_FIND:
+                            if (!status.have_wifi || !status.addr[0]) {
+                                snprintf(setup.master_busy, sizeof setup.master_busy, "%s", "");
+                                fprintf(stderr, "desk: find: no address on wlan0\n");
+                            } else if (finder_start(finder, exe, status.addr, setup.port) == 0) {
+                                snprintf(setup.master_busy, sizeof setup.master_busy, "Finding");
+                            } else {
+                                fprintf(stderr, "desk: find: cannot start the sweep\n");
+                            }
+                            break;
+                        case SETUP_SET_MASTER:
+                            snprintf(conf.master, sizeof conf.master, "%s", act.host);
+                            conf.port = act.port;
+                            if (desk_conf_save(&conf, DESK_CONF_PATH) != 0)
+                                fprintf(stderr, "desk: cannot save %s\n", DESK_CONF_PATH);
+                            qlc_session_set_host(session, conf.master, conf.port);
+                            desk_setup_set_master(&setup, conf.master, conf.port, 1);
+                            fprintf(stderr, "desk: master %s:%d\n", conf.master, conf.port);
+                            break;
+                        case SETUP_BRIGHTNESS:
+                            desk_power_set_level(&power, act.value, now);
+                            break;
+                        case SETUP_POWER_AWARE:
+                            desk_power_set_aware(&power, act.value, now);
+                            break;
+                        }
+                        memset(&act, 0, sizeof act);
+                        continue;
+                    }
+                }
                 enum desk_target target = desk_input_feed(&input, &model, &events[i], &index);
                 if (target == TARGET_LOCK) {
                     int changed = events[i].kind == TOUCH_DOWN ? desk_lock_target_down(&lock, now)
@@ -407,6 +680,62 @@ int main(int argc, char **argv) {
             }
         }
 
+        // The supplicant's events: a scan's end fills the card; every line
+        // reaches a running join, which also watches the address.
+        if (wpa) {
+            char ev[512];
+            int fed = 0;
+            while (wpa_ctrl_event(wpa, ev, sizeof ev) == 1) {
+                if (strstr(ev, "CTRL-EVENT-SCAN-RESULTS")) {
+                    static char table[16384];
+                    int n = wpa_ctrl_request(wpa, "SCAN_RESULTS", table, sizeof table, 1000);
+                    struct wifi_scan scan;
+                    if (n > 0) {
+                        wifi_scan_parse(table, (size_t)n, &scan);
+                        mark_known(&setup, &scan);
+                    }
+                    if (strcmp(setup.wifi_busy, "Scanning") == 0)
+                        setup.wifi_busy[0] = '\0';
+                }
+                if (join.state == WIFI_JOIN_RUNNING) {
+                    wifi_join_step(&join, now, ev, status.addr);
+                    fed = 1;
+                }
+            }
+            if (join.state == WIFI_JOIN_RUNNING && !fed)
+                wifi_join_step(&join, now, NULL, status.addr);
+            if (join.state == WIFI_JOIN_RUNNING) {
+                if (strcmp(setup.wifi_busy, join.word) != 0) {
+                    snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "%s", join.word);
+                    setup.dirty = 1;
+                }
+            } else if (join.state == WIFI_JOIN_DONE || join.state == WIFI_JOIN_FAILED) {
+                if (join.state == WIFI_JOIN_DONE)
+                    snprintf(setup.wifi_note, sizeof setup.wifi_note, "Joined %s", join.ssid);
+                else
+                    snprintf(setup.wifi_note, sizeof setup.wifi_note, "%s", join.reason);
+                fprintf(stderr, "desk: join %s: %s\n", join.ssid, setup.wifi_note);
+                join.state = WIFI_JOIN_IDLE;
+                setup.wifi_busy[0] = '\0';
+                setup.dirty = 1;
+                mark_known(&setup, &setup.scan);
+            }
+            if (setup.wifi_busy[0] && strcmp(setup.wifi_busy, "Scanning") == 0 &&
+                now - scan_started_ms > SCAN_TIMEOUT_MS) {
+                setup.wifi_busy[0] = '\0';
+                snprintf(setup.wifi_note, sizeof setup.wifi_note, "Scan timed out");
+                setup.dirty = 1;
+            }
+        }
+        if (setup.master_busy[0]) {
+            int exit_status = 0;
+            if (aw_poll(finder, &exit_status) || !aw_busy(finder)) {
+                finder_collect(&setup);
+                fprintf(stderr, "desk: find: %d master%s%s\n", setup.found_count,
+                        setup.found_count == 1 ? "" : "s", setup.found_partial ? " (partial)" : "");
+            }
+        }
+
         enum qlc_link link = qlc_session_step(session, now);
         struct vc_doc fresh;
         if (qlc_session_take_snapshot(session, &fresh)) {
@@ -437,16 +766,44 @@ int main(int argc, char **argv) {
                     : link == QLC_CONNECTING ? "connecting" : "down", last_reason);
         }
 
+        if (setup.open && strcmp(setup.link_word, link_word_of(link)) != 0) {
+            snprintf(setup.link_word, sizeof setup.link_word, "%s", link_word_of(link));
+            setup.dirty = 1;
+        }
+
         if (now - last_status_ms >= STATUS_MS) {
             last_status_ms = now;
             struct status next;
             status_read(&next);
+            desk_power_tick(&power, &next, now);
+            if (setup.open) {
+                if (power.level != setup.brightness && !setup.dragging_fader) {
+                    setup.brightness = power.level;
+                    setup.dirty = 1;
+                }
+                if (wpa) {
+                    char reply[2048], ssid[WIFI_SSID_MAX], state[SETUP_WORD_MAX];
+                    if (wpa_ctrl_request(wpa, "STATUS", reply, sizeof reply, 300) > 0) {
+                        status_field(reply, "ssid", ssid, sizeof ssid);
+                        status_field(reply, "wpa_state", state, sizeof state);
+                        if (strcmp(ssid, setup.ssid) != 0 || strcmp(state, setup.wifi_state) != 0 ||
+                            strcmp(next.addr, setup.address) != 0)
+                            desk_setup_set_wifi(&setup, ssid, state, next.addr);
+                    }
+                } else if (strcmp(next.addr, setup.address) != 0) {
+                    char ssid[WIFI_SSID_MAX] = "";
+                    wifi_read_ssid(WIFI_CONF_PATH, ssid, sizeof ssid);
+                    desk_setup_set_wifi(&setup, ssid, next.have_wifi ? "COMPLETED" : "", next.addr);
+                }
+            }
             if (status_changed(&status, &next) || !bar_ready) {
                 status = next;
                 if (bar.px) {
                     for (int i = 0; i < bar.w * bar.h; i++)
                         bar.px[i] = DESK_GLASS;
                     statusbar_paint(&bar, &status, &bar_style);
+                    desk_gear_paint(&bar, SETUP_GEAR_X, SETUP_GEAR_Y, SETUP_GEAR_W, SETUP_GEAR_H,
+                                    setup.open ? DESK_AMBER : DESK_MUTED, DESK_GLASS);
                     bar_ready = 1;
                 }
                 desk_damage_rect(&model, 0, 0, bar.w, bar.h);
@@ -458,6 +815,10 @@ int main(int argc, char **argv) {
         // only wake the pipeline the operator just switched off.
         if (lock.state == DESK_BLANKED)
             model.dirty = 0;
+        if (setup.dirty) {
+            setup.dirty = 0;
+            desk_damage_rect(&model, SETUP_SHEET_X, SETUP_SHEET_Y, SETUP_SHEET_W, SETUP_SHEET_H);
+        }
         int dx = 0, dy = 0, dw = -1, dh = -1;
         int damaged = desk_take_damage(&model, &dx, &dy, &dw, &dh);
         if (damaged || force_flip) {
@@ -470,6 +831,7 @@ int main(int argc, char **argv) {
                 if (dw > 0)
                     canvas_set_clip(&canvas, dx, dy, dw, dh);
                 desk_paint(&canvas, &model, &fonts);
+                desk_setup_paint(&canvas, &setup, &fonts);
                 canvas_clear_clip(&canvas);
                 if (bar_ready && (dw < 0 || dy < bar.h))
                     memcpy(canvas.px, bar.px, (size_t)bar.w * bar.h * 4);
@@ -516,6 +878,11 @@ int main(int argc, char **argv) {
     if (power_fd >= 0)
         close(power_fd);
     qlc_session_free(session);
+    wifi_join_free(&join);
+    if (wpa)
+        wpa_ctrl_close(wpa);
+    aw_free(finder);
+    desk_power_free(&power);
     font_close(fonts.tile);
     font_close(fonts.value);
     font_close(fonts.label);

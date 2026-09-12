@@ -33,7 +33,7 @@ static int text_keys(const struct keyboard *kb, struct kb_key *out, int cap) {
     int n = 0;
     for (int col = 0; col < 10; col++) {
         char label[2] = { DIGITS[col], 0 };
-        add(out, &n, cap, KB_KEY_X(col), KB_ROW_Y(0), KB_KEY_W, KB_KEY_H, KEY_CHAR, DIGITS[col], label, 1);
+        add(out, &n, cap, KB_KEY_X(col), KB_ROW_Y(0), KB_KEY_W, KB_KEY_H, KB_KEY_CHAR, DIGITS[col], label, 1);
     }
     for (int row = 0; row < 3; row++) {
         const char *cells = ROWS[kb->layer][row];
@@ -41,28 +41,28 @@ static int text_keys(const struct keyboard *kb, struct kb_key *out, int cap) {
             char c = cells[col];
             int x = KB_KEY_X(col), y = KB_ROW_Y(row + 1);
             if (c == '\b')
-                add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KEY_BACKSPACE, 0, "del", 1);
+                add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KB_KEY_BACKSPACE, 0, "del", 1);
             else if (c == '\1') {
                 // On the symbol layers the shift cell goes back to letters.
                 if (kb->layer >= KB_SYMBOLS_1)
-                    add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KEY_LAYER, 0, "abc", 1);
+                    add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KB_KEY_LAYER, 0, "abc", 1);
                 else
-                    add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KEY_SHIFT, 0, "shift", 1);
+                    add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KB_KEY_SHIFT, 0, "shift", 1);
             } else {
                 char label[2] = { c, 0 };
-                add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KEY_CHAR, c, label, 1);
+                add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KB_KEY_CHAR, c, label, 1);
             }
         }
     }
     // The bottom row: layer, space, cancel, show, done.
     int y = KB_ROW_Y(4);
     const char *layer_label = kb->layer == KB_SYMBOLS_1 ? "#+=" : kb->layer == KB_SYMBOLS_2 ? "abc" : "?123";
-    add(out, &n, cap, KB_KEY_X(0), y, KB_KEY_W, KB_KEY_H, KEY_LAYER, 0, layer_label, 1);
-    add(out, &n, cap, KB_KEY_X(1), y, 4 * KB_KEY_W + 3 * KB_GAP, KB_KEY_H, KEY_SPACE, ' ', "space", 1);
-    add(out, &n, cap, KB_KEY_X(5), y, KB_KEY_W, KB_KEY_H, KEY_CANCEL, 0, "cancel", 1);
-    add(out, &n, cap, KB_KEY_X(6), y, KB_KEY_W, KB_KEY_H, KEY_SHOW, 0, kb->show ? "hide" : "show",
+    add(out, &n, cap, KB_KEY_X(0), y, KB_KEY_W, KB_KEY_H, KB_KEY_LAYER, 0, layer_label, 1);
+    add(out, &n, cap, KB_KEY_X(1), y, 4 * KB_KEY_W + 3 * KB_GAP, KB_KEY_H, KB_KEY_SPACE, ' ', "space", 1);
+    add(out, &n, cap, KB_KEY_X(5), y, KB_KEY_W, KB_KEY_H, KB_KEY_CANCEL, 0, "cancel", 1);
+    add(out, &n, cap, KB_KEY_X(6), y, KB_KEY_W, KB_KEY_H, KB_KEY_SHOW, 0, kb->show ? "hide" : "show",
         kb->masked);
-    add(out, &n, cap, KB_KEY_X(7), y, 3 * KB_KEY_W + 2 * KB_GAP, KB_KEY_H, KEY_DONE, 0, "done",
+    add(out, &n, cap, KB_KEY_X(7), y, 3 * KB_KEY_W + 2 * KB_GAP, KB_KEY_H, KB_KEY_DONE, 0, "done",
         keyboard_done_allowed(kb));
     return n;
 }
@@ -73,13 +73,13 @@ static int numeric_keys(const struct keyboard *kb, struct kb_key *out, int cap) 
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 3; col++) {
             char label[2] = { pad[row][col], 0 };
-            add(out, &n, cap, KB_NUM_X(col), KB_NUM_ROW_Y(row), KB_NUM_W, KB_NUM_H, KEY_CHAR,
+            add(out, &n, cap, KB_NUM_X(col), KB_NUM_ROW_Y(row), KB_NUM_W, KB_NUM_H, KB_KEY_CHAR,
                 pad[row][col], label, 1);
         }
     }
-    add(out, &n, cap, KB_NUM_X(3), KB_NUM_ROW_Y(0), KB_NUM_W, KB_NUM_H, KEY_BACKSPACE, 0, "del", 1);
-    add(out, &n, cap, KB_NUM_X(0), KB_NUM_ROW_Y(4), KB_NUM_W, KB_NUM_H, KEY_CANCEL, 0, "cancel", 1);
-    add(out, &n, cap, KB_NUM_X(1), KB_NUM_ROW_Y(4), 2 * KB_NUM_W + KB_GAP, KB_NUM_H, KEY_DONE, 0,
+    add(out, &n, cap, KB_NUM_X(3), KB_NUM_ROW_Y(0), KB_NUM_W, KB_NUM_H, KB_KEY_BACKSPACE, 0, "del", 1);
+    add(out, &n, cap, KB_NUM_X(0), KB_NUM_ROW_Y(4), KB_NUM_W, KB_NUM_H, KB_KEY_CANCEL, 0, "cancel", 1);
+    add(out, &n, cap, KB_NUM_X(1), KB_NUM_ROW_Y(4), 2 * KB_NUM_W + KB_GAP, KB_NUM_H, KB_KEY_DONE, 0,
         "done", keyboard_done_allowed(kb));
     return n;
 }
@@ -161,15 +161,15 @@ enum kb_result keyboard_touch_up(struct keyboard *kb, int x, int y) {
     if (!k->enabled)
         return KB_NONE;
     switch (k->kind) {
-    case KEY_CHAR:
-    case KEY_SPACE:
+    case KB_KEY_CHAR:
+    case KB_KEY_SPACE:
         return type_char(kb, k->ch);
-    case KEY_BACKSPACE:
+    case KB_KEY_BACKSPACE:
         if (kb->len == 0)
             return KB_NONE;
         kb->text[--kb->len] = '\0';
         return KB_CHANGED;
-    case KEY_SHIFT:
+    case KB_KEY_SHIFT:
         if (kb->layer == KB_UPPER) {
             // A second tap locks; a third unlocks.
             if (kb->shift_locked) {
@@ -183,18 +183,18 @@ enum kb_result keyboard_touch_up(struct keyboard *kb, int x, int y) {
             kb->shift_locked = 0;
         }
         return KB_CHANGED;
-    case KEY_LAYER:
+    case KB_KEY_LAYER:
         kb->shift_locked = 0;
         kb->layer = kb->layer == KB_SYMBOLS_1 ? KB_SYMBOLS_2
                   : kb->layer == KB_SYMBOLS_2 ? KB_LOWER
                   : strcmp(k->label, "abc") == 0 ? KB_LOWER : KB_SYMBOLS_1;
         return KB_CHANGED;
-    case KEY_SHOW:
+    case KB_KEY_SHOW:
         kb->show = !kb->show;
         return KB_CHANGED;
-    case KEY_CANCEL:
+    case KB_KEY_CANCEL:
         return KB_CANCEL;
-    case KEY_DONE:
+    case KB_KEY_DONE:
         return KB_DONE;
     }
     return KB_NONE;

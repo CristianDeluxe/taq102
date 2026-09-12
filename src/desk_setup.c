@@ -166,7 +166,7 @@ static struct setup_action keyboard_done(struct desk_setup *s) {
     struct setup_action a = none();
     if (s->kb_purpose == KB_FOR_PSK) {
         // The key goes to the confirmation and nowhere else.
-        snprintf(s->confirm_psk, sizeof s->confirm_psk, "%s", s->kb.text);
+        snprintf(s->confirm_psk, sizeof s->confirm_psk, "%.63s", s->kb.text);
         s->confirm_is_open_network = 0;
         s->confirm_open = 1;
     } else if (s->kb_purpose == KB_FOR_HOST) {
