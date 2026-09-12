@@ -70,18 +70,45 @@ static void caption(struct canvas *c, struct font *f, int x, int w, int mid_y,
         centred(c, f, x, top + i * pitch, w, lines.line[i], col);
 }
 
+// The words a tile carries under its name, one look across every tile:
+// a disabled one says why in plain words, an unknown one says so, an idle
+// one shows the show's own detail.
+static const char *state_line(const struct desk_control *ctl, enum desk_link link) {
+    if (!ctl->enabled) {
+        if (strcmp(ctl->reason, "held on the Mac") == 0 || strcmp(ctl->reason, "held, not safe here") == 0)
+            return "Mac only - hold it there";
+        return ctl->reason[0] ? ctl->reason : "unavailable";
+    }
+    if (link != DESK_LINK_READY)
+        return "";
+    if (ctl->state == DESK_UNKNOWN)
+        return "unknown";
+    return ctl->detail;
+}
+
+// A disabled tile sinks to glass; an unknown one keeps the tile but muted
+// words; a pending one carries a small ink mark until the master answers.
+static uint32_t tile_fill(const struct desk_control *ctl) {
+    if (!ctl->enabled)
+        return DESK_GLASS;
+    return ctl->state == DESK_ON ? DESK_AMBER : DESK_TILE;
+}
+
+static void pending_mark(struct canvas *c, const struct desk_control *ctl, struct rect r) {
+    if (ctl->pending)
+        canvas_round_rect(c, r.x + r.w - 18, r.y + 8, 10, 10, 5, DESK_INK);
+}
+
 static void paint_cue(struct canvas *c, const struct desk_control *ctl,
                       const struct desk_placement *p, const struct desk_fonts *fonts,
                       enum desk_link link) {
     struct rect r = of(p);
     int radius = radius_for(p->tile);
-    uint32_t fill = DESK_TILE;
-    uint32_t ink = DESK_INK;
-    if (ctl->state == DESK_ON) {
-        fill = DESK_AMBER;
-        ink = DESK_GLASS;
-    }
+    uint32_t fill = tile_fill(ctl);
+    uint32_t ink = ctl->state == DESK_ON && ctl->enabled ? DESK_GLASS : DESK_INK;
     tile_base(c, r, radius, fill);
+    if (!ctl->enabled)
+        canvas_round_rect(c, r.x + 1, r.y + 1, r.w - 2, r.h - 2, radius - 1, DESK_GLASS);
     if (ctl->pressed)
         press_outline(c, r, radius, fill);
     if (!ctl->enabled || link != DESK_LINK_READY)
@@ -89,21 +116,23 @@ static void paint_cue(struct canvas *c, const struct desk_control *ctl,
 
     struct desk_caption_lines lines;
     desk_caption_fit(fonts->tile, r.w - 24, ctl->label, &lines);
-    const char *under = NULL;
-    if (!ctl->enabled && ctl->reason[0])
-        under = ctl->reason;
-    else if (ctl->state == DESK_UNKNOWN && ctl->enabled)
-        under = "unknown";
-    else if (ctl->enabled && ctl->detail[0])
-        under = ctl->detail;
-    if (lines.lines <= 1) {
-        centred(c, fonts->tile, r.x + 12, r.y + r.h / 2 - 22, r.w - 24, ctl->label, ink);
-        if (under)
+    const char *under = state_line(ctl, link);
+    // The second line is reserved: a wrapped name loses its detail, never
+    // its reason or its "unknown".
+    int keep_line = under[0] && (!ctl->enabled || ctl->state == DESK_UNKNOWN);
+    if (lines.lines <= 1 || keep_line) {
+        int name_y = lines.lines <= 1 ? r.y + r.h / 2 - 22 : r.y + 10;
+        if (lines.lines <= 1)
+            centred(c, fonts->tile, r.x + 12, name_y, r.w - 24, ctl->label, ink);
+        else
+            centred(c, fonts->tile, r.x + 12, name_y, r.w - 24, lines.line[0], ink);
+        if (under[0])
             centred(c, fonts->label, r.x + 12, r.y + r.h / 2 + 6, r.w - 24, under,
                     ctl->state == DESK_ON && ctl->enabled ? DESK_GLASS : DESK_MUTED);
     } else {
         caption(c, fonts->tile, r.x + 12, r.w - 24, r.y + r.h / 2, ctl->label, ink);
     }
+    pending_mark(c, ctl, r);
 }
 
 // A pick: a swatch ring over a small caption. The ring is the look's own
@@ -113,14 +142,15 @@ static void paint_swatch(struct canvas *c, const struct desk_control *ctl,
                          enum desk_link link) {
     struct rect r = of(p);
     int radius = radius_for(p->tile);
-    int on = ctl->state == DESK_ON;
-    uint32_t fill = on ? DESK_AMBER : DESK_TILE;
+    int on = ctl->state == DESK_ON && ctl->enabled;
+    uint32_t fill = tile_fill(ctl);
     tile_base(c, r, radius, fill);
     if (ctl->pressed)
         press_outline(c, r, radius, fill);
     uint32_t ink = on ? DESK_GLASS : DESK_INK;
     if (!ctl->enabled || link != DESK_LINK_READY)
         ink = DESK_MUTED;
+    pending_mark(c, ctl, r);
     // A pick with no colour of its own (a gobo, a shape, a panel effect) has
     // nothing to draw in a ring: its name takes the room instead, larger.
     if (ctl->swatches == 0) {
@@ -175,8 +205,8 @@ static void paint_compact(struct canvas *c, const struct desk_control *ctl,
                           enum desk_link link) {
     struct rect r = of(p);
     int radius = radius_for(p->tile);
-    int on = ctl->state == DESK_ON;
-    uint32_t fill = on ? DESK_AMBER : DESK_TILE;
+    int on = ctl->state == DESK_ON && ctl->enabled;
+    uint32_t fill = tile_fill(ctl);
     tile_base(c, r, radius, fill);
     if (ctl->pressed)
         press_outline(c, r, radius, fill);
@@ -184,6 +214,7 @@ static void paint_compact(struct canvas *c, const struct desk_control *ctl,
     if (!ctl->enabled || link != DESK_LINK_READY)
         ink = DESK_MUTED;
     caption(c, fonts->small, r.x + 4, r.w - 8, r.y + r.h / 2, ctl->label, ink);
+    pending_mark(c, ctl, r);
 }
 
 static void paint_master(struct canvas *c, const struct desk_control *ctl,
@@ -294,6 +325,19 @@ static void paint_headings(struct canvas *c, const struct desk_model *model,
         if (h->page != model->page || h->bank != model->bank)
             continue;
         char text[96];
+        // A section of hits held on the Mac says so in its heading, once,
+        // instead of on every dead tile.
+        int held_only = 1, any = 0;
+        for (int j = 0; j < model->count; j++) {
+            const struct desk_control *ctl = &model->control[j];
+            if (ctl->page != model->page || ctl->section != h->section)
+                continue;
+            any = 1;
+            if (ctl->enabled || strncmp(ctl->reason, "held", 4) != 0)
+                held_only = 0;
+        }
+        char title[80];
+        snprintf(title, sizeof title, "%s%s", h->text, any && held_only ? "  -  Mac only, hold them there" : "");
         if (h->parts > 1) {
             // A choice running on another part of this section is named
             // here, so the operator knows what is on without paging.
@@ -308,11 +352,11 @@ static void paint_headings(struct canvas *c, const struct desk_model *model,
                     elsewhere = ctl->label;
             }
             if (elsewhere)
-                snprintf(text, sizeof text, "%s  %d/%d  \xc2\xb7  %s", h->text, h->part, h->parts, elsewhere);
+                snprintf(text, sizeof text, "%s  %d/%d  \xc2\xb7  %s", title, h->part, h->parts, elsewhere);
             else
-                snprintf(text, sizeof text, "%s  %d/%d", h->text, h->part, h->parts);
+                snprintf(text, sizeof text, "%s  %d/%d", title, h->part, h->parts);
         } else {
-            snprintf(text, sizeof text, "%s", h->text);
+            snprintf(text, sizeof text, "%s", title);
         }
         if (fonts->label)
             font_draw_fit(fonts->label, c, h->x, h->y + font_baseline(fonts->label), h->w, text,

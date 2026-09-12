@@ -40,8 +40,9 @@ int main(void) {
     for (int i = 0; i < map.count; i++) {
         const struct desk_placement *p = find(&l, i, map.control[i].page);
         assert(p);
+        // On LIVE only the held hits take the compact form.
         if (map.control[i].page == 0)
-            assert(p->tile != TILE_COMPACT);
+            assert(p->tile != TILE_COMPACT || (map.control[i].role == MAP_ROLE_ACCENT && map.control[i].held));
     }
     int auto_ix = control_named(&map, "AUTO");
     for (int page = 1; page < l.pages; page++) {

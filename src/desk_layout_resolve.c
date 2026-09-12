@@ -29,6 +29,10 @@ static struct tile_size size_of(enum desk_tile tile) {
 }
 
 static enum desk_tile tile_for(const struct map_control *c, int first_of_state) {
+    // A hit held on the Mac is carried, not pressed: it takes the compact
+    // form, seven to a row, so the dead never crowd out the live.
+    if (c->role == MAP_ROLE_ACCENT && c->held)
+        return TILE_COMPACT;
     if (c->role == MAP_ROLE_STATE)
         return first_of_state ? TILE_WIDE : TILE_CUE;
     if (c->role == MAP_ROLE_PICK)
