@@ -70,6 +70,10 @@ struct desk_model {
     int capture_slot;
     int capture_index;
     int capture_placement;
+    // The panic button is the one exception: a second finger reaches it
+    // while a cue is held or the fader dragged, and it fires on release.
+    int panic_slot;
+    int panic_placement;
 };
 
 enum desk_action_kind { DESK_ACT_NONE, DESK_ACT_TOGGLE, DESK_ACT_MASTER, DESK_ACT_STOP_ALL };

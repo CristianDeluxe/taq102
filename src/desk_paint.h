@@ -19,5 +19,9 @@ struct desk_fonts {
 // knows which buffer is stale; the painter always draws everything.
 void desk_paint(struct canvas *canvas, const struct desk_model *model,
                 const struct desk_fonts *fonts);
+// The link banner and the lock banner alone, for a page that paints its
+// own content over the model's and must not bury them.
+void desk_paint_overlays(struct canvas *canvas, const struct desk_model *model,
+                         const struct desk_fonts *fonts);
 
 #endif

@@ -70,10 +70,6 @@ static void caption(struct canvas *c, struct font *f, int x, int w, int mid_y,
         centred(c, f, x, top + i * pitch, w, lines.line[i], col);
 }
 
-static uint32_t swatch_or(const struct desk_control *ctl, int i, uint32_t fallback) {
-    return i < ctl->swatches ? ctl->swatch[i] : fallback;
-}
-
 static void paint_cue(struct canvas *c, const struct desk_control *ctl,
                       const struct desk_placement *p, const struct desk_fonts *fonts,
                       enum desk_link link) {
@@ -122,25 +118,51 @@ static void paint_swatch(struct canvas *c, const struct desk_control *ctl,
     tile_base(c, r, radius, fill);
     if (ctl->pressed)
         press_outline(c, r, radius, fill);
+    uint32_t ink = on ? DESK_GLASS : DESK_INK;
+    if (!ctl->enabled || link != DESK_LINK_READY)
+        ink = DESK_MUTED;
+    // A pick with no colour of its own (a gobo, a shape, a panel effect) has
+    // nothing to draw in a ring: its name takes the room instead, larger.
+    if (ctl->swatches == 0) {
+        caption(c, fonts->label, r.x + 4, r.w - 8, r.y + r.h / 2, ctl->label, ink);
+        return;
+    }
     int cx = r.x + r.w / 2, cy = r.y + 8;
-    uint32_t first = swatch_or(ctl, 0, DESK_MUTED), second = swatch_or(ctl, 1, first);
-    canvas_round_rect(c, cx - SWATCH_D / 2, cy, SWATCH_D, SWATCH_D, SWATCH_D / 2, first);
-    if (ctl->swatches > 1)
-        canvas_round_rect(c, cx, cy, SWATCH_D / 2, SWATCH_D, 0, second);
+    // Every authored colour, as a vertical segment of the disc: the disc is
+    // drawn whole in each colour, clipped to its strip, so the silhouette
+    // stays round whatever the count.
+    int old_x = c->clip_x, old_y = c->clip_y, old_w = c->clip_w, old_h = c->clip_h;
+    int n = ctl->swatches > DESK_MAX_SWATCHES ? DESK_MAX_SWATCHES : ctl->swatches;
+    for (int i = 0; i < n; i++) {
+        int sx = cx - SWATCH_D / 2 + i * SWATCH_D / n;
+        int sw = (i + 1) * SWATCH_D / n - i * SWATCH_D / n;
+        int cx0 = sx, cy0 = cy, cw = sw, ch = SWATCH_D;
+        if (old_w >= 0) {
+            // Intersect with the frame's own clip.
+            int x1 = cx0 > old_x ? cx0 : old_x, y1 = cy0 > old_y ? cy0 : old_y;
+            int x2 = cx0 + cw < old_x + old_w ? cx0 + cw : old_x + old_w;
+            int y2 = cy0 + ch < old_y + old_h ? cy0 + ch : old_y + old_h;
+            cx0 = x1; cy0 = y1; cw = x2 > x1 ? x2 - x1 : 0; ch = y2 > y1 ? y2 - y1 : 0;
+        }
+        canvas_set_clip(c, cx0, cy0, cw, ch);
+        canvas_round_rect(c, cx - SWATCH_D / 2, cy, SWATCH_D, SWATCH_D, SWATCH_D / 2, ctl->swatch[i]);
+    }
+    if (old_w >= 0)
+        canvas_set_clip(c, old_x, old_y, old_w, old_h);
+    else
+        canvas_clear_clip(c);
     if (!on) {
         // A ring: the hole shows the tile through it.
         int hole = SWATCH_D - 12;
         canvas_round_rect(c, cx - hole / 2, cy + 6, hole, hole, hole / 2, fill);
     }
     // Black and near-black swatches need a keyline to exist on the tile.
+    uint32_t first = ctl->swatch[0];
     int brightest = (first >> 16 & 0xFF) > (first >> 8 & 0xFF) ? (first >> 16 & 0xFF) : (first >> 8 & 0xFF);
     if (brightest < (int)(first & 0xFF))
         brightest = first & 0xFF;
-    if (ctl->swatches && brightest < 0x20)
+    if (brightest < 0x20)
         canvas_round_rect(c, cx - SWATCH_D / 2 - 1, cy - 1, 2, SWATCH_D + 2, 1, DESK_MUTED);
-    uint32_t ink = on ? DESK_GLASS : DESK_INK;
-    if (!ctl->enabled || link != DESK_LINK_READY)
-        ink = DESK_MUTED;
     caption(c, fonts->small, r.x + 4, r.w - 8, r.y + SWATCH_D + 8 + (r.h - SWATCH_D - 8) / 2,
             ctl->label, ink);
 }
@@ -188,13 +210,16 @@ static void paint_master(struct canvas *c, const struct desk_control *ctl,
     }
     char text[16];
     if (live && known)
-        snprintf(text, sizeof text, "%d", ctl->level * 100 / 255);
+        snprintf(text, sizeof text, "%d%%", ctl->level * 100 / 255);
     else
         snprintf(text, sizeof text, "--");
-    int dark_text = known && ctl->level > 140;
-    centred(c, fonts->value, r.x, r.y + r.h / 2 - 28, r.w, text, dark_text ? DESK_GLASS : DESK_INK);
-    centred(c, fonts->label, r.x, r.y + 16, r.w, ctl->label,
-            known && ctl->level > 220 ? DESK_GLASS : DESK_MUTED);
+    // The readout sits on its own backing, so it reads the same over the
+    // fill and over the empty part of the fader.
+    int bh = fonts->value ? font_height(fonts->value) + 8 : 40;
+    canvas_round_rect(c, r.x + 8, r.y + r.h / 2 - bh / 2, r.w - 16, bh, 12, DESK_GLASS);
+    centred(c, fonts->value, r.x, r.y + r.h / 2 - bh / 2 + 4, r.w, text, DESK_INK);
+    canvas_round_rect(c, r.x + 8, r.y + 10, r.w - 16, 28, 8, DESK_GLASS);
+    centred(c, fonts->label, r.x, r.y + 14, r.w, ctl->label, DESK_MUTED);
 }
 
 // The one red on the desk: the console's own StopAll, drawn as a warning
@@ -334,12 +359,17 @@ void desk_paint(struct canvas *canvas, const struct desk_model *model,
         }
     }
     paint_banks(canvas, model, fonts);
+    desk_paint_overlays(canvas, model, fonts);
+}
 
-    // Last, so it covers the tiles it is about rather than hiding behind them.
+// Last, so they cover the tiles they are about rather than hiding behind
+// them; a page that paints its own content calls this again after it.
+void desk_paint_overlays(struct canvas *canvas, const struct desk_model *model,
+                         const struct desk_fonts *fonts) {
     paint_link_banner(canvas, model, fonts);
     if (model->locked) {
         int x = DESK_GRID_X, w = DESK_MASTER_X - DESK_GRID_X;
-        canvas_round_rect(canvas, x, DESK_H - 100, w, 40, 12, DESK_AMBER);
+        canvas_round_rect(canvas, x, DESK_H - 100, w, 40, 12, DESK_INK);
         centred(canvas, fonts->label, x, DESK_H - 92, w,
                 "Surface locked - hold the padlock to unlock", DESK_GLASS);
     }

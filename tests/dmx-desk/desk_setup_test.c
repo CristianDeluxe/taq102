@@ -95,8 +95,19 @@ int main(void) {
     assert(a.kind == SETUP_JOIN && strcmp(a.ssid, "Cafe") == 0 && a.psk[0] == '\0');
     s.wifi_busy[0] = '\0';
     assert(tap(&s, SETUP_WIFI_X + 40, row0 + 3 * SETUP_ROW_H).kind == SETUP_NONE && s.confirm_open && !s.kb.open);
-    a = tap(&s, yx, ny);
+    // A known network's confirmation has three buttons: the last joins as is.
+    int kx = SETUP_CONFIRM_X + SETUP_CONFIRM_W - 40;
+    a = tap(&s, kx, ny);
     assert(a.kind == SETUP_JOIN && a.known && a.psk[0] == '\0' && strcmp(a.ssid, "TestNet") == 0);
+    s.wifi_busy[0] = '\0';
+    // The middle one asks for a new key, which then joins as a fresh block.
+    tap(&s, SETUP_WIFI_X + 40, row0 + 3 * SETUP_ROW_H);
+    assert(tap(&s, SETUP_CONFIRM_X + SETUP_CONFIRM_W / 2, ny).kind == SETUP_NONE && s.kb.open && s.kb_purpose == KB_FOR_PSK);
+    type_on_keyboard(&s, "newkey12");
+    press_key(&s, "done");
+    assert(s.confirm_open && !s.confirm_known);
+    a = tap(&s, yx, ny);
+    assert(a.kind == SETUP_JOIN && !a.known && strcmp(a.psk, "newkey12") == 0 && strcmp(a.ssid, "TestNet") == 0);
     s.wifi_busy[0] = '\0';
 
     // The master card: find, a found row, a typed address.
@@ -112,11 +123,22 @@ int main(void) {
     type_on_keyboard(&s, "2.7:9999");
     a = press_key(&s, "done");
     assert(a.kind == SETUP_SET_MASTER && strcmp(a.host, "192.168.2.7") == 0 && a.port == 9999);
-    // A malformed address is refused and closes the keyboard.
+    // A malformed address is refused and the keyboard stays, saying so.
     tap(&s, tx, by);
     for (int i = 0; i < 12; i++) press_key(&s, "del");
     type_on_keyboard(&s, "1.2.3.4:0");
-    assert(press_key(&s, "done").kind == SETUP_NONE && !s.kb.open);
+    assert(press_key(&s, "done").kind == SETUP_NONE && s.kb.open && strstr(s.kb.title, "Not an address"));
+    for (int i = 0; i < 12; i++) press_key(&s, "del");
+    type_on_keyboard(&s, "1.2.3.999");
+    assert(press_key(&s, "done").kind == SETUP_NONE && s.kb.open);
+    for (int i = 0; i < 12; i++) press_key(&s, "del");
+    type_on_keyboard(&s, "10.0.0.7");
+    a = press_key(&s, "done");
+    assert(a.kind == SETUP_SET_MASTER && strcmp(a.host, "10.0.0.7") == 0 && a.port == 9998 && !s.kb.open);
+    // A list that changes under a pressed row drops the press.
+    desk_setup_touch_down(&s, SETUP_MASTER_X + 40, row0);
+    desk_setup_set_found(&s, hosts, 2, 0);
+    assert(desk_setup_touch_up(&s, SETUP_MASTER_X + 40, row0).kind == SETUP_NONE);
 
     // The fader and the toggle.
     s.brightness_max = 255;

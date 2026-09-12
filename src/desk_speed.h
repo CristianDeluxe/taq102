@@ -65,6 +65,8 @@ struct desk_speed {
 void desk_speed_init(struct desk_speed *s, const struct show_map *map);
 // The console's word on each dial: whether it exists, its time, factor and range.
 void desk_speed_validate(struct desk_speed *s, const struct vc_doc *console);
+// Every dial off, with the reason: the console is another show.
+void desk_speed_disable(struct desk_speed *s, const char *reason);
 
 struct speed_action desk_speed_touch_down(struct desk_speed *s, int x, int y, int64_t now_ms);
 struct speed_action desk_speed_touch_up(struct desk_speed *s, int x, int y, int64_t now_ms);

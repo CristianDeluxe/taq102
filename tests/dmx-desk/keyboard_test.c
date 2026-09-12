@@ -21,6 +21,9 @@ static enum kb_result tap(struct keyboard *kb, const char *label) {
     struct kb_key keys[KB_MAX_KEYS];
     int n = keyboard_keys(kb, keys, KB_MAX_KEYS);
     const struct kb_key *k = find_label(keys, n, label);
+    // The shift key reads CAPS while locked; a tap on "shift" means that cell.
+    if (!k && strcmp(label, "shift") == 0)
+        k = find_label(keys, n, "CAPS");
     assert(k);
     keyboard_touch_down(kb, k->x + 2, k->y + 2);
     return keyboard_touch_up(kb, k->x + 2, k->y + 2);
@@ -87,9 +90,21 @@ int main(void) {
     char shown[128];
     keyboard_display(&kb, shown, sizeof shown);
     assert(shown[0] == '*' && strlen(shown) == 63);
-    assert(tap(&kb, "show") == KB_CHANGED);
-    keyboard_display(&kb, shown, sizeof shown);
-    assert(strcmp(shown, kb.text) == 0);
+    // Revealed while the show key is held, masked again on release.
+    {
+        struct kb_key keys[KB_MAX_KEYS];
+        int n = keyboard_keys(&kb, keys, KB_MAX_KEYS), si = -1;
+        for (int i = 0; i < n; i++)
+            if (strcmp(keys[i].label, "show") == 0)
+                si = i;
+        assert(si >= 0);
+        assert(keyboard_touch_down(&kb, keys[si].x + 2, keys[si].y + 2) == KB_CHANGED);
+        keyboard_display(&kb, shown, sizeof shown);
+        assert(strcmp(shown, kb.text) == 0);
+        keyboard_touch_up(&kb, keys[si].x + 2, keys[si].y + 2);
+        keyboard_display(&kb, shown, sizeof shown);
+        assert(shown[0] == '*');
+    }
     assert(keyboard_done_allowed(&kb));
 
     // Backspace, and a release outside the key fires nothing.

@@ -47,7 +47,8 @@ static int text_keys(const struct keyboard *kb, struct kb_key *out, int cap) {
                 if (kb->layer >= KB_SYMBOLS_1)
                     add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KB_KEY_LAYER, 0, "abc", 1);
                 else
-                    add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KB_KEY_SHIFT, 0, "shift", 1);
+                    add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KB_KEY_SHIFT, 0,
+                        kb->shift_locked ? "CAPS" : "shift", 1);
             } else {
                 char label[2] = { c, 0 };
                 add(out, &n, cap, x, y, KB_KEY_W, KB_KEY_H, KB_KEY_CHAR, c, label, 1);
@@ -60,8 +61,7 @@ static int text_keys(const struct keyboard *kb, struct kb_key *out, int cap) {
     add(out, &n, cap, KB_KEY_X(0), y, KB_KEY_W, KB_KEY_H, KB_KEY_LAYER, 0, layer_label, 1);
     add(out, &n, cap, KB_KEY_X(1), y, 4 * KB_KEY_W + 3 * KB_GAP, KB_KEY_H, KB_KEY_SPACE, ' ', "space", 1);
     add(out, &n, cap, KB_KEY_X(5), y, KB_KEY_W, KB_KEY_H, KB_KEY_CANCEL, 0, "cancel", 1);
-    add(out, &n, cap, KB_KEY_X(6), y, KB_KEY_W, KB_KEY_H, KB_KEY_SHOW, 0, kb->show ? "hide" : "show",
-        kb->masked);
+    add(out, &n, cap, KB_KEY_X(6), y, KB_KEY_W, KB_KEY_H, KB_KEY_SHOW, 0, "show", kb->masked);
     add(out, &n, cap, KB_KEY_X(7), y, 3 * KB_KEY_W + 2 * KB_GAP, KB_KEY_H, KB_KEY_DONE, 0, "done",
         keyboard_done_allowed(kb));
     return n;
@@ -127,6 +127,14 @@ enum kb_result keyboard_touch_down(struct keyboard *kb, int x, int y) {
     if (!kb->open)
         return KB_NONE;
     kb->pressed = key_at(kb, x, y);
+    // The key that reveals a passphrase reveals it while the finger is on it.
+    struct kb_key keys[KB_MAX_KEYS];
+    int n = keyboard_keys(kb, keys, KB_MAX_KEYS);
+    if (kb->pressed >= 0 && kb->pressed < n && keys[kb->pressed].kind == KB_KEY_SHOW &&
+        keys[kb->pressed].enabled) {
+        kb->show = 1;
+        return KB_CHANGED;
+    }
     return KB_NONE;
 }
 
@@ -151,6 +159,7 @@ enum kb_result keyboard_touch_up(struct keyboard *kb, int x, int y) {
         return KB_NONE;
     int was = kb->pressed;
     kb->pressed = -1;
+    kb->show = 0;
     if (key_at(kb, x, y) != was)
         return KB_NONE;
     struct kb_key keys[KB_MAX_KEYS];
@@ -184,13 +193,14 @@ enum kb_result keyboard_touch_up(struct keyboard *kb, int x, int y) {
         }
         return KB_CHANGED;
     case KB_KEY_LAYER:
+        // The key says where it goes: "abc" is letters from either symbol
+        // layer, "#+=" the second symbols, "?123" the first.
         kb->shift_locked = 0;
-        kb->layer = kb->layer == KB_SYMBOLS_1 ? KB_SYMBOLS_2
-                  : kb->layer == KB_SYMBOLS_2 ? KB_LOWER
-                  : strcmp(k->label, "abc") == 0 ? KB_LOWER : KB_SYMBOLS_1;
+        kb->layer = strcmp(k->label, "abc") == 0 ? KB_LOWER
+                  : strcmp(k->label, "#+=") == 0 ? KB_SYMBOLS_2 : KB_SYMBOLS_1;
         return KB_CHANGED;
     case KB_KEY_SHOW:
-        kb->show = !kb->show;
+        // Revealed only while held; the release already remasked it.
         return KB_CHANGED;
     case KB_KEY_CANCEL:
         return KB_CANCEL;
@@ -200,7 +210,10 @@ enum kb_result keyboard_touch_up(struct keyboard *kb, int x, int y) {
     return KB_NONE;
 }
 
-void keyboard_touch_cancel(struct keyboard *kb) { kb->pressed = -1; }
+void keyboard_touch_cancel(struct keyboard *kb) {
+    kb->pressed = -1;
+    kb->show = 0;
+}
 
 void keyboard_display(const struct keyboard *kb, char *out, int cap) {
     if (cap <= 0)

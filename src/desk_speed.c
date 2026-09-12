@@ -60,6 +60,17 @@ void desk_speed_validate(struct desk_speed *s, const struct vc_doc *console) {
     s->dirty = 1;
 }
 
+void desk_speed_disable(struct desk_speed *s, const char *reason) {
+    for (int i = 0; i < s->dials; i++) {
+        struct desk_dial *d = &s->dial[i];
+        d->enabled = 0;
+        d->known = 0;
+        d->pending = 0;
+        snprintf(d->reason, sizeof d->reason, "%s", reason);
+    }
+    s->dirty = 1;
+}
+
 int desk_speed_bpm(const struct desk_dial *d) {
     return d->base_ms > 0 ? (60000 + d->base_ms / 2) / d->base_ms : 0;
 }
@@ -90,10 +101,16 @@ int desk_speed_target_enabled(const struct desk_speed *s, int dial, enum speed_t
     switch (t) {
     case SPEED_T_TAP:
         return 1;
-    case SPEED_T_BPM_DOWN:
-        return d->base_ms > 0 && bpm > 1 && ms_for_bpm(bpm - 1) <= d->max_ms;
-    case SPEED_T_BPM_UP:
-        return d->base_ms > 0 && ms_for_bpm(bpm + 1) >= SPEED_MIN_MS;
+    // The step is live only when the time it would ask for is one the desk
+    // sends: the same bounds time_action applies, so no live step is a no-op.
+    case SPEED_T_BPM_DOWN: {
+        int ms = ms_for_bpm(bpm - 1);
+        return d->base_ms > 0 && bpm > 1 && ms >= SPEED_MIN_MS && ms <= d->max_ms && ms != d->base_ms;
+    }
+    case SPEED_T_BPM_UP: {
+        int ms = ms_for_bpm(bpm + 1);
+        return d->base_ms > 0 && ms >= SPEED_MIN_MS && ms <= d->max_ms && ms != d->base_ms;
+    }
     // A factor change at base zero writes zeroes into every member field the
     // dial owns, so the factor targets wait for a time.
     case SPEED_T_FACTOR_ONE:

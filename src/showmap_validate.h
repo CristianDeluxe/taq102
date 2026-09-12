@@ -14,4 +14,9 @@
 int showmap_build(struct desk_model *model, const struct show_map *map,
                   const struct vc_doc *doc);
 
+// Whether the console is another show than the map's: another schema on
+// this side or another QLC+ line on the master's. Every performance control,
+// the speed cards included, is gated on it.
+int showmap_mismatch(const struct show_map *map, const struct vc_doc *doc);
+
 #endif

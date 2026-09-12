@@ -561,8 +561,12 @@ int main(int argc, char **argv) {
                 last_status_ms = 0;
             }
             if (touch) {
+                // The fingers the display took with it are lifted for the
+                // lock's count too, or nothing would count after the wake.
                 struct touch_event dropped[32];
-                touch_input_cancel_all(touch, dropped, 32);
+                int gone = touch_input_cancel_all(touch, dropped, 32);
+                for (int d = 0; d < gone; d++)
+                    desk_lock_contact(&lock, 0);
             }
             if (lock.state == DESK_BLANKED) {
                 if (display_power_off() != 0)
@@ -598,13 +602,18 @@ int main(int argc, char **argv) {
                         if (events[i].kind == TOUCH_UP || events[i].kind == TOUCH_CANCEL) {
                             gear_slot = -1;
                             if (events[i].kind == TOUCH_UP && in_gear(x, y)) {
+                                // A modal transition: every gesture under it ends.
+                                desk_cancel_all(&model);
+                                desk_speed_touch_cancel(&speed);
+                                desk_speed_reset_taps(&speed);
+                                speed_slot = -1;
                                 if (setup.open) {
                                     desk_setup_close(&setup);
                                 } else {
                                     desk_setup_open(&setup);
                                     if (wpa && !setup.wifi_busy[0] && join.state != WIFI_JOIN_RUNNING) {
                                         char reply[32];
-                                        if (wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 500) > 0) {
+                                        if (wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 150) > 0) {
                                             snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
                                             scan_started_ms = now;
                                         }
@@ -644,7 +653,7 @@ int main(int argc, char **argv) {
                             break;
                         case SETUP_SCAN: {
                             char reply[32];
-                            if (wpa && wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 500) > 0) {
+                            if (wpa && wpa_ctrl_request(wpa, "SCAN", reply, sizeof reply, 150) > 0) {
                                 snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
                                 scan_started_ms = now;
                             } else {
@@ -668,20 +677,24 @@ int main(int argc, char **argv) {
                                     join.state == WIFI_JOIN_RUNNING ? "started" : join.reason);
                             break;
                         case SETUP_FIND:
+                            setup.master_note[0] = '\0';
                             if (!status.have_wifi || !status.addr[0]) {
-                                snprintf(setup.master_busy, sizeof setup.master_busy, "%s", "");
+                                snprintf(setup.master_note, sizeof setup.master_note, "No network address");
                                 fprintf(stderr, "desk: find: no address on wlan0\n");
                             } else if (finder_start(finder, exe, status.addr, setup.port) == 0) {
                                 snprintf(setup.master_busy, sizeof setup.master_busy, "Finding");
                             } else {
+                                snprintf(setup.master_note, sizeof setup.master_note, "Search failed");
                                 fprintf(stderr, "desk: find: cannot start the sweep\n");
                             }
                             break;
                         case SETUP_SET_MASTER:
                             snprintf(conf.master, sizeof conf.master, "%s", act.host);
                             conf.port = act.port;
-                            if (desk_conf_save(&conf, DESK_CONF_PATH) != 0)
+                            if (desk_conf_save(&conf, DESK_CONF_PATH) != 0) {
+                                snprintf(setup.master_note, sizeof setup.master_note, "Applied, not saved");
                                 fprintf(stderr, "desk: cannot save %s\n", DESK_CONF_PATH);
+                            }
                             qlc_session_set_host(session, conf.master, conf.port);
                             desk_setup_set_master(&setup, conf.master, conf.port, 1);
                             fprintf(stderr, "desk: master %s:%d\n", conf.master, conf.port);
@@ -701,7 +714,10 @@ int main(int argc, char **argv) {
                 // cards': a contact the model does not take goes to them.
                 if (layout.speed_page >= 0 && model.page == layout.speed_page && slot == speed_slot) {
                     if (events[i].kind == TOUCH_UP) {
-                        send_speed(session, desk_speed_touch_up(&speed, x, y, now), now);
+                        // A release after the lock fires nothing.
+                        struct speed_action sa = desk_speed_touch_up(&speed, x, y, now);
+                        if (desk_lock_allows(&lock))
+                            send_speed(session, sa, now);
                         speed_slot = -1;
                     } else if (events[i].kind == TOUCH_CANCEL) {
                         desk_speed_touch_cancel(&speed);
@@ -715,6 +731,9 @@ int main(int argc, char **argv) {
                                 : events[i].kind == TOUCH_UP ? desk_lock_target_up(&lock, now) : 0;
                     if (changed) {
                         desk_cancel_all(&model);
+                        desk_speed_touch_cancel(&speed);
+                        desk_speed_reset_taps(&speed);
+                        speed_slot = -1;
                         fprintf(stderr, "desk: surface %s\n",
                                 lock.state == DESK_LOCKED ? "locked" : "unlocked");
                     }
@@ -741,7 +760,10 @@ int main(int argc, char **argv) {
                                              (int)events[i].x, (int)events[i].y);
                     if (layout.speed_page >= 0 && model.page == layout.speed_page &&
                         model.capture_slot != slot && speed_slot < 0) {
-                        struct speed_action sa = desk_speed_touch_down(&speed, x, y, now);
+                        // Tempo is measured from the contact's own clock, not
+                        // from when the batch was drained.
+                        int64_t at = events[i].t > 0 ? (int64_t)(events[i].t * 1000.0) : now;
+                        struct speed_action sa = desk_speed_touch_down(&speed, x, y, at);
                         // Dead space claims nothing: another finger may still
                         // reach a target while this one rests on the card.
                         if (speed.capture != SPEED_T_NONE)
@@ -774,7 +796,7 @@ int main(int argc, char **argv) {
             while (wpa_ctrl_event(wpa, ev, sizeof ev) == 1) {
                 if (strstr(ev, "CTRL-EVENT-SCAN-RESULTS")) {
                     static char table[16384];
-                    int n = wpa_ctrl_request(wpa, "SCAN_RESULTS", table, sizeof table, 1000);
+                    int n = wpa_ctrl_request(wpa, "SCAN_RESULTS", table, sizeof table, 300);
                     struct wifi_scan scan;
                     if (n > 0) {
                         wifi_scan_parse(table, (size_t)n, &scan);
@@ -817,6 +839,9 @@ int main(int argc, char **argv) {
             int exit_status = 0;
             if (aw_poll(finder, &exit_status) || !aw_busy(finder)) {
                 finder_collect(&setup);
+                if (setup.found_count == 0)
+                    snprintf(setup.master_note, sizeof setup.master_note, "%s",
+                             exit_status != 0 ? "Search failed" : "No QLC+ on this network");
                 fprintf(stderr, "desk: find: %d master%s%s\n", setup.found_count,
                         setup.found_count == 1 ? "" : "s", setup.found_partial ? " (partial)" : "");
             }
@@ -831,7 +856,10 @@ int main(int argc, char **argv) {
             enabled = showmap_build(&model, &map, &console);
             desk_set_layout(&model, &layout);
             desk_set_view(&model, page, bank);
-            desk_speed_validate(&speed, &console);
+            if (showmap_mismatch(&map, &console))
+                desk_speed_disable(&speed, "show mismatch");
+            else
+                desk_speed_validate(&speed, &console);
             printf("desk: %d of %d controls enabled against the master's console\n",
                    enabled, map.count);
         }
@@ -886,9 +914,13 @@ int main(int argc, char **argv) {
                     setup.brightness = power.level;
                     setup.dirty = 1;
                 }
+                if (setup.brightness_unsaved != power.save_failed) {
+                    setup.brightness_unsaved = power.save_failed;
+                    setup.dirty = 1;
+                }
                 if (wpa) {
                     char reply[2048], ssid[WIFI_SSID_MAX], state[SETUP_WORD_MAX];
-                    if (wpa_ctrl_request(wpa, "STATUS", reply, sizeof reply, 300) > 0) {
+                    if (wpa_ctrl_request(wpa, "STATUS", reply, sizeof reply, 100) > 0) {
                         status_field(reply, "ssid", ssid, sizeof ssid);
                         status_field(reply, "wpa_state", state, sizeof state);
                         if (strcmp(ssid, setup.ssid) != 0 || strcmp(state, setup.wifi_state) != 0 ||
@@ -908,7 +940,7 @@ int main(int argc, char **argv) {
                         bar.px[i] = DESK_GLASS;
                     statusbar_paint(&bar, &status, &bar_style);
                     desk_gear_paint(&bar, SETUP_GEAR_X, SETUP_GEAR_Y, SETUP_GEAR_W, SETUP_GEAR_H,
-                                    setup.open ? DESK_AMBER : DESK_MUTED, DESK_GLASS);
+                                    setup.open ? DESK_INK : DESK_MUTED, DESK_GLASS);
                     bar_ready = 1;
                 }
                 desk_damage_rect(&model, 0, 0, bar.w, bar.h);
@@ -936,8 +968,10 @@ int main(int argc, char **argv) {
                 if (dw > 0)
                     canvas_set_clip(&canvas, dx, dy, dw, dh);
                 desk_paint(&canvas, &model, &fonts);
-                if (layout.speed_page >= 0 && model.page == layout.speed_page)
+                if (layout.speed_page >= 0 && model.page == layout.speed_page) {
                     desk_speed_paint(&canvas, &speed, &fonts);
+                    desk_paint_overlays(&canvas, &model, &fonts);
+                }
                 desk_setup_paint(&canvas, &setup, &fonts);
                 canvas_clear_clip(&canvas);
                 if (bar_ready && (dw < 0 || dy < bar.h))

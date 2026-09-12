@@ -10,7 +10,7 @@
 enum setup_target {
     T_NONE, T_OUTSIDE, T_WIFI_ROW, T_WIFI_PREV, T_WIFI_NEXT, T_SCAN,
     T_MASTER_ROW, T_MASTER_PREV, T_MASTER_NEXT, T_FIND, T_TYPE,
-    T_FADER, T_TOGGLE, T_CONFIRM_YES, T_CONFIRM_NO, T_KEYBOARD,
+    T_FADER, T_TOGGLE, T_CONFIRM_YES, T_CONFIRM_NO, T_CONFIRM_NEW_KEY, T_KEYBOARD,
 };
 
 static struct setup_action none(void) {
@@ -34,10 +34,14 @@ static enum setup_target hit(const struct desk_setup *s, int x, int y, int *inde
         return T_KEYBOARD;
     if (s->confirm_open) {
         int bx = SETUP_CONFIRM_X + 16, by = SETUP_CONFIRM_Y + SETUP_CONFIRM_H - 64;
-        int bw = (SETUP_CONFIRM_W - 48) / 2;
+        // A known network offers a third way: a new key for it.
+        int buttons = s->confirm_known ? 3 : 2;
+        int bw = (SETUP_CONFIRM_W - 32 - 16 * (buttons - 1)) / buttons;
         if (inside(x, y, bx, by, bw, 48))
             return T_CONFIRM_NO;
-        if (inside(x, y, bx + bw + 16, by, bw, 48))
+        if (buttons == 3 && inside(x, y, bx + bw + 16, by, bw, 48))
+            return T_CONFIRM_NEW_KEY;
+        if (inside(x, y, bx + (buttons - 1) * (bw + 16), by, bw, 48))
             return T_CONFIRM_YES;
         return T_NONE;
     }
@@ -179,10 +183,23 @@ static struct setup_action keyboard_done(struct desk_setup *s) {
             *colon = '\0';
             port = atoi(colon + 1);
         }
-        if (desk_conf_valid_host(host) && desk_conf_valid_port(port)) {
+        // The port is the whole field after the colon, digits only.
+        int port_ok = !colon;
+        if (colon) {
+            port_ok = colon[1] != '\0';
+            for (const char *p = colon + 1; *p; p++)
+                if (*p < '0' || *p > '9')
+                    port_ok = 0;
+        }
+        if (desk_conf_valid_host(host) && port_ok && desk_conf_valid_port(port)) {
             a.kind = SETUP_SET_MASTER;
             snprintf(a.host, sizeof a.host, "%s", host);
             a.port = port;
+        } else {
+            // Not an address: the keyboard stays, and says why.
+            snprintf(s->kb.title, sizeof s->kb.title, "Not an address: 192.168.1.65:9999 is one");
+            s->dirty = 1;
+            return a;
         }
     }
     keyboard_close(&s->kb);
@@ -302,6 +319,15 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
         s->confirm_open = 0;
         memset(s->confirm_psk, 0, sizeof s->confirm_psk);
         return none();
+    case T_CONFIRM_NEW_KEY: {
+        // The block on file is replaced once the new key is typed and confirmed.
+        s->confirm_open = 0;
+        char title[80];
+        snprintf(title, sizeof title, "New password for %s", s->pending_ssid);
+        keyboard_open(&s->kb, KB_TEXT, title, "", 1, 8, 63);
+        s->kb_purpose = KB_FOR_PSK;
+        return none();
+    }
     default:
         return none();
     }
@@ -316,7 +342,17 @@ void desk_setup_touch_cancel(struct desk_setup *s) {
     s->dirty = 1;
 }
 
+// A list that changes under a finger takes the finger's claim with it: a
+// release must never resolve against a row that was not there when pressed.
+static void drop_row_capture(struct desk_setup *s) {
+    if (s->capture == T_WIFI_ROW || s->capture == T_MASTER_ROW) {
+        s->capture = T_NONE;
+        s->capture_index = -1;
+    }
+}
+
 void desk_setup_set_scan(struct desk_setup *s, const struct wifi_scan *scan, const int *known) {
+    drop_row_capture(s);
     s->scan = *scan;
     for (int i = 0; i < scan->count; i++)
         s->known[i] = known ? known[i] : 0;
@@ -333,6 +369,7 @@ void desk_setup_set_wifi(struct desk_setup *s, const char *ssid, const char *sta
 }
 
 void desk_setup_set_found(struct desk_setup *s, const char (*hosts)[SETUP_HOST_MAX], int count, int partial) {
+    drop_row_capture(s);
     s->found_count = count < SETUP_FOUND_MAX ? count : SETUP_FOUND_MAX;
     for (int i = 0; i < s->found_count; i++)
         snprintf(s->found[i], SETUP_HOST_MAX, "%s", hosts[i]);

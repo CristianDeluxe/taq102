@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "canvas_blend.h"
 #include "desk_layout.h"
 #include "desk_setup_layout.h"
 #include "keyboard_paint.h"
@@ -25,9 +26,23 @@ static void centred(struct canvas *c, struct font *f, int x, int y, int w, int h
     text_at(c, f, x + (w - width) / 2, y + (h - text_h(f)) / 2, w, s, col);
 }
 
-static void button(struct canvas *c, struct font *f, int x, int y, int w, int h, const char *s, int enabled) {
-    canvas_round_rect(c, x, y, w, h, 12, enabled ? DESK_AMBER : DESK_TILE);
-    centred(c, f, x, y, w, h, s, enabled ? DESK_GLASS : DESK_MUTED);
+// Buttons in the desk's neutral palette: amber is the show's, never a
+// button's. A primary action is ink on glass; a secondary one is ink on the
+// sheet's own glass with a muted ring; a dead one is muted text alone.
+enum button_style { BUTTON_PRIMARY, BUTTON_SECONDARY, BUTTON_DEAD };
+
+static void button(struct canvas *c, struct font *f, int x, int y, int w, int h, const char *s,
+                   enum button_style style) {
+    if (style == BUTTON_PRIMARY) {
+        canvas_round_rect(c, x, y, w, h, 12, DESK_INK);
+        centred(c, f, x, y, w, h, s, DESK_GLASS);
+    } else if (style == BUTTON_SECONDARY) {
+        canvas_round_rect(c, x, y, w, h, 12, DESK_MUTED);
+        canvas_round_rect(c, x + 2, y + 2, w - 4, h - 4, 10, DESK_GLASS);
+        centred(c, f, x, y, w, h, s, DESK_INK);
+    } else {
+        centred(c, f, x, y, w, h, s, DESK_MUTED);
+    }
 }
 
 static void card_frame(struct canvas *c, const struct desk_fonts *fonts, int x, const char *title, int pages, int page) {
@@ -84,12 +99,16 @@ static void wifi_card(struct canvas *c, const struct desk_setup *s, const struct
     }
     if (s->scan.count == 0 && s->wifi_available)
         text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
-                s->wifi_busy[0] ? "Looking for networks" : "No networks yet", DESK_MUTED);
-    // The note sits above the button: the last outcome or the busy word.
-    const char *note = s->wifi_busy[0] ? s->wifi_busy : s->wifi_note;
-    text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, note, DESK_MUTED);
+                s->wifi_busy[0] ? "" : "No networks yet", DESK_MUTED);
+    // The note sits above the button: the last outcome; the button itself
+    // says what it is doing while busy.
+    if (!s->wifi_busy[0])
+        text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, s->wifi_note, DESK_MUTED);
+    char busy[SETUP_WORD_MAX + 4];
+    snprintf(busy, sizeof busy, "%s...", s->wifi_busy);
     button(c, fonts->label, x + 16, SETUP_BUTTONS_Y, SETUP_CARD_W - 32, SETUP_BUTTON_H,
-           s->wifi_busy[0] ? s->wifi_busy : "Scan", s->wifi_available && !s->wifi_busy[0]);
+           s->wifi_busy[0] ? busy : "Scan",
+           s->wifi_available && !s->wifi_busy[0] ? BUTTON_PRIMARY : BUTTON_DEAD);
 }
 
 static void master_card(struct canvas *c, const struct desk_setup *s, const struct desk_fonts *fonts) {
@@ -110,21 +129,22 @@ static void master_card(struct canvas *c, const struct desk_setup *s, const stru
         const char *host = s->found[s->found_page * SETUP_ROWS + r];
         int ry = SETUP_ROWS_Y + r * SETUP_ROW_H;
         int current = s->master_configured && strcmp(host, s->master) == 0;
-        canvas_round_rect(c, x + 8, ry + 4, SETUP_CARD_W - 16, SETUP_ROW_H - 8, 12, current ? DESK_AMBER : DESK_GLASS);
+        canvas_round_rect(c, x + 8, ry + 4, SETUP_CARD_W - 16, SETUP_ROW_H - 8, 12, current ? DESK_INK : DESK_GLASS);
         text_at(c, fonts->tile, x + 24, ry + (SETUP_ROW_H - text_h(fonts->tile)) / 2, SETUP_CARD_W - 48, host,
                 current ? DESK_GLASS : DESK_INK);
     }
     if (s->found_count == 0)
         text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
                 s->master_busy[0] ? "Sweeping the subnet" : "Nothing found yet", DESK_MUTED);
-    if (s->found_partial)
-        text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, "Large subnet: first 256 hosts", DESK_MUTED);
-    else if (s->master_busy[0])
-        text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, s->master_busy, DESK_MUTED);
+    const char *note = s->found_partial ? "Large subnet: first 256 hosts" : s->master_note;
+    if (!s->master_busy[0])
+        text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, note, DESK_MUTED);
     int half = (SETUP_CARD_W - 48) / 2;
-    button(c, fonts->label, x + 16, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, s->master_busy[0] ? s->master_busy : "Find",
-           !s->master_busy[0]);
-    button(c, fonts->label, x + 32 + half, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, "Type address", 1);
+    char busy[SETUP_WORD_MAX + 4];
+    snprintf(busy, sizeof busy, "%s...", s->master_busy);
+    button(c, fonts->label, x + 16, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, s->master_busy[0] ? busy : "Find",
+           s->master_busy[0] ? BUTTON_DEAD : BUTTON_PRIMARY);
+    button(c, fonts->label, x + 32 + half, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, "Type address", BUTTON_SECONDARY);
 }
 
 static void footer(struct canvas *c, const struct desk_setup *s, const struct desk_fonts *fonts) {
@@ -132,15 +152,17 @@ static void footer(struct canvas *c, const struct desk_setup *s, const struct de
     int range = s->brightness_max - 8;
     int level = s->brightness - 8;
     int fill = range > 0 ? (SETUP_FADER_W - 1) * level / range : 0;
+    // The fill is muted grey, so the label reads over both halves; the
+    // number is the fact.
     if (fill > 0)
-        canvas_round_rect(c, SETUP_FADER_X, SETUP_FADER_Y, fill + 1, SETUP_FADER_H, 20, DESK_AMBER);
+        canvas_round_rect(c, SETUP_FADER_X, SETUP_FADER_Y, fill + 1, SETUP_FADER_H, 20, DESK_MUTED);
     char line[48];
     int pct = range > 0 ? 100 * level / range : 100;
-    snprintf(line, sizeof line, "Brightness %d%%", pct);
+    snprintf(line, sizeof line, "Brightness %d%%%s", pct, s->brightness_unsaved ? "  Applied, not saved" : "");
     text_at(c, fonts->tile, SETUP_FADER_X + 24, SETUP_FADER_Y + (SETUP_FADER_H - text_h(fonts->tile)) / 2,
-            SETUP_FADER_W - 48, line, fill > 160 ? DESK_GLASS : DESK_INK);
+            SETUP_FADER_W - 48, line, DESK_INK);
     canvas_round_rect(c, SETUP_TOGGLE_X, SETUP_TOGGLE_Y, SETUP_TOGGLE_W, SETUP_TOGGLE_H, 20,
-                      s->power_aware ? DESK_AMBER : DESK_TILE);
+                      s->power_aware ? DESK_INK : DESK_TILE);
     uint32_t ink = s->power_aware ? DESK_GLASS : DESK_INK;
     text_at(c, fonts->small, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + 16, SETUP_TOGGLE_W - 40, "Dim on battery", ink);
     text_at(c, fonts->tile, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + SETUP_TOGGLE_H - 16 - text_h(fonts->tile),
@@ -159,9 +181,12 @@ static void confirm_sheet(struct canvas *c, const struct desk_setup *s, const st
             : s->confirm_psk[0] ? "The key you typed stays on the tablet."
             : "The key on file will be used.", DESK_MUTED);
     int bx = SETUP_CONFIRM_X + 16, by = SETUP_CONFIRM_Y + SETUP_CONFIRM_H - 64;
-    int bw = (SETUP_CONFIRM_W - 48) / 2;
-    button(c, fonts->label, bx, by, bw, 48, "Cancel", 0);
-    button(c, fonts->label, bx + bw + 16, by, bw, 48, "Join", 1);
+    int buttons = s->confirm_known ? 3 : 2;
+    int bw = (SETUP_CONFIRM_W - 32 - 16 * (buttons - 1)) / buttons;
+    button(c, fonts->label, bx, by, bw, 48, "Cancel", BUTTON_SECONDARY);
+    if (buttons == 3)
+        button(c, fonts->label, bx + bw + 16, by, bw, 48, "New key", BUTTON_SECONDARY);
+    button(c, fonts->label, bx + (buttons - 1) * (bw + 16), by, bw, 48, "Join", BUTTON_PRIMARY);
 }
 
 void desk_setup_paint(struct canvas *c, const struct desk_setup *s, const struct desk_fonts *fonts) {
@@ -176,9 +201,8 @@ void desk_setup_paint(struct canvas *c, const struct desk_setup *s, const struct
     master_card(c, s, fonts);
     footer(c, s, fonts);
     if (s->confirm_open) {
-        // Dim the cards under the sheet so the question stands alone.
-        for (int y = SETUP_SHEET_Y; y < SETUP_SHEET_Y + SETUP_SHEET_H; y += 2)
-            canvas_fill_rect(c, SETUP_SHEET_X, y, SETUP_SHEET_W, 1, DESK_GLASS);
+        // A uniform scrim over the cards, so the question stands alone.
+        canvas_blend_rect(c, SETUP_SHEET_X, SETUP_SHEET_Y, SETUP_SHEET_W, SETUP_SHEET_H, 0xB0000000u | (DESK_GLASS & 0xFFFFFF));
         confirm_sheet(c, s, fonts);
     }
 }

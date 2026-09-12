@@ -62,7 +62,7 @@ static void card(struct canvas *c, const struct desk_speed *s, int i, const stru
     int big_w = fonts->value ? font_width(fonts->value, big) : canvas_text_width(big, 3);
     if (d->known && d->base_ms > 0)
         text_at(c, fonts->small, rx + big_w + 8, cy + 30 + text_h(fonts->value) - text_h(fonts->small) - 10,
-                60, "BPM", DESK_MUTED);
+                80, "base BPM", DESK_MUTED);
     text_at(c, fonts->small, rx, cy + SPEED_CARD_H - 52, SPEED_READOUT_W, line, d->known ? DESK_INK : DESK_MUTED);
     if (d->note[0])
         snprintf(scope, sizeof scope, "%s", d->note);
@@ -80,7 +80,7 @@ static void card(struct canvas *c, const struct desk_speed *s, int i, const stru
            DESK_GLASS, DESK_TILE);
     static const struct { enum speed_target t; int row, col; const char *label; } cells[] = {
         { SPEED_T_BPM_DOWN, 0, 0, "-1 BPM" }, { SPEED_T_BPM_UP, 0, 1, "+1 BPM" },
-        { SPEED_T_FACTOR_ONE, 0, 2, "x1" }, { SPEED_T_HALF, 1, 0, "x1/2" }, { SPEED_T_DOUBLE, 1, 1, "x2" },
+        { SPEED_T_FACTOR_ONE, 0, 2, "Time x1" }, { SPEED_T_HALF, 1, 0, "Time x1/2" }, { SPEED_T_DOUBLE, 1, 1, "Time x2" },
     };
     for (size_t k = 0; k < sizeof cells / sizeof cells[0]; k++)
         target(c, fonts->small, cx + SPEED_CELL_X(cells[k].col), cy + SPEED_CELL_Y(cells[k].row),
