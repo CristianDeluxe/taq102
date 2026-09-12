@@ -374,6 +374,16 @@ MacBook as master. Design and evidence:
   (`tools/show-manifest.py`). That is the general case behind the fog rule:
   most cues run until something stops them, so any control the desk fires has
   to have a stopping story, not just a starting one.
+- [ ] The desk sets itself up: a SETUP rail page with a Wi-Fi picker (scan,
+  join with an on-screen ASCII keyboard, `/data/wifi.conf` gains a block),
+  a master finder (a /24 sweep for hosts answering `GET /` on 9999 with
+  `QLC+`, plus an address typed on a keypad, saved in `/data/desk.conf`),
+  the status bar with the battery in the desk's top 48 px, and a brightness
+  fader with Auto through `control_runtime`. Design, with the three spikes
+  that shaped it (a scan does not drop the link; QLC+ 5.2.2 titles its page
+  `QLC+ Web Interface`; the control centre paints into a plain canvas):
+  `docs/2026-09-12-desk-setup-design.md`. Awaiting the
+  owner's yes on the design before any of it is built.
 - [ ] Show mode: the appliance sleeps the screen after five minutes idle, and
   a desk waiting for the next cue is idle. Hold the screen on during a show,
   give the power button a defined behaviour, and cancel every contact on a
