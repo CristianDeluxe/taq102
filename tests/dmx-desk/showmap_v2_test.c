@@ -78,8 +78,12 @@ int main(void) {
            auto_ctl->function_id == 720 && auto_ctl->role == MAP_ROLE_STATE &&
            auto_ctl->solo_id == 3 && auto_ctl->page == 0 && auto_ctl->section == 0);
     assert(strcmp(auto_ctl->detail, "el show se lleva solo") == 0);
-    const struct map_section *accents = &map.page[0].section[1];
-    assert(accents->count == 8);
+    const struct map_section *accents = NULL;
+    for (int i = 0; i < map.page[0].sections; i++)
+        if (strcmp(map.page[0].section[i].key, "accents") == 0)
+            accents = &map.page[0].section[i];
+    assert(accents && accents->count == 8);
+    assert(accents == &map.page[0].section[map.page[0].sections - 1]);
     int held = 0;
     for (int i = 0; i < accents->count; i++) {
         const struct map_control *c = &map.control[accents->first + i];
