@@ -398,6 +398,19 @@ MacBook as master. Design and evidence:
   edges; and `multiplier()` maps enum 0 and 1 to 1/64 and 1/32 where the
   engine's table says None and Zero (`vcspeeddial.h`). Its "24 of 376
   functions terminate" is therefore not a safety count. Verified 2026-09-12.
+- [ ] **Vibra show defect, Phase 1:** every solo frame in `Vibra.qxw` (w3 the
+  room state, w29 haze, and the five JUGAR families w63/w91/w108/w126/w159)
+  is generated with `ExcludeMonitored=True`, and 5.2.2's
+  `VCButton::notifyFunctionStarting` (`vcbutton.cpp:258`, pinned commit
+  `87a7cde`) then returns without stopping a hook that is only *Monitoring*
+  its function. AUTO starts the colour wheel as a child, so the COLOR hook
+  is Monitoring, and a pick does not stop it: two colour sources on the rig,
+  which is the exact bug the play page was designed to prevent. The same for
+  the haze timers (two pumps timers at once) and for a moment pressed after
+  AUTO was started from the page-2 duplicate. Found by the reviewer
+  (`docs/evidence/2026-09-12-desk-vibra-findings.md`, answer 7), verified in the
+  workspace and the source 2026-09-12. Fix in qlctool `vc/frame.py` for
+  those seven frames only, plus a checker rule, then confirm on 5.2.2.
 - [ ] Two show defects to fix in the prepared copy, never in the original:
   w1 `Velocidad Cabezas` is a Level slider with no channel bound, so it does
   nothing; w126 `HUMO AUTO` runs f367, a looping chaser over f322 and f324,
