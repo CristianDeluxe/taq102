@@ -81,7 +81,9 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
             c.w = DESK_MASTER_TILE_W;
             c.h = DESK_MASTER_TILE_H;
             c.enabled = 1;
-            c.level = 255;
+            // Unknown until the master says; 0 here is never painted.
+            c.level = 0;
+            c.requested_level = 0;
             break;
         case MAP_BLACKOUT:
             c.kind = DESK_BLACKOUT;

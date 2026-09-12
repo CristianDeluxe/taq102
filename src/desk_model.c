@@ -75,8 +75,8 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
     // A fader follows the finger from the first contact; a cue waits for the
     // release, so sliding off it is a way to change your mind.
     if (c->kind == DESK_MASTER) {
-        c->level = master_level_at(c, y);
-        struct desk_action a = { DESK_ACT_MASTER, c->widget_id, c->level };
+        c->requested_level = master_level_at(c, y);
+        struct desk_action a = { DESK_ACT_MASTER, c->widget_id, c->requested_level };
         return a;
     }
     return none();
@@ -88,8 +88,8 @@ struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y)
     struct desk_control *c = &m->control[m->capture_index];
     if (c->kind == DESK_MASTER) {
         int level = master_level_at(c, y);
-        if (level != c->level) {
-            c->level = level;
+        if (level != c->requested_level) {
+            c->requested_level = level;
             m->dirty = 1;
             struct desk_action a = { DESK_ACT_MASTER, c->widget_id, level };
             return a;
@@ -142,16 +142,21 @@ void desk_apply_function(struct desk_model *m, int function_id, int running) {
     }
 }
 
+// The first push makes the level known whatever its value: a master that
+// happens to sit where the desk guessed is still a master that has spoken.
+// A finger on the tile keeps its own request; the fill follows the push.
 void desk_apply_master(struct desk_model *m, int value) {
     if (value < 0 || value > 255)
         return;
     for (int i = 0; i < m->count; i++) {
         struct desk_control *c = &m->control[i];
-        if (c->kind == DESK_MASTER && c->level != value) {
-            c->level = value;
-            c->state = DESK_ON;
-            m->dirty = 1;
-        }
+        if (c->kind != DESK_MASTER)
+            continue;
+        c->level = value;
+        c->state = DESK_ON;
+        if (m->capture_index != i)
+            c->requested_level = value;
+        m->dirty = 1;
     }
 }
 
