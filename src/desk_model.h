@@ -48,7 +48,11 @@ struct desk_control {
     int enabled;
     char reason[DESK_REASON_MAX];   // why it is disabled, shown in its place
     int pressed;        // a finger is on it now: local feedback only
+    int pending;        // its frame went out; the master has not answered yet
+    int64_t pending_since;
 };
+
+#define DESK_PENDING_MS 1500
 
 struct desk_model {
     struct desk_control control[DESK_MAX_CONTROLS];
@@ -121,6 +125,12 @@ void desk_damage_rect(struct desk_model *m, int x, int y, int w, int h);
 // (the whole screen when everything changed), clearing the damage and the
 // dirty flag. 0 when nothing changed.
 int desk_take_damage(struct desk_model *m, int *x, int *y, int *w, int *h);
+
+// The frame for `widget_id` went out: the control shows a neutral pending
+// mark and refuses a second tap until the master answers (any push for its
+// function) or DESK_PENDING_MS pass. Never painted amber, never retried.
+void desk_note_sent(struct desk_model *m, int widget_id, int64_t now_ms);
+void desk_tick(struct desk_model *m, int64_t now_ms);
 
 // State from the master. A function id can drive more than one control.
 void desk_apply_function(struct desk_model *m, int function_id, int running);

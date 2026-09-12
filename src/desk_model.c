@@ -176,6 +176,10 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
     struct desk_control *c = &m->control[p->control];
     if (!usable(m, c))
         return none();
+    // A cue whose frame is out waits for the master's word: a second tap
+    // now would be a second toggle.
+    if (c->kind == DESK_CUE && c->pending)
+        return none();
     if (m->capture_slot != NO_CAPTURE) {
         // Another finger is busy: only the panic button takes a second one.
         if (c->kind == DESK_STOP_ALL && m->panic_slot == NO_CAPTURE) {
@@ -299,13 +303,35 @@ void desk_set_locked(struct desk_model *m, int locked) {
     damage_all(m);
 }
 
+void desk_note_sent(struct desk_model *m, int widget_id, int64_t now_ms) {
+    for (int i = 0; i < m->count; i++) {
+        struct desk_control *c = &m->control[i];
+        if (c->kind == DESK_CUE && c->widget_id == widget_id) {
+            c->pending = 1;
+            c->pending_since = now_ms;
+            damage_control(m, i);
+        }
+    }
+}
+
+void desk_tick(struct desk_model *m, int64_t now_ms) {
+    for (int i = 0; i < m->count; i++) {
+        struct desk_control *c = &m->control[i];
+        if (c->pending && now_ms - c->pending_since > DESK_PENDING_MS) {
+            c->pending = 0;
+            damage_control(m, i);
+        }
+    }
+}
+
 void desk_apply_function(struct desk_model *m, int function_id, int running) {
     for (int i = 0; i < m->count; i++) {
         struct desk_control *c = &m->control[i];
         if (c->kind == DESK_CUE && c->function_id == function_id) {
             enum desk_state state = running ? DESK_ON : DESK_OFF;
-            if (c->state != state) {
+            if (c->state != state || c->pending) {
                 c->state = state;
+                c->pending = 0;
                 damage_control(m, i);
             }
         }
@@ -351,6 +377,7 @@ void desk_set_link(struct desk_model *m, enum desk_link link) {
         for (int i = 0; i < m->count; i++) {
             m->control[i].state = DESK_UNKNOWN;
             m->control[i].pressed = 0;
+            m->control[i].pending = 0;
         }
         m->capture_slot = NO_CAPTURE;
         m->capture_index = -1;
