@@ -388,18 +388,24 @@ MacBook as master. Design and evidence:
   XY pad's range experiment below). The desk is usable for a show as it is.
 - [ ] Interface review leftovers (the reviewer rounds one and two,
   `docs/evidence/2026-09-12-desk-ui-review-findings.md` and
-  `...-round2-findings.md`), in the reviewer's order of worth: the supplicant
-  requests made asynchronous (today `SCAN`, `STATUS`, `SCAN_RESULTS` block the
-  loop up to 300 ms and a join's `RECONFIGURE`/`SELECT_NETWORK` up to 3 s
-  each); safety captions beside the show's words (`TODO NEGRO` is a black
+  `...-round2-findings.md`), after the asynchronous supplicant work recorded
+  in `docs/evidence/2026-09-13-desk-async-supplicant-findings.md`: safety captions beside the show's words (`TODO NEGRO` is a black
   look, not a stop; a haze rhythm fires at once, then repeats) which live in
   the generator's detail strings; one disabled/unknown look across cue,
   compact and swatch tiles with a reason line (`Mac only - hold control`);
   a neutral pending marker on a cue after its frame goes out until the echo
   or a bounded timeout; the held hits consolidated into one labelled area
   instead of two banks of dead tiles (the reviewer: last); a way to cancel a
-  running subnet sweep. Smallest action: the asynchronous supplicant, since
-  it holds the panic button hostage during a scan.
+  running subnet sweep. Smallest action: surface the generator's safety
+  detail strings beside the show captions.
+- [ ] Supplicant lifecycle waits remain outside the desk loop:
+  `wpa_ctrl_open` waits up to 1 s for `ATTACH`, and `wpa_ctrl_close` waits up
+  to 200 ms for `DETACH` (including cleanup after a failed open). Runtime
+  card, join, and rollback requests are asynchronous. Evidence:
+  `src/wpa_ctrl.c`, `src/wpa_ctrl_close.c`, and
+  `docs/evidence/2026-09-13-desk-async-supplicant-findings.md`.
+  Smallest next step: make event attachment asynchronous so an unresponsive
+  daemon cannot delay touch startup; send DETACH without waiting at exit.
 - [!] Phase 3's checks that need a finger on the tablet (the desk runs there
   now with `/data/desk.conf` pointing at this Mac's 9998 instance): tap the
   gear, scan, join `TestNet5` with its key (not in the brain; I
