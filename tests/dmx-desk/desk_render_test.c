@@ -129,7 +129,7 @@ int main(void) {
         font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 20),
         font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 16),
     };
-    struct canvas canvas = { calloc(DESK_W * DESK_H, 4), DESK_W, DESK_H };
+    struct canvas canvas = { .px = calloc(DESK_W * DESK_H, 4), .w = DESK_W, .h = DESK_H };
     assert(canvas.px);
     desk_paint(&canvas, &model, &fonts);
 

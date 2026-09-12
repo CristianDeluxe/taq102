@@ -58,7 +58,7 @@ static struct font *open_font(const char *dir, const char *face, int size) {
         }
         memcpy(text + used, "\xe2\x80\xa6\xef\xbf\xbd", 7);
         uint32_t pixel = 0;
-        struct canvas scratch = {&pixel, 1, 1};
+        struct canvas scratch = { .px = &pixel, .w = 1, .h = 1 };
         font_draw(f, &scratch, 0, 0, text, 0xffffffffu);
     }
     return f;
@@ -68,8 +68,8 @@ struct control_overlay *control_overlay_new(int w, int h, const char *fonts) {
     struct control_overlay *o = calloc(1, sizeof *o);
     if (!o) return NULL;
     o->w = w; o->h = h;
-    o->bar = (struct canvas){calloc((size_t)w * statusbar_height(w), 4), w, statusbar_height(w)};
-    o->panel = (struct canvas){calloc((size_t)CC_PANEL.w * CC_PANEL.h, 4), CC_PANEL.w, CC_PANEL.h};
+    o->bar = (struct canvas){ .px = calloc((size_t)w * statusbar_height(w), 4), .w = w, .h = statusbar_height(w) };
+    o->panel = (struct canvas){ .px = calloc((size_t)CC_PANEL.w * CC_PANEL.h, 4), .w = CC_PANEL.w, .h = CC_PANEL.h };
     size_t count = (size_t)o->panel.w * o->panel.h;
     if ((size_t)o->bar.w * o->bar.h > count) count = (size_t)o->bar.w * o->bar.h;
     o->rgba = malloc(count * 4);

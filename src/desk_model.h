@@ -59,6 +59,11 @@ struct desk_model {
     int locked;             // the surface accepts nothing; painted as such
     char master_name[64];   // what the desk is talking to, for the rail
     int dirty;
+    // What changed since the last paint: a rectangle in panel pixels, or
+    // everything. A full repaint costs a fifth of a second on the tablet's
+    // CPU; a tile costs a few milliseconds.
+    int damage_x, damage_y, damage_w, damage_h;
+    int damage_all;
     // One capture at a time: the slot is remembered so a second finger cannot
     // fire another tile, and so a cancel can only undo its own gesture. The
     // placement is remembered too, since the gesture's geometry is its own.
@@ -103,6 +108,14 @@ void desk_touch_cancel(struct desk_model *m, int slot);
 // must not deliver a gesture that started on the other side of it.
 void desk_cancel_all(struct desk_model *m);
 void desk_set_locked(struct desk_model *m, int locked);
+
+// Adds a rectangle to the damage (the status bar, say, which the model does
+// not know about).
+void desk_damage_rect(struct desk_model *m, int x, int y, int w, int h);
+// Whether anything needs painting, and what: returns 1 and the rectangle
+// (the whole screen when everything changed), clearing the damage and the
+// dirty flag. 0 when nothing changed.
+int desk_take_damage(struct desk_model *m, int *x, int *y, int *w, int *h);
 
 // State from the master. A function id can drive more than one control.
 void desk_apply_function(struct desk_model *m, int function_id, int running);

@@ -94,7 +94,7 @@ int main(void) {
     if (base == MAP_FAILED) { perror("mmap"); return 1; }
 
     // Render into cached RAM and copy out: the dumb buffer maps write-combining.
-    struct canvas canvas = { calloc((size_t)W * H, 4), W, H };
+    struct canvas canvas = { .px = calloc((size_t)W * H, 4), .w = W, .h = H };
     if (!canvas.px) { perror("shadow"); return 1; }
 
     struct utsname u; uname(&u);

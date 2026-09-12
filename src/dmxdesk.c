@@ -152,6 +152,7 @@ int main(int argc, char **argv) {
     const char *card = "/dev/dri/card0";
     const char *touch_device = "/dev/input/event1";
     const char *power_device = NULL;
+    int view_page = 0, view_bank = 0;    // --view P,B: the first page shown, for dumps
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--host") && i + 1 < argc) host = argv[++i];
@@ -160,10 +161,14 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--card") && i + 1 < argc) card = argv[++i];
         else if (!strcmp(argv[i], "--touch") && i + 1 < argc) touch_device = argv[++i];
         else if (!strcmp(argv[i], "--power") && i + 1 < argc) power_device = argv[++i];
+        else if (!strcmp(argv[i], "--view") && i + 1 < argc) {
+            if (sscanf(argv[++i], "%d,%d", &view_page, &view_bank) != 2)
+                view_page = view_bank = 0;
+        }
         else {
             fprintf(stderr, "usage: %s --host H [--port P] [--map FILE]"
                             " [--card /dev/dri/cardN] [--touch /dev/input/eventN]"
-                            " [--power /dev/input/eventN]\n",
+                            " [--power /dev/input/eventN] [--view PAGE,BANK]\n",
                     argv[0]);
             return 2;
         }
@@ -184,7 +189,7 @@ int main(int argc, char **argv) {
     if (!present)
         return 1;
     int w = present_width(present), h = present_height(present);
-    struct canvas canvas = { calloc((size_t)w * h, 4), w, h };
+    struct canvas canvas = { .px = calloc((size_t)w * h, 4), .w = w, .h = h };
     if (!canvas.px) {
         present_close(present);
         return 1;
@@ -214,6 +219,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     desk_set_layout(&model, &layout);
+    desk_set_view(&model, view_page, view_bank);
     struct desk_input input;
     desk_input_init(&input);
 
@@ -284,6 +290,12 @@ int main(int argc, char **argv) {
     int64_t last_status_ms = 0;
     struct status status;
     memset(&status, 0, sizeof status);
+    // The bar is painted supersampled, which is dear on this CPU, so it is
+    // painted into its own strip only when the status changes and copied
+    // into every frame.
+    int bar_h = statusbar_height(w);
+    struct canvas bar = { .px = calloc((size_t)w * bar_h, 4), .w = w, .h = bar_h };
+    int bar_ready = 0;
     enum qlc_link last_link = QLC_DOWN;
     char last_reason[96] = "";
 
@@ -313,8 +325,10 @@ int main(int argc, char **argv) {
                 if (model.control[i].kind == DESK_MASTER) {
                     model.control[i].pressed = 1;
                     model.control[i].requested_level = (int)((now / 8) % 256);
+                    const struct desk_placement *mp = desk_placement_of(&model, i);
+                    if (mp)
+                        desk_damage_rect(&model, mp->x, mp->y, mp->w, mp->h);
                 }
-            model.dirty = 1;
         }
 
         if (power_slot >= 0 && (fds[power_slot].revents & POLLIN) &&
@@ -427,8 +441,16 @@ int main(int argc, char **argv) {
             last_status_ms = now;
             struct status next;
             status_read(&next);
-            if (status_changed(&status, &next))
-                model.dirty = 1;
+            if (status_changed(&status, &next) || !bar_ready) {
+                status = next;
+                if (bar.px) {
+                    for (int i = 0; i < bar.w * bar.h; i++)
+                        bar.px[i] = DESK_GLASS;
+                    statusbar_paint(&bar, &status, &bar_style);
+                    bar_ready = 1;
+                }
+                desk_damage_rect(&model, 0, 0, bar.w, bar.h);
+            }
             status = next;
         }
 
@@ -436,20 +458,26 @@ int main(int argc, char **argv) {
         // only wake the pipeline the operator just switched off.
         if (lock.state == DESK_BLANKED)
             model.dirty = 0;
-        if (model.dirty || force_flip) {
+        int dx = 0, dy = 0, dw = -1, dh = -1;
+        int damaged = desk_take_damage(&model, &dx, &dy, &dw, &dh);
+        if (damaged || force_flip) {
             // A forced flip re-presents the same canvas: the point is the
             // flip, not the paint, and a full repaint on this CPU would cap
-            // the rate far below the panel's.
-            if (model.dirty) {
+            // the rate far below the panel's. A damaged frame paints only
+            // its rectangle: every primitive clips to it.
+            if (damaged) {
                 int64_t t0 = now_ms();
+                if (dw > 0)
+                    canvas_set_clip(&canvas, dx, dy, dw, dh);
                 desk_paint(&canvas, &model, &fonts);
-                statusbar_paint(&canvas, &status, &bar_style);
-                model.dirty = 0;
+                canvas_clear_clip(&canvas);
+                if (bar_ready && (dw < 0 || dy < bar.h))
+                    memcpy(canvas.px, bar.px, (size_t)bar.w * bar.h * 4);
                 if (log_perf)
                     perf_window_add(&paint_ms, (int)(now_ms() - t0));
             }
             int64_t t1 = now_ms();
-            if (present_frame(present, &canvas) != 0)
+            if (present_frame_damage(present, &canvas, dx, dy, dw, dh) != 0)
                 break;
             if (log_perf)
                 perf_window_add(&present_ms, (int)(now_ms() - t1));
@@ -492,6 +520,7 @@ int main(int argc, char **argv) {
     font_close(fonts.value);
     font_close(fonts.label);
     font_close(fonts.small);
+    free(bar.px);
     free(canvas.px);
     present_close(present);
     vc_free(&console);

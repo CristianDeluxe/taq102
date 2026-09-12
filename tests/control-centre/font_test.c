@@ -13,13 +13,13 @@ int main(void) {
     int w0 = font_width(f, "0"), w1 = font_width(f, "1"), w8 = font_width(f, "8");
     assert(w0 > 0 && w1 == w0 && w8 == w0);                          // equal digit cells
     assert(font_width(f, "100 %") > font_width(f, "10 %"));
-    struct canvas c = { calloc(200 * 60, 4), 200, 60 };
+    struct canvas c = { .px = calloc(200 * 60, 4), .w = 200, .h = 60 };
     for (int i = 0; i < 200 * 60; i++) c.px[i] = 0xFF141416u;
     font_draw(f, &c, 4, font_baseline(f) + 4, "84", 0xFFF5F5F7u);
     int lit = 0, edge = 0;
     for (int i = 0; i < 200 * 60; i++) { if (c.px[i] != 0xFF141416u) lit++; if ((c.px[i] >> 24) != 0xFF) edge++; }
     assert(lit > 50 && edge == 0);                                   // drawn, and the canvas stays opaque
-    struct canvas t = { calloc(200 * 60, 4), 200, 60 };
+    struct canvas t = { .px = calloc(200 * 60, 4), .w = 200, .h = 60 };
     font_draw(f, &t, 4, 40, "a", 0xFFFFFFFFu);
     int partial = 0;
     for (int i = 0; i < 200 * 60; i++) { unsigned a = t.px[i] >> 24; if (a && a < 255) partial++; }

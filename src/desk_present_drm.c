@@ -136,18 +136,44 @@ static void on_flip(int fd, unsigned int frame, unsigned int sec,
     *pending = 0;
 }
 
-int present_frame(struct present *p, const struct canvas *canvas) {
+struct damage { int x, y, w, h; int any; };
+
+static struct damage union_of(struct damage a, struct damage b) {
+    if (!a.any) return b;
+    if (!b.any) return a;
+    int x0 = a.x < b.x ? a.x : b.x, y0 = a.y < b.y ? a.y : b.y;
+    int x1 = a.x + a.w > b.x + b.w ? a.x + a.w : b.x + b.w;
+    int y1 = a.y + a.h > b.y + b.h ? a.y + a.h : b.y + b.h;
+    struct damage u = { x0, y0, x1 - x0, y1 - y0, 1 };
+    return u;
+}
+
+// Each buffer remembers the damage it missed while the other was on screen.
+static struct damage pending[2];
+
+int present_frame_damage(struct present *p, const struct canvas *canvas,
+                         int x, int y, int w, int h) {
     if (!p || !canvas || !canvas->px)
         return -1;
     int back = p->front ^ 1;
     struct buffer *b = &p->buffer[back];
-    int w = p->mode.hdisplay, h = p->mode.vdisplay;
-    int rows = canvas->h < h ? canvas->h : h;
-    int cols = canvas->w < w ? canvas->w : w;
-    for (int y = 0; y < rows; y++) {
-        memcpy(b->map + (size_t)y * b->pitch,
-               canvas->px + (size_t)y * canvas->w, (size_t)cols * 4);
+    int W = p->mode.hdisplay, H = p->mode.vdisplay;
+    int cols = canvas->w < W ? canvas->w : W;
+    int rows = canvas->h < H ? canvas->h : H;
+    struct damage now = { x, y, w, h, 1 };
+    if (w < 0 || h < 0) {
+        now.x = 0; now.y = 0; now.w = cols; now.h = rows;
     }
+    struct damage copy = union_of(now, pending[back]);
+    int x0 = copy.x < 0 ? 0 : copy.x, y0 = copy.y < 0 ? 0 : copy.y;
+    int x1 = copy.x + copy.w > cols ? cols : copy.x + copy.w;
+    int y1 = copy.y + copy.h > rows ? rows : copy.y + copy.h;
+    for (int j = y0; j < y1; j++) {
+        memcpy(b->map + (size_t)j * b->pitch + (size_t)x0 * 4,
+               canvas->px + (size_t)j * canvas->w + x0, (size_t)(x1 - x0) * 4);
+    }
+    pending[back].any = 0;
+    pending[p->front] = union_of(pending[p->front], now);
 
     p->flip_pending = 1;
     if (drmModePageFlip(p->fd, p->crtc_id, b->fb, DRM_MODE_PAGE_FLIP_EVENT,
@@ -169,6 +195,10 @@ int present_frame(struct present *p, const struct canvas *canvas) {
     }
     p->front = back;
     return 0;
+}
+
+int present_frame(struct present *p, const struct canvas *canvas) {
+    return present_frame_damage(p, canvas, 0, 0, -1, -1);
 }
 
 void present_close(struct present *p) {
