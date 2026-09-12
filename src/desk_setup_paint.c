@@ -146,8 +146,10 @@ static void master_card(struct canvas *c, const struct desk_setup *s, const stru
     int half = (SETUP_CARD_W - 48) / 2;
     char busy[SETUP_WORD_MAX + 4];
     snprintf(busy, sizeof busy, "%s...", s->master_busy);
-    button(c, fonts->label, x + 16, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, s->master_busy[0] ? busy : "Find",
-           s->master_busy[0] ? BUTTON_DEAD : BUTTON_PRIMARY);
+    button(c, fonts->label, x + 16, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, s->master_busy[0] ? "Stop" : "Find",
+           s->master_busy[0] ? BUTTON_SECONDARY : BUTTON_PRIMARY);
+    if (s->master_busy[0])
+        text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, busy, DESK_MUTED);
     button(c, fonts->label, x + 32 + half, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, "Type address", BUTTON_SECONDARY);
 }
 
@@ -240,7 +242,7 @@ void desk_setup_paint(struct canvas *c, const struct desk_setup *s, const struct
     if (s->capture == T_SCAN)
         live = s->wifi_available && !s->wifi_busy[0];
     else if (s->capture == T_FIND)
-        live = !s->master_busy[0];
+        live = 1;
     if (!s->confirm_open && s->capture != T_NONE && s->capture != T_FADER && !s->capture_outside && live)
         pressed_outline_ring(c, s);
     if (s->confirm_open) {

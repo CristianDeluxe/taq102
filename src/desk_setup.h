@@ -26,6 +26,7 @@ enum setup_action_kind {
     SETUP_SCAN,             // ask the supplicant to scan
     SETUP_JOIN,             // the operator confirmed: join ssid with psk (empty for open)
     SETUP_FIND,             // sweep the subnet for masters
+    SETUP_FIND_CANCEL,      // the sweep's button while it runs: stop it
     SETUP_SET_MASTER,       // host and port chosen or typed
     SETUP_BRIGHTNESS,       // value 8..max, the fader moved
     SETUP_POWER_AWARE,      // value 0/1, the toggle
