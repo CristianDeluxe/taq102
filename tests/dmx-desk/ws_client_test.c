@@ -133,8 +133,16 @@ static void test_handshake(void) {
         }
     }
     assert(ws_state(ws) == WS_OPEN);
+    // The push may share the headers' segment or follow it a moment later on
+    // loopback; either way it is the first frame out.
     char buf[64];
-    assert(ws_recv_text(ws, buf, sizeof buf) == 1 && strcmp(buf, "FUNCTION|0|Stopped") == 0);
+    int got = 0;
+    for (int i = 0; i < 50 && !got; i++) {
+        struct pollfd p = { .fd = ws_fd(ws), .events = POLLIN, .revents = 0 };
+        poll(&p, 1, 10);
+        got = ws_recv_text(ws, buf, sizeof buf);
+    }
+    assert(got == 1 && strcmp(buf, "FUNCTION|0|Stopped") == 0);
     // A send is queued and flushed, masked.
     assert(ws_send_text(ws, "QLC+API|isProjectLoaded") == 0);
     assert(ws_flush(ws) == 1);

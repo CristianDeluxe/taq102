@@ -180,7 +180,7 @@ void control_overlay_draw(struct control_overlay *o, struct cc_model *m,
     char key[128];
     snprintf(key, sizeof key, "%d|%d|%d|%d", st->have_wifi, status_wifi_bars(st), st->cap, st->plugged);
     if (strcmp(key, o->bar_shown) && (!defer_updates || !o->bar_shown[0])) {
-        const struct statusbar_style style = {0, 0, 0xffffffffu, 0x66ffffffu, 0xffffffffu, o->font_path};
+        const struct statusbar_style style = {0, 0, 0xffffffffu, 0x66ffffffu, 0xffffffffu, 0xFF34C759u, 0xFFFF3B30u, o->font_path};
         memset(o->bar.px, 0, (size_t)o->bar.w*o->bar.h*4);
         statusbar_paint(&o->bar, st, &style); upload(o, o->bar_tex, &o->bar);
         snprintf(o->bar_shown, sizeof o->bar_shown, "%s", key);

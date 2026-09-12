@@ -8,6 +8,7 @@ int main(void) {
     struct canvas c = { calloc(W * h, 4), W, h };
     struct status st = { .have_batt = 1, .cap = 87, .ma = 120, .have_wifi = 1, .level = -40, .plugged = 1 };
     struct statusbar_style sty = { 0x00000000u, 0x00000000u, 0xFFFFFFFFu, 0x66FFFFFFu, 0xFFFFFFFFu,
+        0xFF34C759u, 0xFFFF3B30u,
         "br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf" };
     statusbar_paint(&c, &st, &sty);
     int n = 0; for (int i = 0; i < W * h; i++) if (c.px[i]) n++;

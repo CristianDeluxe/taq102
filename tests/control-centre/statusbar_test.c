@@ -8,7 +8,7 @@ static int lit(struct canvas *c) { int n = 0; for (int i = 0; i < c->w * c->h; i
 int main(void) {
     int w = 1024, h = statusbar_height(w);
     struct status st = { .have_batt = 1, .cap = 87, .have_wifi = 1, .plugged = 1 };
-    struct statusbar_style bitmap = { 0, 0, 0xFFFFFFFFu, 0x66FFFFFFu, 0xFFFFFFFFu, NULL };
+    struct statusbar_style bitmap = { 0, 0, 0xFFFFFFFFu, 0x66FFFFFFu, 0xFFFFFFFFu, 0xFF34C759u, 0xFFFF3B30u, NULL };
     struct canvas a = { calloc(w * h, 4), w, h }; statusbar_paint(&a, &st, &bitmap);
     assert(lit(&a) > 100);
     struct statusbar_style inter = bitmap; inter.font_path = "br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf";
@@ -26,7 +26,7 @@ int main(void) {
     statusbar_paint(&fallback, &st, &missing);
     for (int i = 0; i < w * h; i++) assert(a.px[i] == fallback.px[i]);
     // Subpixel coverage can average down to zero alpha on a transparent canvas.
-    struct statusbar_style faint = { 0, 0, 0x01FFFFFFu, 0x01FFFFFFu, 0x01FFFFFFu,
+    struct statusbar_style faint = { 0, 0, 0x01FFFFFFu, 0x01FFFFFFu, 0x01FFFFFFu, 0x01FFFFFFu, 0x01FFFFFFu,
         "br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf" };
     for (int i = 0; i < w * h; i++) fallback.px[i] = 0;
     statusbar_paint(&fallback, &st, &faint);
