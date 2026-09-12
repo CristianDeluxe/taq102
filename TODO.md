@@ -50,24 +50,32 @@ appliance back. The journal is `README.md` here and
   hand on 2026-09-12; make the image start it). When it shimmers again: note
   the time, do not restart anything, `diff` that minute against a clean one,
   and run the camera on `fliptest vlines` before it clears.
-- [ ] Every QLC+ launch on the Mac resets the tablet's USB gadget: `dwc2: new
-  device` at uptime 51602, 64162 and ~65830 on 2026-09-12 line up with the
-  three launches (`open -na`, a shell relaunch, `launchctl submit`). QLC+'s
-  DMX USB plugin walks every USB device with libusb. Harmless so far (the
-  console re-enumerates) but it is a VBUS-side event on the same hub the
-  tablet charges from, and it belongs in any charging investigation.
-- [!] The tablet drained on the USB-C hub with the input limit already at
-  1500 mA: 2026-09-12, `usb/input_current_limit=1500000`, `0xa1=0x45`,
-  `current_now=-259..-292 mA` at brightness 255 from before 10:24 until
-  about 11:00 local, then `+300..+336 mA` with no register change and no
-  cable event. That is not the 2026-09-10 fault (450 mA limit; fixed by the
-  init override). With the limit fixed, the remaining variable is the
-  source: VBUS sagging under load makes the RK816's input voltage limiter
-  (`USB_VLIMIT_EN`) throttle the current, and neither the driver nor hwmon
-  exposes VBUS. Blocked on a VBUS measurement. Unblock: find the RK816 ADC
-  channel for USB voltage in the vendor `rk816_battery.c`, expose it, add it
-  to `panel-trap`; the trap already logs `0xa1`, `VB_MON`, extcon and the
-  battery current, so the next drain will at least say which side moved.
+- [ ] Three of the tablet's USB gadget resets on 2026-09-12 (`dwc2: new
+  device` at uptime 51602, 64162, ~65830) lined up with three QLC+ launches on
+  the Mac, whose DMX USB plugin walks every USB device with libusb. A fourth
+  launch at 66900, watched on purpose, reset nothing. So it is a correlation
+  from three points, not a mechanism; keep it in mind, do not build on it.
+- [!] The tablet drains on the USB-C hub with the input limit at 1500 mA,
+  and a write to the RK816's USB_CTRL register un-sticks it. 2026-09-12,
+  brightness 255, `0xa1=0x45` (VLIM 4.4 V, ILIM index 5) throughout: from
+  before 10:24 until 11:00 local `current_now=-259..-292 mA`; 11:00 to 11:07
+  `+300..+336 mA`; 11:07 on `-231..-260 mA` again, with VBUS (RK816 USB ADC
+  0xC0/C1, scaled against the battery ADC) sitting at **4.44 V**, which is
+  the input voltage limiter's threshold. `i2cset 0xa1 0x05` (VLIM 4.0 V) gave
+  `+666 mA` and VBUS 3.97 V within 15 s; restoring `0x45` did **not** bring
+  the throttle back: `+650 mA` at VBUS 3.98 V for the next ten minutes and
+  counting. So the limiter latches into a throttled state on some VBUS event
+  and stays there until the register is rewritten, and the 11:00 recovery
+  was probably such a rewrite (something re-ran `update_cables`). The source
+  itself is soft, about 0.5 ohm from the swing (0.9 A for 0.46 V), which is
+  the cable or the hub port, and is why the threshold is reached at all.
+  Not yet known: whether a same-value rewrite re-arms it, or only a change;
+  what the VBUS event is (another device on the hub drawing, a USB reset).
+  Unblock: `panel-trap` now logs VBUS and `0xa1` every minute; at the next
+  drain, first try `i2cset -f -y 2 0x1a 0xa1 0x45` (same value) and read the
+  current 15 s later. If that re-arms it, the fix is a periodic rewrite in
+  `rk816_charging_monitor` when plugged in and discharging; if only a change
+  does, the fix toggles VLIM. Either way it is a driver change we own.
 - [ ] The charging bolt is a 5-by-7 bitmap scaled up, so it is the one blocky
   shape left in a bar that is otherwise smooth. Only visible while charging
   and only at close range; a small vector path would settle it.
