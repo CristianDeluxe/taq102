@@ -1,9 +1,10 @@
-// SOURCES: wpa_ctrl.c
+// SOURCES: desk_wifi_request.c wpa_ctrl_dial.c wpa_ctrl_transact.c wpa_ctrl.c wpa_ctrl_begin.c wpa_ctrl_request_fd.c wpa_ctrl_reply.c wpa_ctrl_abandon.c wpa_ctrl_request.c wpa_ctrl_event_fd.c wpa_ctrl_event.c wpa_ctrl_close.c
 // A fake wpa_supplicant on a unix datagram socket, serviced in the same
-// thread: it answers PING and STATUS, acknowledges ATTACH, and after SCAN
+// process helper: it answers PING and STATUS, acknowledges ATTACH, and after SCAN
 // pushes the scan-results event to whoever attached. No call may block
 // longer than its timeout.
 #include <assert.h>
+#include <errno.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
@@ -11,10 +12,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "wpa_ctrl.h"
+#include "desk_wifi_request.h"
 
 static int64_t now_ms(void) {
     struct timespec ts;
@@ -28,11 +31,13 @@ struct fake {
     struct sockaddr_un attached;
     int has_attached;
     int scans;
+    struct sockaddr_un late;
+    int has_late;
 };
 
 static void fake_open(struct fake *k) {
     memset(k, 0, sizeof *k);
-    snprintf(k->path, sizeof k->path, "/tmp/dmxdesk-fake-wpa-%d", (int)getpid());
+    snprintf(k->path, sizeof k->path, "./output/dmxdesk-fake-wpa-%d", (int)getpid());
     unlink(k->path);
     k->fd = socket(AF_UNIX, SOCK_DGRAM, 0);
     assert(k->fd >= 0);
@@ -66,7 +71,15 @@ static void fake_service(struct fake *k, const char *silent) {
             reply = "OK\n";
         } else if (strcmp(cmd, "DETACH") == 0) {
             reply = "OK\n";
+        } else if (strcmp(cmd, "LATE") == 0) {
+            k->late = from;
+            k->has_late = 1;
+            continue;
         } else if (strcmp(cmd, "PING") == 0) {
+            if (k->has_late) {
+                sendto(k->fd, "STALE\n", 6, 0, (struct sockaddr *)&k->late, sizeof k->late);
+                k->has_late = 0;
+            }
             reply = "PONG\n";
         } else if (strcmp(cmd, "STATUS") == 0) {
             reply = "bssid=00:00:5e:00:53:01\nfreq=2437\nssid=TestNet\nid=0\nwpa_state=COMPLETED\n"
@@ -74,21 +87,25 @@ static void fake_service(struct fake *k, const char *silent) {
         } else if (strcmp(cmd, "SCAN") == 0) {
             k->scans++;
             reply = "OK\n";
-            sendto(k->fd, reply, strlen(reply), 0, (struct sockaddr *)&from, flen);
+            ssize_t sent = sendto(k->fd, reply, strlen(reply), 0, (struct sockaddr *)&from, flen);
+        assert(sent >= 0 || errno != EMSGSIZE);
             if (k->has_attached) {
                 const char *ev = "<3>CTRL-EVENT-SCAN-RESULTS ";
                 sendto(k->fd, ev, strlen(ev), 0, (struct sockaddr *)&k->attached, sizeof k->attached);
             }
             continue;
+        } else if (strcmp(cmd, "SCAN_RESULTS") == 0) {
+            reply = "bssid / frequency / signal level / flags / ssid\n";
         } else if (strcmp(cmd, "BIG") == 0) {
-            static char big[4096];
+            static char big[1024];
             memset(big, 'x', sizeof big - 1);
             big[sizeof big - 1] = '\0';
             reply = big;
         } else {
             reply = "FAIL\n";
         }
-        sendto(k->fd, reply, strlen(reply), 0, (struct sockaddr *)&from, flen);
+        ssize_t sent = sendto(k->fd, reply, strlen(reply), 0, (struct sockaddr *)&from, flen);
+        assert(sent >= 0 || errno != EMSGSIZE);
     }
 }
 
@@ -106,7 +123,8 @@ int main(void) {
     pid_t helper = fork();
     assert(helper >= 0);
     if (helper == 0) {
-        for (int i = 0; i < 600; i++)
+        alarm(30);
+        for (;;)
             fake_service(&k, "SLOW");
         _exit(0);
     }
@@ -133,8 +151,68 @@ int main(void) {
     }
     assert(got == 1 && strcmp(buf, "CTRL-EVENT-SCAN-RESULTS") == 0);
     assert(wpa_ctrl_event(c, buf, sizeof buf) == 0);
+    // Async replies, exclusive ownership, and transport isolation for late replies.
+    assert(wpa_ctrl_reply(c, buf, sizeof buf) == 0);
+    assert(wpa_ctrl_begin(c, "PING") == 0);
+    assert(wpa_ctrl_begin(c, "STATUS") == -1);
+    assert(ask(c, "STATUS", buf, sizeof buf) == -1);
+    struct pollfd request = { .fd = wpa_ctrl_request_fd(c), .events = POLLIN };
+    assert(poll(&request, 1, 300) == 1);
+    assert(wpa_ctrl_reply(c, buf, sizeof buf) == 1 && strcmp(buf, "PONG\n") == 0);
+    assert(wpa_ctrl_reply(c, buf, sizeof buf) == 0);
+    assert(wpa_ctrl_begin(c, "LATE") == 0);
+    assert(wpa_ctrl_reply(c, buf, sizeof buf) == 0);
+    wpa_ctrl_abandon(c);
+    assert(wpa_ctrl_begin(c, "PING") == 0);
+    request.fd = wpa_ctrl_request_fd(c);
+    assert(poll(&request, 1, 300) == 1);
+    assert(wpa_ctrl_reply(c, buf, sizeof buf) == 1 && strcmp(buf, "PONG\n") == 0);
+    assert(wpa_ctrl_reply(c, buf, sizeof buf) == 0);
+    assert(wpa_ctrl_begin(c, "BIG") == 0);
+    assert(poll(&request, 1, 300) == 1);
+    assert(wpa_ctrl_reply(c, small, sizeof small) == -1);
+    assert(ask(c, "PING", buf, sizeof buf) == 5);
+    // Card work queues behind a join and never consumes the join's reply.
+    struct desk_wifi_request card = { .results_queued = 1, .scan_queued = 1 };
+    assert(wpa_ctrl_begin(c, "PING") == 0);
+    assert(desk_wifi_request_step(&card, c, 1000, 1, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(card.pending == DESK_WIFI_NONE && card.results_queued && card.scan_queued);
+    assert(poll(&request, 1, 300) == 1);
+    assert(wpa_ctrl_reply(c, buf, sizeof buf) == 1 && strcmp(buf, "PONG\n") == 0);
+    assert(desk_wifi_request_step(&card, c, 1000, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(card.pending == DESK_WIFI_RESULTS && card.scan_queued);
+    assert(poll(&request, 1, 300) == 1);
+    // A newly queued join waits for the already outstanding card request.
+    assert(desk_wifi_request_step(&card, c, 1010, 1, 1, buf, sizeof buf) == DESK_WIFI_RESULTS);
+    assert(card.result == 1 && strstr(buf, "bssid"));
+    assert(desk_wifi_request_step(&card, c, 1020, 1, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(card.pending == DESK_WIFI_NONE && card.scan_queued);
+    assert(desk_wifi_request_step(&card, c, 1020, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(card.pending == DESK_WIFI_SCAN);
+    assert(poll(&request, 1, 300) == 1);
+    assert(desk_wifi_request_step(&card, c, 1030, 0, 1, buf, sizeof buf) == DESK_WIFI_SCAN);
+    assert(card.result == 1 && strcmp(buf, "OK\n") == 0);
+    assert(desk_wifi_request_step(&card, c, 2000, 0, 0, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(card.pending == DESK_WIFI_NONE);
+    assert(desk_wifi_request_step(&card, c, 2000, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(card.pending == DESK_WIFI_STATUS);
+    assert(poll(&request, 1, 300) == 1);
+    assert(desk_wifi_request_step(&card, c, 2010, 0, 1, buf, sizeof buf) == DESK_WIFI_STATUS);
+    assert(card.result == 1 && strstr(buf, "wpa_state="));
+    assert(desk_wifi_request_step(&card, c, 2999, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(card.pending == DESK_WIFI_NONE);
+    assert(desk_wifi_request_step(&card, c, 3000, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(desk_wifi_request_step(&card, c, 3100, 0, 1, buf, sizeof buf) == DESK_WIFI_STATUS);
+    assert(card.result == -1 && card.pending == DESK_WIFI_NONE);
+    card.scan_queued = 1;
+    assert(desk_wifi_request_step(&card, c, 3110, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    request.fd = wpa_ctrl_request_fd(c);
+    assert(poll(&request, 1, 300) == 1);
+    assert(desk_wifi_request_step(&card, c, 3120, 0, 1, buf, sizeof buf) == DESK_WIFI_SCAN);
+    assert(card.result == 1 && strcmp(buf, "OK\n") == 0);
     wpa_ctrl_close(c);
     kill(helper, 9);
+    waitpid(helper, NULL, 0);
     close(k.fd);
     unlink(k.path);
     printf("wpa_ctrl ok\n");
