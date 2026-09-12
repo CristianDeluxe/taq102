@@ -339,7 +339,7 @@ static void paint_banks(struct canvas *c, const struct desk_model *model,
         // An amber dot on a bank where something the master says is running
         // sits: amber keeps its one meaning, and the running thing is findable.
         int running = 0;
-        for (int j = 0; j < model->layout.placements && !running; j++) {
+        for (int j = 0; j < model->layout.placements && !running && i != model->bank; j++) {
             const struct desk_placement *p = &model->layout.placement[j];
             if (p->page == model->page && p->bank == i && p->tile != TILE_COMPACT &&
                 p->tile != TILE_MASTER && p->tile != TILE_PANIC &&

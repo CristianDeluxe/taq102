@@ -317,8 +317,9 @@ void desk_apply_function(struct desk_model *m, int function_id, int running) {
             continue;
         for (int k = 0; k < m->layout.placements; k++) {
             const struct desk_placement *p = &m->layout.placement[k];
-            // Only a page with banks has a dot or a heading word to move.
-            if (p->control == i && p->page == m->page && m->layout.banks[m->page] > 1)
+            // The dot and the heading word speak of other banks only: the
+            // current one is in view, and its change repaints its own tile.
+            if (p->control == i && p->page == m->page && p->bank != m->bank)
                 damage_all(m);
         }
     }
