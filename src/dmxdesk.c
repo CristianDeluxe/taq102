@@ -468,6 +468,7 @@ int main(int argc, char **argv) {
         snprintf(exe, sizeof exe, "%s", argv[0]);
     struct desk_wifi_request wifi_request = {0};
     int64_t scan_started_ms = 0;
+    int scan_dispatched = 0;    // the queued SCAN has actually gone to the daemon
     int setup_slot = -1;        // the one finger the settings surface owns
     int gear_slot = -1;
     if (start_setup) {
@@ -863,8 +864,20 @@ int main(int argc, char **argv) {
                 setup.dirty = 1;
                 mark_known(&setup, &setup.scan);
             }
+            // A queued scan waits behind a join: its busy word and its clock
+            // start when the command actually goes out, not when it was asked.
+            if (wifi_request.pending == DESK_WIFI_SCAN && !scan_dispatched) {
+                scan_dispatched = 1;
+                scan_started_ms = now;
+                if (!join.running) {
+                    snprintf(setup.wifi_busy, sizeof setup.wifi_busy, "Scanning");
+                    setup.dirty = 1;
+                }
+            } else if (wifi_request.pending != DESK_WIFI_SCAN && !wifi_request.scan_queued) {
+                scan_dispatched = 0;
+            }
             if (setup.wifi_busy[0] && strcmp(setup.wifi_busy, "Scanning") == 0 &&
-                now - scan_started_ms > SCAN_TIMEOUT_MS) {
+                scan_dispatched && now - scan_started_ms > SCAN_TIMEOUT_MS) {
                 setup.wifi_busy[0] = '\0';
                 snprintf(setup.wifi_note, sizeof setup.wifi_note, "Scan timed out");
                 setup.dirty = 1;
