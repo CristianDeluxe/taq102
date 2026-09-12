@@ -1699,3 +1699,53 @@ the boot, not another guess.
 Also worth knowing, because it contradicts what everyone assumed: the stock
 `logo.bmp` is **DENVER in white on black**, not a white screen. So the white
 boot screen this was meant to replace was never the vendor's logo.
+
+## The link learned to wait, and the show qualified itself (2026-09-12)
+
+The desk that first drew the June show on the 12th ran on a link that could
+freeze the loop and a map written by hand. Both went the same day, after a
+design round with the reviewer against the professional desks (Luminair, Photon,
+MagicQ, grandMA3) and a second round against the real show, which is
+`Vibra.qxw` on DMX-Fixtures' `qlctool` branch, not the June file.
+
+**The link.** `ws_client` connected with a blocking `connect`, `send_all`
+could sit a second per attempt, the first `/vc.json` fetch ran before the
+display opened, and a reconnect fetched synchronously; a failed fetch still
+went READY on the old routes; and the pong buffer was two bytes short of a
+125-byte ping. All replaced: a bounded `send_queue`, a non-blocking connect
+and handshake, an incremental `http_fetch`, and `qlc_session`, a state
+machine that reaches READY only on a fresh parsed snapshot and names the
+reason for every drop. Measured on the tablet against QLC+ 5.2.2 on this
+Mac: the display comes up before the network; a master frozen for three
+seconds was dropped at 805 ms and relinked by itself; a dead host reports a
+connect timeout every ten seconds with touch alive; thirty minutes of
+heartbeats gave p50 19 ms, p99 50 ms, worst 319 ms and no drops, so the 750
+ms threshold stays (`docs/evidence/2026-09-12-desk-phase1/`).
+
+**The show.** the reviewer read the pinned 5.2.2 sources against the generated
+console and found that every solo frame carried `ExcludeMonitored=True`,
+which makes `VCButton::notifyFunctionStarting` skip a button that is only
+monitoring its function. The colour wheel under COLOR is exactly that when
+AUTO started it, so a pick never stopped it and the rig had two colour
+sources: the bug the play page was built to prevent, invisible to a checker
+with no rule for it. The generator now hears monitored buttons on the seven
+handoff frames (the room state, the haze rhythms and the five families) and
+keeps the exclusion on the library frames, whose looks are chaser steps;
+`qlctool check` gained `marco solo sordo`, which reasons about the graph
+rather than captions; the three shows were regenerated and validated. Seen
+live through the probe: pressing the Rig Rojo pick while AUTO runs now
+stops the wheel, CHARLA stops AUTO and releases the pick, PARAR TODO stops
+the rest.
+
+**The map.** `qlctool deskmap` reads the saved workspace and writes the
+tablet's map: seven pages by the console's own frames, 132 controls with
+widget, function, action, solo frame, two-line captions, roles and the
+colours their scenes write, the two dials with the 5.2.2 multiplier table
+(0 is None and 1 is Zero, which the old manifest tool read as powers of
+two), the StopAll button with its fade and the GrandMaster slider. The desk
+validates each control against the live console before enabling it and
+disables everything on a QLC+ line the map was not made for. Held hits are
+carried disabled: the desk holds nothing open across a network, and the reviewer
+showed that a single-shot chaser is no substitute for Flash priority. This
+phase lays out the room's seven states and the panic button; the pages come
+next.
