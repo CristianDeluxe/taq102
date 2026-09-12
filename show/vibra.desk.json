@@ -34,6 +34,17 @@
      ]
     },
     {
+     "key": "haze",
+     "title": "HUMO AMBIENTE",
+     "solo": 29,
+     "controls": [
+      "humo-cada-1-min",
+      "cada-2-min",
+      "cada-4-min",
+      "cada-8-min"
+     ]
+    },
+    {
      "key": "accents",
      "title": "GOLPES",
      "solo": null,
@@ -47,17 +58,6 @@
       "strobo-suave",
       "color-beam"
      ]
-    },
-    {
-     "key": "haze",
-     "title": "HUMO AMBIENTE",
-     "solo": 29,
-     "controls": [
-      "humo-cada-1-min",
-      "cada-2-min",
-      "cada-4-min",
-      "cada-8-min"
-     ]
     }
    ]
   },
@@ -65,23 +65,6 @@
    "key": "color",
    "title": "COLOR",
    "sections": [
-    {
-     "key": "accents",
-     "title": "GOLPES",
-     "solo": null,
-     "controls": [
-      "rojo",
-      "verde",
-      "azul",
-      "ultravioleta",
-      "amarillo",
-      "cyan",
-      "magenta",
-      "blanco",
-      "naranja",
-      "rosa"
-     ]
-    },
     {
      "key": "hooks",
      "title": "AUTO",
@@ -107,11 +90,11 @@
       "rig-blanco",
       "rig-naranja",
       "rig-rosa",
-      "cabezas-rojo-resto-azul",
-      "cabezas-azul-resto-ambar",
-      "cabezas-magenta-resto-cyan",
-      "cabezas-amarillo-resto-ultravioleta",
-      "cabezas-blanco-resto-rojo",
+      "cabezas-rojo",
+      "cabezas-azul",
+      "cabezas-magenta",
+      "cabezas-amarillo",
+      "cabezas-blanco",
       "rig-multicolor-1",
       "rig-multicolor-2",
       "rig-4-colores-1",
@@ -120,6 +103,23 @@
       "rig-4-colores-4",
       "arcoiris-junto",
       "arcoiris-fases"
+     ]
+    },
+    {
+     "key": "accents",
+     "title": "GOLPES",
+     "solo": null,
+     "controls": [
+      "rojo",
+      "verde",
+      "azul",
+      "ultravioleta",
+      "amarillo",
+      "cyan",
+      "magenta",
+      "blanco",
+      "naranja",
+      "rosa"
      ]
     }
    ]
@@ -287,7 +287,7 @@
      "controls": [
       "barrido-de-intensidad",
       "barrido-inverso",
-      "pares-impares",
+      "pares",
       "rotacion-de-barridos"
      ]
     },
@@ -955,13 +955,13 @@
    "enabled": true,
    "reason": ""
   },
-  "cabezas-rojo-resto-azul": {
+  "cabezas-rojo": {
    "widget": 78,
    "function": 737,
    "functionType": "Collection",
    "action": "toggle",
-   "caption": "Cabezas Rojo / Resto Azul",
-   "detail": "",
+   "caption": "Cabezas Rojo",
+   "detail": "Resto Azul",
    "role": "pick",
    "solo": 63,
    "key": null,
@@ -972,13 +972,13 @@
    "enabled": true,
    "reason": ""
   },
-  "cabezas-azul-resto-ambar": {
+  "cabezas-azul": {
    "widget": 79,
    "function": 738,
    "functionType": "Collection",
    "action": "toggle",
-   "caption": "Cabezas Azul / Resto Ambar",
-   "detail": "",
+   "caption": "Cabezas Azul",
+   "detail": "Resto Ambar",
    "role": "pick",
    "solo": 63,
    "key": null,
@@ -989,13 +989,13 @@
    "enabled": true,
    "reason": ""
   },
-  "cabezas-magenta-resto-cyan": {
+  "cabezas-magenta": {
    "widget": 80,
    "function": 739,
    "functionType": "Collection",
    "action": "toggle",
-   "caption": "Cabezas Magenta / Resto Cyan",
-   "detail": "",
+   "caption": "Cabezas Magenta",
+   "detail": "Resto Cyan",
    "role": "pick",
    "solo": 63,
    "key": null,
@@ -1006,13 +1006,13 @@
    "enabled": true,
    "reason": ""
   },
-  "cabezas-amarillo-resto-ultravioleta": {
+  "cabezas-amarillo": {
    "widget": 81,
    "function": 740,
    "functionType": "Collection",
    "action": "toggle",
-   "caption": "Cabezas Amarillo / Resto UltraVioleta",
-   "detail": "",
+   "caption": "Cabezas Amarillo",
+   "detail": "Resto UltraVioleta",
    "role": "pick",
    "solo": 63,
    "key": null,
@@ -1023,13 +1023,13 @@
    "enabled": true,
    "reason": ""
   },
-  "cabezas-blanco-resto-rojo": {
+  "cabezas-blanco": {
    "widget": 82,
    "function": 741,
    "functionType": "Collection",
    "action": "toggle",
-   "caption": "Cabezas Blanco / Resto Rojo",
-   "detail": "",
+   "caption": "Cabezas Blanco",
+   "detail": "Resto Rojo",
    "role": "pick",
    "solo": 63,
    "key": null,
@@ -2218,13 +2218,13 @@
    "enabled": true,
    "reason": ""
   },
-  "pares-impares": {
+  "pares": {
    "widget": 241,
    "function": 657,
    "functionType": "Chaser",
    "action": "toggle",
-   "caption": "Pares / impares",
-   "detail": "",
+   "caption": "Pares",
+   "detail": "impares",
    "role": "chase",
    "solo": null,
    "key": "Z",
