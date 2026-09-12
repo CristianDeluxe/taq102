@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -160,7 +161,7 @@ int main(void) {
     struct wifi_join j;
     wifi_join_init(&j, c, conf);
     j.renew_argv = QUIET_RENEW;
-    assert(wifi_join_start(&j, "TestNet5", "correct horse", "TestNet", now) == 0);
+    assert(wifi_join_start(&j, "TestNet5", "correct horse", 0, "TestNet", now) == 0);
     assert(j.state == WIFI_JOIN_RUNNING && strcmp(j.word, "Associating") == 0);
     // No address yet: it sits in the address stage after CONNECTED.
     assert(drive(&j, c, &now, "", 30) == WIFI_JOIN_RUNNING);
@@ -190,7 +191,7 @@ int main(void) {
     assert(c);
     wifi_join_init(&j, c, conf);
     j.renew_argv = QUIET_RENEW;
-    assert(wifi_join_start(&j, "TestNet5", "wrong horse", "TestNet", now) == 0);
+    assert(wifi_join_start(&j, "TestNet5", "wrong horse", 0, "TestNet", now) == 0);
     assert(drive(&j, c, &now, "", 30) == WIFI_JOIN_FAILED);
     assert(strcmp(j.reason, "Wrong key") == 0);
     assert(wifi_conf_read(conf, &after) >= 0 && !wifi_conf_knows(&after, "TestNet5"));
@@ -219,15 +220,25 @@ int main(void) {
     assert(c);
     wifi_join_init(&j, c, conf);
     j.renew_argv = QUIET_RENEW;
-    assert(wifi_join_start(&j, "Cafe", NULL, "TestNet", now) == 0);
+    assert(wifi_join_start(&j, "Cafe", NULL, 0, "TestNet", now) == 0);
     assert(drive(&j, c, &now, "", 10) == WIFI_JOIN_RUNNING);
     now += WIFI_JOIN_STAGE_MS + 1;
     assert(wifi_join_step(&j, now, NULL, "") == WIFI_JOIN_FAILED);
     assert(strcmp(j.reason, "No association") == 0);
     assert(wifi_conf_read(conf, &after) >= 0 && !wifi_conf_knows(&after, "Cafe"));
     // A key that breaks the rules never reaches the file or the daemon.
-    assert(wifi_join_start(&j, "Short", "abc", "TestNet", now) == -1);
+    assert(wifi_join_start(&j, "Short", "abc", 0, "TestNet", now) == -1);
     assert(wifi_conf_read(conf, &after) >= 0 && !wifi_conf_knows(&after, "Short"));
+    // A known network's block is used as it is: nothing written, and a
+    // failure leaves it in place with its key.
+    struct stat before_st, after_st;
+    assert(stat(conf, &before_st) == 0);
+    assert(wifi_join_start(&j, "TestNet", NULL, 1, "", now) == 0);
+    assert(!j.wrote_block);
+    now += WIFI_JOIN_STAGE_MS + 1;
+    assert(wifi_join_step(&j, now, NULL, "") == WIFI_JOIN_FAILED);
+    assert(stat(conf, &after_st) == 0 && before_st.st_mtime == after_st.st_mtime);
+    assert(wifi_conf_read(conf, &after) >= 0 && wifi_conf_knows(&after, "TestNet"));
     wifi_join_free(&j);
     wpa_ctrl_close(c);
     kill(helper, 9);

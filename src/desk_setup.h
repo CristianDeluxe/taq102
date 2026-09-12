@@ -28,6 +28,7 @@ struct setup_action {
     enum setup_action_kind kind;
     char ssid[WIFI_SSID_MAX];
     char psk[64];
+    int known;              // SETUP_JOIN: the key is on file, psk is empty
     char host[SETUP_HOST_MAX];
     int port;
     int value;
@@ -64,6 +65,7 @@ struct desk_setup {
     int confirm_open;                   // the join confirmation sheet
     char confirm_psk[64];
     int confirm_is_open_network;
+    int confirm_known;
     // Touch.
     int capture;                        // enum setup_target, private
     int capture_index;

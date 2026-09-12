@@ -24,6 +24,7 @@ struct wifi_join {
     const char *conf_path;
     char ssid[WIFI_SSID_MAX];
     char prev_ssid[WIFI_SSID_MAX];
+    int wrote_block;                // the block is ours to remove on failure
     int stage;                      // private
     int64_t stage_started_ms;
     char word[24];                  // "Associating", "Getting an address"
@@ -34,10 +35,11 @@ struct wifi_join {
 
 void wifi_join_init(struct wifi_join *j, struct wpa_ctrl *ctrl, const char *conf_path);
 
-// Writes the block (psk NULL for an open network), reconfigures and selects.
-// Returns 0 with the join running, -1 with `reason` set and nothing changed
-// for the supplicant (a block that could not be written, a refusal).
-int wifi_join_start(struct wifi_join *j, const char *ssid, const char *psk,
+// Writes the block (psk NULL for an open network) unless `known`, when the
+// block on file is used as it is; reconfigures and selects. Returns 0 with
+// the join running, -1 with `reason` set and nothing changed for the
+// supplicant (a block that could not be written, a refusal).
+int wifi_join_start(struct wifi_join *j, const char *ssid, const char *psk, int known,
                     const char *prev_ssid, int64_t now_ms);
 
 // Feeds one supplicant event line (or NULL) and the interface's current
