@@ -82,7 +82,7 @@ int main(void) {
     press_key(&s, "done");
     int yx = SETUP_CONFIRM_X + SETUP_CONFIRM_W / 2 + 20;
     struct setup_action a = tap(&s, yx, ny);
-    assert(a.kind == SETUP_JOIN && strcmp(a.ssid, "TestNet5") == 0 && strcmp(a.psk, "abcdefgh") == 0);
+    assert(a.kind == SETUP_JOIN && !a.known && strcmp(a.ssid, "TestNet5") == 0 && strcmp(a.psk, "abcdefgh") == 0);
     assert(strcmp(s.wifi_busy, "Joining") == 0 && s.confirm_psk[0] == '\0');
     s.wifi_busy[0] = '\0';
     // An enterprise network is not offered; an open one and a known one skip the keyboard.
@@ -92,7 +92,9 @@ int main(void) {
     assert(a.kind == SETUP_JOIN && strcmp(a.ssid, "Cafe") == 0 && a.psk[0] == '\0');
     s.wifi_busy[0] = '\0';
     assert(tap(&s, SETUP_WIFI_X + 40, row0 + 3 * SETUP_ROW_H).kind == SETUP_NONE && s.confirm_open && !s.kb.open);
-    tap(&s, nx, ny);
+    a = tap(&s, yx, ny);
+    assert(a.kind == SETUP_JOIN && a.known && a.psk[0] == '\0' && strcmp(a.ssid, "TestNet") == 0);
+    s.wifi_busy[0] = '\0';
 
     // The master card: find, a found row, a typed address.
     int fx = SETUP_MASTER_X + 20, tx = SETUP_MASTER_X + SETUP_CARD_W - 40;

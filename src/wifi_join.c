@@ -65,7 +65,8 @@ static void fail(struct wifi_join *j, const char *reason) {
     j->word[0] = '\0';
     // The way back: the block goes, the supplicant re-reads, and the previous
     // network is selected again so the tablet returns to where it was.
-    wifi_conf_remove(j->conf_path, j->ssid);
+    if (j->wrote_block)
+        wifi_conf_remove(j->conf_path, j->ssid);
     ask_ok(j, "RECONFIGURE");
     if (j->prev_ssid[0])
         select_network(j, j->prev_ssid);
@@ -73,7 +74,7 @@ static void fail(struct wifi_join *j, const char *reason) {
         ask_ok(j, "ENABLE_NETWORK all");
 }
 
-int wifi_join_start(struct wifi_join *j, const char *ssid, const char *psk,
+int wifi_join_start(struct wifi_join *j, const char *ssid, const char *psk, int known,
                     const char *prev_ssid, int64_t now_ms) {
     if (j->state == WIFI_JOIN_RUNNING) {
         snprintf(j->reason, sizeof j->reason, "A join is running");
@@ -86,17 +87,21 @@ int wifi_join_start(struct wifi_join *j, const char *ssid, const char *psk,
     int priority = 1;
     if (wifi_conf_read(j->conf_path, &conf) >= 0)
         priority = wifi_conf_top_priority(&conf) + 1;
-    if (wifi_conf_write_block(j->conf_path, ssid, psk, priority) != 0) {
+    // A known network keeps the block it has: its key is on file and stays.
+    j->wrote_block = !(known && wifi_conf_knows(&conf, ssid));
+    if (j->wrote_block && wifi_conf_write_block(j->conf_path, ssid, psk, priority) != 0) {
         snprintf(j->reason, sizeof j->reason, "Cannot write the config");
         return -1;
     }
     if (!ask_ok(j, "RECONFIGURE")) {
-        wifi_conf_remove(j->conf_path, ssid);
+        if (j->wrote_block)
+            wifi_conf_remove(j->conf_path, ssid);
         snprintf(j->reason, sizeof j->reason, "Supplicant refused the config");
         return -1;
     }
     if (select_network(j, ssid) != 0) {
-        wifi_conf_remove(j->conf_path, ssid);
+        if (j->wrote_block)
+            wifi_conf_remove(j->conf_path, ssid);
         ask_ok(j, "RECONFIGURE");
         snprintf(j->reason, sizeof j->reason, "Supplicant refused the network");
         return -1;

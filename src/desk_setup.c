@@ -168,6 +168,7 @@ static struct setup_action keyboard_done(struct desk_setup *s) {
         // The key goes to the confirmation and nowhere else.
         snprintf(s->confirm_psk, sizeof s->confirm_psk, "%.63s", s->kb.text);
         s->confirm_is_open_network = 0;
+        s->confirm_known = 0;
         s->confirm_open = 1;
     } else if (s->kb_purpose == KB_FOR_HOST) {
         char host[SETUP_HOST_MAX];
@@ -234,6 +235,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
         if (w->security == WIFI_OPEN || s->known[index]) {
             // Known networks keep their key on file: no typing, just the ask.
             s->confirm_is_open_network = w->security == WIFI_OPEN;
+            s->confirm_known = !s->confirm_is_open_network;
             s->confirm_psk[0] = '\0';
             s->confirm_open = 1;
             return none();
@@ -291,6 +293,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
         a.kind = SETUP_JOIN;
         snprintf(a.ssid, sizeof a.ssid, "%s", s->pending_ssid);
         snprintf(a.psk, sizeof a.psk, "%s", s->confirm_is_open_network ? "" : s->confirm_psk);
+        a.known = s->confirm_known;
         s->confirm_open = 0;
         memset(s->confirm_psk, 0, sizeof s->confirm_psk);
         snprintf(s->wifi_busy, sizeof s->wifi_busy, "Joining");

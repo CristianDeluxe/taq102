@@ -604,7 +604,7 @@ int main(int argc, char **argv) {
                                 break;
                             }
                             if (wifi_join_start(&join, act.ssid, act.psk[0] ? act.psk : NULL,
-                                                setup.ssid, now) != 0) {
+                                                act.known, setup.ssid, now) != 0) {
                                 setup.wifi_busy[0] = '\0';
                                 snprintf(setup.wifi_note, sizeof setup.wifi_note, "%s", join.reason);
                             } else {
