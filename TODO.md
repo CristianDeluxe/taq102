@@ -379,16 +379,21 @@ MacBook as master. Design and evidence:
   `docs/evidence/2026-09-12-desk-pro-findings.md` and
   `docs/evidence/2026-09-12-desk-vibra-findings.md`). Approved 2026-09-12.
   The show is `Vibra.qxw` on DMX-Fixtures' `qlctool` branch (worktree
-  `~/p/DMX-Fixtures-qlctool`). Phase 0 (link trust) and Phase 1 (qualify the
-  show, generated map, LIVE states and PARAR TODO) are done and measured; see
-  `TODO_LOG.md` 2026-09-12. Next: Phase 2, the pages (`docs/`
-  gets its plan when it starts), then setup without ssh, speed, finite
-  accents, position.
-- [ ] Phase 3, setup without ssh: the gear in the status bar, the Wi-Fi card
-  (scan, join with the on-screen keyboard, rollback), the master card (the
-  /24 sweep for QLC+, an address typed on a keypad, `/data/desk.conf`), the
-  screen-brightness fader and the power-aware toggle through
-  `control_runtime`. Plan in `docs/` when it starts.
+  `~/p/DMX-Fixtures-qlctool`). Phases 0 (link trust), 1 (qualify the show,
+  generated map, LIVE states and PARAR TODO), 2 (pages, lock, power key,
+  damage repaint) and 3 (setup without ssh) are done and measured; see
+  `TODO_LOG.md` 2026-09-12. Next: Phase 4, speed (two dial cards, tap tempo,
+  `SPEED_STATE` decode), then finite accents (owner-blocked) and position.
+- [!] Phase 3's checks that need a finger on the tablet (the desk runs there
+  now with `/data/desk.conf` pointing at this Mac's 9998 instance): tap the
+  gear, scan, join `TestNet5` with its key (not in the brain; I
+  types it on the keyboard) and watch the card come back to the address,
+  then join `TestNet` again from its `known` row; drag the fader and read
+  `/sys/class/backlight/backlight/brightness`, restart the desk and see the
+  level held; the `Dim on battery` toggle. The join transaction is proven
+  against a fake supplicant only (`tests/dmx-desk/wifi_join_test.c`); the
+  event names it waits for are wpa_supplicant's documented ones. Smallest
+  action: I at the tablet with the key, ten minutes.
 - [ ] The link banner covers the compact state row on the family pages while
   connecting; it is transient and nothing is pressable then, but a banner
   that sits under the row instead would read better.
