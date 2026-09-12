@@ -1,0 +1,79 @@
+#!/bin/sh
+# Log everything the panel could depend on, once a minute, so the next time
+# the picture shimmers the state at that moment is on disk and can be diffed
+# against a clean minute. Three shimmer reports so far were investigated after
+# the fact, with instruments that could not see the fault and registers read
+# once it had already cleared; this turns the next one into a diff.
+#
+#   panel-trap            log to /data/panel-trap.log (kept across reboots)
+#   panel-trap once       one record to stdout
+#
+# Each record is one line per quantity, prefixed with the uptime, so `grep` on
+# a quantity gives its history and `awk` on a timestamp gives the snapshot.
+# The log is capped at 4000 records (about three days); the oldest go first.
+log=/data/panel-trap.log
+cap=4000
+interval=60
+
+reg() { devmem "$1" 32 2>/dev/null | tr -d '\n'; }
+val() { cat "$1" 2>/dev/null | tr -d '\n'; }
+
+record() {
+    up=$(cut -d' ' -f1 /proc/uptime)
+    # The LVDS PHY: the PLL dividers, the analog block and the LVDS digital block.
+    printf '%s phy analog 00=%s 01=%s 03=%s 04=%s 05=%s 08=%s\n' "$up" \
+        "$(reg 0x20038000)" "$(reg 0x20038004)" "$(reg 0x2003800c)" \
+        "$(reg 0x20038010)" "$(reg 0x20038014)" "$(reg 0x20038020)"
+    printf '%s phy lvds E0=%s E1=%s E3=%s E4=%s E8=%s EB=%s\n' "$up" \
+        "$(reg 0x20038380)" "$(reg 0x20038384)" "$(reg 0x2003838c)" \
+        "$(reg 0x20038390)" "$(reg 0x200383a0)" "$(reg 0x200383ac)"
+    printf '%s grf lvds_con0=%s\n' "$up" "$(reg 0x20008150)"
+    # The VOP's clocks, from the clock tree.
+    printf '%s clk %s\n' "$up" \
+        "$(grep -E '^ *(dclk_vop|aclk_lcdc0|hclk_lcdc0|sclk_vop) ' /sys/kernel/debug/clk/clk_summary 2>/dev/null | awk '{printf "%s=%s ", $1, $5}')"
+    # Power: what the battery is doing, and the panel's rails.
+    printf '%s power cap=%s status=%s uV=%s uA=%s backlight=%s\n' "$up" \
+        "$(val /sys/class/power_supply/battery/capacity)" \
+        "$(val /sys/class/power_supply/battery/status)" \
+        "$(val /sys/class/power_supply/battery/voltage_now)" \
+        "$(val /sys/class/power_supply/battery/current_now)" \
+        "$(val /sys/class/backlight/backlight/brightness)"
+    # The charger: BC1.2 detection as the PHY reports it, the PMIC's own
+    # plug-in bit (VB_MON 0x21) and the input limit it is actually holding
+    # (USB_CTRL 0xa1, low nibble = index into 450/80/850/1000/1250/1500 mA).
+    printf '%s charger extcon=%s vb_mon=%s usb_ctrl=%s sysfs_limit=%s\n' "$up" \
+        "$(tr '\n' ',' < /sys/class/extcon/extcon0/state 2>/dev/null)" \
+        "$(grep -E '^21: ' /sys/kernel/debug/regmap/2-001a/registers 2>/dev/null | cut -d' ' -f2)" \
+        "$(grep -E '^a1: ' /sys/kernel/debug/regmap/2-001a/registers 2>/dev/null | cut -d' ' -f2)" \
+        "$(val /sys/class/power_supply/usb/input_current_limit)"
+    for r in /sys/class/regulator/regulator.*; do
+        n=$(val "$r/name")
+        case "$n" in ldo4|ldo5|ldo6|*lcd*|*panel*)
+            printf '%s rail %s=%s/%s\n' "$up" "$n" "$(val "$r/state")" "$(val "$r/microvolts")" ;;
+        esac
+    done
+    # Who is drawing, and how busy the machine is.
+    printf '%s load %s\n' "$up" "$(cut -d' ' -f1-3 /proc/loadavg)"
+    printf '%s apps %s\n' "$up" \
+        "$(ps -o comm= 2>/dev/null | grep -E '^(glcube|dmxdesk|rescue-screen|testpattern|fliptest)$' | tr '\n' ' ')"
+    printf '%s vopirq %s\n' "$up" "$(awk '/1010e000.vop/ {print $2}' /proc/interrupts)"
+    printf '%s wifi %s\n' "$up" \
+        "$(awk '/wlan0/ {printf "rx=%s tx=%s", $2, $10}' /proc/net/dev)"
+    # Anything the kernel said in the last minute about the display or the PMIC.
+    dmesg 2>/dev/null | tail -20 | grep -iE 'vop|lvds|drm|rk816|regulator|underrun|iommu' |
+        sed "s/^/$up kmsg /"
+}
+
+if [ "${1:-}" = once ]; then
+    record
+    exit 0
+fi
+
+while :; do
+    record >> "$log"
+    lines=$(wc -l < "$log")
+    if [ "$lines" -gt $((cap * 16)) ]; then
+        tail -n $((cap * 16)) "$log" > "$log.tmp" && mv "$log.tmp" "$log"
+    fi
+    sleep $interval
+done
