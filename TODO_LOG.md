@@ -6,6 +6,21 @@
 
 ### 2026-09
 
+- [x] 2026-09-12 - **Desk, Phase 2: the pages.** Geometry left the controls
+  for placements resolved per page and bank (`desk_layout_resolve`); seven
+  pages on the rail with an ink marker; the room's states ride every page in
+  a compact row; picks draw the colours their scenes write as swatch rings;
+  captions wrap on two measured lines (no pick cut after the generator split
+  the contrasts at their slash); bank pills where a page overflows (live 2,
+  color 3, gobos 2); a lock target (tap locks, a held second unlocks, nothing
+  counts until every finger lifts) and the power key (blanks and locks, wakes
+  to locked) with show mode as the default. The perf gate failed at first
+  (paint p50 217 ms) and passed after row-span rounded rectangles, a cached
+  status bar, per-control damage with a clipped canvas and a presenter that
+  copies only damage: paint p50 14 p95 16 ms, present p50 4 p95 5 ms, RSS
+  8 MB (`docs/evidence/2026-09-12-desk-phase2/perf.txt`, with page frames
+  dumped from the tablet). The show repository's full suite: 412 passed, 9
+  skipped, 33 min.
 - [x] 2026-09-12 - **Desk, Phase 0 and Phase 1.** Phase 0: the WebSocket
   client's pong buffer (`pong[4+125]` written with up to 131 bytes, a stack
   overflow on a 124/125-byte ping) fixed and tested; connect, handshake and
