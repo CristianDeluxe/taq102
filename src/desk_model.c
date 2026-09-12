@@ -104,7 +104,6 @@ static void release(struct desk_model *m) {
     m->capture_slot = NO_CAPTURE;
     m->capture_index = -1;
     m->capture_placement = -1;
-    release_panic(m);
     m->dirty = 1;
 }
 
@@ -235,6 +234,9 @@ struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y) {
         m->dirty = 1;
         if (!fired)
             return none();
+        // Stopping everything ends the other finger's gesture too: a cue
+        // released after the stop must not start again.
+        release(m);
         struct desk_action a = { DESK_ACT_STOP_ALL, pc->widget_id, 255 };
         return a;
     }
@@ -267,8 +269,12 @@ void desk_touch_cancel(struct desk_model *m, int slot) {
 }
 
 void desk_cancel_all(struct desk_model *m) {
-    if (m->capture_index >= 0 || m->panic_placement >= 0)
+    if (m->capture_index >= 0)
         release(m);
+    if (m->panic_placement >= 0) {
+        release_panic(m);
+        m->dirty = 1;
+    }
 }
 
 void desk_set_locked(struct desk_model *m, int locked) {
@@ -288,6 +294,17 @@ void desk_apply_function(struct desk_model *m, int function_id, int running) {
                 c->state = state;
                 damage_control(m, i);
             }
+        }
+    }
+    // A change on another bank of this page moves a heading's word and a
+    // pill's dot, which live outside the control's own rectangle.
+    for (int i = 0; i < m->count; i++) {
+        if (m->control[i].function_id != function_id)
+            continue;
+        for (int k = 0; k < m->layout.placements; k++) {
+            const struct desk_placement *p = &m->layout.placement[k];
+            if (p->control == i && p->page == m->page && p->bank != m->bank)
+                damage_all(m);
         }
     }
 }

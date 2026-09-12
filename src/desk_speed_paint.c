@@ -71,7 +71,7 @@ static void card(struct canvas *c, const struct desk_speed *s, int i, const stru
     else
         snprintf(scope, sizeof scope, "%d functions", d->members);
     text_at(c, fonts->small, rx, cy + SPEED_CARD_H - 30, SPEED_READOUT_W, scope,
-            d->note[0] ? DESK_AMBER : DESK_MUTED);
+            d->note[0] ? DESK_INK : DESK_MUTED);
 
     int pressed_here = s->capture_dial == i;
     // Live targets sink into glass on the card; dead ones are text alone.

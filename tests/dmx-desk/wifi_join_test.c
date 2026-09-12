@@ -226,6 +226,20 @@ int main(void) {
     assert(wifi_join_step(&j, now, NULL, "") == WIFI_JOIN_FAILED);
     assert(strcmp(j.reason, "No association") == 0);
     assert(wifi_conf_read(conf, &after) >= 0 && !wifi_conf_knows(&after, "Cafe"));
+    // A new key for a known network that turns out wrong: the old block
+    // comes back whole, its key included.
+    assert(wifi_join_start(&j, "TestNet", "wrongkey12", 0, "", now) == 0);
+    assert(j.wrote_block && j.before);
+    now += WIFI_JOIN_STAGE_MS + 1;
+    assert(wifi_join_step(&j, now, NULL, "") == WIFI_JOIN_FAILED);
+    {
+        FILE *r = fopen(conf, "r");
+        char text[4096];
+        size_t n = fread(text, 1, sizeof text - 1, r);
+        text[n] = '\0';
+        fclose(r);
+        assert(strstr(text, "psk=\"firstkey1\"") && !strstr(text, "wrongkey12"));
+    }
     // A key that breaks the rules never reaches the file or the daemon.
     assert(wifi_join_start(&j, "Short", "abc", 0, "TestNet", now) == -1);
     assert(wifi_conf_read(conf, &after) >= 0 && !wifi_conf_knows(&after, "Short"));

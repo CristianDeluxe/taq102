@@ -29,7 +29,7 @@ static char *slurp(const char *path, size_t *len) {
 }
 
 static struct speed_action tap(struct desk_speed *s, int x, int y, int64_t now) {
-    struct speed_action down = desk_speed_touch_down(s, x, y, now);
+    struct speed_action down = desk_speed_touch_down(s, x, y, now, now);
     struct speed_action up = desk_speed_touch_up(s, x, y, now);
     return down.kind != SPEED_ACT_NONE ? down : up;
 }
@@ -102,12 +102,12 @@ int main(void) {
     int tapx = SPEED_CARD_X + SPEED_TAP_X + 10, tapy0 = SPEED_CARD_Y(0) + SPEED_TAP_Y + 10;
     int64_t t = 200000;
     desk_speed_tick(&s, t);     // the earlier notes have expired
-    assert(desk_speed_touch_down(&s, tapx, tapy0, t).kind == SPEED_ACT_NONE);
+    assert(desk_speed_touch_down(&s, tapx, tapy0, t, t).kind == SPEED_ACT_NONE);
     assert(desk_speed_touch_up(&s, tapx, tapy0, t).kind == SPEED_ACT_NONE);
     assert(tap(&s, tapx, tapy0, t + 500).kind == SPEED_ACT_NONE && !s.dial[0].pending);
     desk_speed_reset_taps(&s);
     assert(tap(&s, tapx, tapy0, t + 1000).kind == SPEED_ACT_NONE);
-    a = desk_speed_touch_down(&s, tapx, tapy0, t + 1400);
+    a = desk_speed_touch_down(&s, tapx, tapy0, t + 1400, t + 1400);
     assert(a.kind == SPEED_ACT_TIME && a.widget_id == 34 && a.ms == 400 && s.dial[0].pending);
     assert(desk_speed_touch_up(&s, tapx, tapy0, t + 1400).kind == SPEED_ACT_NONE);
     desk_speed_apply(&s, 34, 400, 6, t + 1450);
@@ -118,9 +118,9 @@ int main(void) {
     int bx = SPEED_CARD_X + 10, by = SPEED_BOTH_Y + 10;
     desk_speed_reset_taps(&s);
     t = 300000;
-    assert(desk_speed_touch_down(&s, bx, by, t).kind == SPEED_ACT_NONE);
+    assert(desk_speed_touch_down(&s, bx, by, t, t).kind == SPEED_ACT_NONE);
     desk_speed_touch_up(&s, bx, by, t);
-    a = desk_speed_touch_down(&s, bx, by, t + 450);
+    a = desk_speed_touch_down(&s, bx, by, t + 450, t + 450);
     desk_speed_touch_up(&s, bx, by, t + 450);
     assert(a.kind == SPEED_ACT_TIME_BOTH && a.widget_id == 34 && a.ms == 450 && a.widget_id2 == 274 && a.ms2 == 450);
     assert(s.dial[0].pending && s.dial[1].pending && !desk_speed_target_enabled(&s, 0, SPEED_T_BOTH));
@@ -135,6 +135,18 @@ int main(void) {
     assert(a.kind == SPEED_ACT_TIME_BOTH && a.widget_id == 274 && a.ms == 450 && a.widget_id2 == -1);
     assert(!s.dial[0].pending && s.dial[1].pending);
     desk_speed_apply(&s, 274, 450, 6, t + 1500);
+
+    // A tap drained late keeps its interval but its deadline runs from now.
+    desk_speed_reset_taps(&s);
+    desk_speed_apply(&s, 34, 500, 6, t);
+    desk_speed_touch_down(&s, tapx, tapy0, t + 5000, t + 3000);
+    desk_speed_touch_up(&s, tapx, tapy0, t + 5000);
+    a = desk_speed_touch_down(&s, tapx, tapy0, t + 5400, t + 3400);
+    desk_speed_touch_up(&s, tapx, tapy0, t + 5400);
+    assert(a.kind == SPEED_ACT_TIME && a.ms == 400 && s.dial[0].pending_since == t + 5400);
+    desk_speed_tick(&s, t + 5400 + SPEED_PENDING_MS - 1);
+    assert(s.dial[0].pending);
+    desk_speed_apply(&s, 34, 400, 6, t + 5450);
 
     // Bounds: at 2000 ms (30 BPM) -1 is dead; at 200 ms (300 BPM) +1 is dead.
     desk_speed_apply(&s, 34, 2000, 6, t);

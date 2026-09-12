@@ -25,6 +25,8 @@ struct wifi_join {
     char ssid[WIFI_SSID_MAX];
     char prev_ssid[WIFI_SSID_MAX];
     int wrote_block;                // the block is ours to remove on failure
+    char *before;                   // the file before the block went in, put back on failure
+    size_t before_len;
     int stage;                      // private
     int64_t stage_started_ms;
     char word[24];                  // "Associating", "Getting an address"

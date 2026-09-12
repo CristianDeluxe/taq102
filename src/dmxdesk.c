@@ -554,6 +554,7 @@ int main(int argc, char **argv) {
             // slot bookkeeping too, or a reused slot would inherit a gesture.
             desk_speed_touch_cancel(&speed);
             desk_setup_touch_cancel(&setup);
+            desk_input_cancel_all(&input);
             gear_slot = setup_slot = speed_slot = -1;
             if (setup.open) {
                 desk_setup_close(&setup);
@@ -604,6 +605,7 @@ int main(int argc, char **argv) {
                             if (events[i].kind == TOUCH_UP && in_gear(x, y)) {
                                 // A modal transition: every gesture under it ends.
                                 desk_cancel_all(&model);
+                                desk_input_cancel_all(&input);
                                 desk_speed_touch_cancel(&speed);
                                 desk_speed_reset_taps(&speed);
                                 speed_slot = -1;
@@ -694,6 +696,8 @@ int main(int argc, char **argv) {
                             if (desk_conf_save(&conf, DESK_CONF_PATH) != 0) {
                                 snprintf(setup.master_note, sizeof setup.master_note, "Applied, not saved");
                                 fprintf(stderr, "desk: cannot save %s\n", DESK_CONF_PATH);
+                            } else {
+                                setup.master_note[0] = '\0';
                             }
                             qlc_session_set_host(session, conf.master, conf.port);
                             desk_setup_set_master(&setup, conf.master, conf.port, 1);
@@ -731,6 +735,7 @@ int main(int argc, char **argv) {
                                 : events[i].kind == TOUCH_UP ? desk_lock_target_up(&lock, now) : 0;
                     if (changed) {
                         desk_cancel_all(&model);
+                        desk_input_cancel_all(&input);
                         desk_speed_touch_cancel(&speed);
                         desk_speed_reset_taps(&speed);
                         speed_slot = -1;
@@ -763,7 +768,7 @@ int main(int argc, char **argv) {
                         // Tempo is measured from the contact's own clock, not
                         // from when the batch was drained.
                         int64_t at = events[i].t > 0 ? (int64_t)(events[i].t * 1000.0) : now;
-                        struct speed_action sa = desk_speed_touch_down(&speed, x, y, at);
+                        struct speed_action sa = desk_speed_touch_down(&speed, x, y, now, at);
                         // Dead space claims nothing: another finger may still
                         // reach a target while this one rests on the card.
                         if (speed.capture != SPEED_T_NONE)

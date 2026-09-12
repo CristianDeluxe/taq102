@@ -57,6 +57,7 @@ struct desk_model {
     int page, bank;         // the view on screen
     enum desk_link link;
     int locked;             // the surface accepts nothing; painted as such
+    int mismatch;           // the console is another show: every control off, said once
     char master_name[64];   // what the desk is talking to, for the rail
     int dirty;
     // What changed since the last paint: a rectangle in panel pixels, or

@@ -45,7 +45,7 @@ void keyboard_paint(struct canvas *c, const struct keyboard *kb, const struct de
         }
         font_draw_fit(fonts->tile, c, text_x, KB_FIELD_Y + (KB_FIELD_H - font_height(fonts->tile)) / 2 +
                       font_baseline(fonts->tile), max_w, tail, DESK_INK);
-        canvas_fill_rect(c, text_x + width + 2, KB_FIELD_Y + 12, 2, KB_FIELD_H - 24, DESK_AMBER);
+        canvas_fill_rect(c, text_x + width + 2, KB_FIELD_Y + 12, 2, KB_FIELD_H - 24, DESK_INK);
     } else {
         canvas_text(c, text_x, KB_FIELD_Y + 16, shown, 3, DESK_INK);
     }
@@ -57,16 +57,17 @@ void keyboard_paint(struct canvas *c, const struct keyboard *kb, const struct de
         uint32_t fill = DESK_TILE;
         // Shift shows its state: amber when upper case is on, and it stays on
         // when locked; the layer key likewise names where it goes.
+        // Ink, never amber: amber is the show's word and a key has none.
         if (k->kind == KB_KEY_SHIFT && kb->layer == KB_UPPER)
-            fill = DESK_AMBER;
+            fill = DESK_INK;
         if (k->kind == KB_KEY_DONE && k->enabled)
-            fill = DESK_AMBER;
+            fill = DESK_INK;
         canvas_round_rect(c, k->x, k->y, k->w, k->h, KB_RADIUS, fill);
         if (i == kb->pressed) {
             canvas_round_rect(c, k->x, k->y, k->w, k->h, KB_RADIUS, DESK_INK);
             canvas_round_rect(c, k->x + 3, k->y + 3, k->w - 6, k->h - 6, KB_RADIUS - 3, fill);
         }
-        uint32_t ink = fill == DESK_AMBER ? DESK_GLASS : k->enabled ? DESK_INK : DESK_MUTED;
+        uint32_t ink = fill == DESK_INK ? DESK_GLASS : k->enabled ? DESK_INK : DESK_MUTED;
         struct font *f = strlen(k->label) == 1 ? fonts->tile : fonts->small;
         centred(c, f, k->x, k->y, k->w, k->h, k->label, ink);
     }

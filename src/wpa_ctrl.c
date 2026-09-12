@@ -46,6 +46,10 @@ static int dial(const char *path, const char *local) {
 }
 
 static int transact(int fd, const char *cmd, char *buf, size_t cap, int timeout_ms) {
+    // A reply that came after its request timed out must not answer this one.
+    char stale[64];
+    while (recv(fd, stale, sizeof stale, MSG_DONTWAIT | MSG_TRUNC) > 0)
+        ;
     size_t len = strlen(cmd);
     if (send(fd, cmd, len, 0) != (ssize_t)len)
         return -1;

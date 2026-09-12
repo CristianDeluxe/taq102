@@ -136,7 +136,10 @@ static void master_card(struct canvas *c, const struct desk_setup *s, const stru
     if (s->found_count == 0)
         text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
                 s->master_busy[0] ? "Sweeping the subnet" : "Nothing found yet", DESK_MUTED);
-    const char *note = s->found_partial ? "Large subnet: first 256 hosts" : s->master_note;
+    char note[96];
+    snprintf(note, sizeof note, "%s%s%s", s->master_note,
+             s->master_note[0] && s->found_partial ? "  " : "",
+             s->found_partial ? "First 256 hosts only" : "");
     if (!s->master_busy[0])
         text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, note, DESK_MUTED);
     int half = (SETUP_CARD_W - 48) / 2;
@@ -159,7 +162,11 @@ static void footer(struct canvas *c, const struct desk_setup *s, const struct de
     char line[48];
     int pct = range > 0 ? 100 * level / range : 100;
     snprintf(line, sizeof line, "Brightness %d%%%s", pct, s->brightness_unsaved ? "  Applied, not saved" : "");
-    text_at(c, fonts->tile, SETUP_FADER_X + 24, SETUP_FADER_Y + (SETUP_FADER_H - text_h(fonts->tile)) / 2,
+    // On its own backing, so it reads over the filled and the empty part alike.
+    int lw = fonts->tile ? font_width(fonts->tile, line) + 24 : 200;
+    canvas_round_rect(c, SETUP_FADER_X + 16, SETUP_FADER_Y + (SETUP_FADER_H - text_h(fonts->tile)) / 2 - 8,
+                      lw, text_h(fonts->tile) + 16, 12, DESK_GLASS);
+    text_at(c, fonts->tile, SETUP_FADER_X + 28, SETUP_FADER_Y + (SETUP_FADER_H - text_h(fonts->tile)) / 2,
             SETUP_FADER_W - 48, line, DESK_INK);
     canvas_round_rect(c, SETUP_TOGGLE_X, SETUP_TOGGLE_Y, SETUP_TOGGLE_W, SETUP_TOGGLE_H, 20,
                       s->power_aware ? DESK_INK : DESK_TILE);
@@ -189,6 +196,31 @@ static void confirm_sheet(struct canvas *c, const struct desk_setup *s, const st
     button(c, fonts->label, bx + (buttons - 1) * (bw + 16), by, bw, 48, "Join", BUTTON_PRIMARY);
 }
 
+// A finger on a button: an ink outline where it is, as on the desk's tiles.
+static void pressed_outline_ring(struct canvas *c, const struct desk_setup *s) {
+    int x = 0, y = 0, w = 0, h = 0;
+    int half = (SETUP_CARD_W - 48) / 2;
+    switch (s->capture) {
+    case T_SCAN: x = SETUP_WIFI_X + 16; y = SETUP_BUTTONS_Y; w = SETUP_CARD_W - 32; h = SETUP_BUTTON_H; break;
+    case T_FIND: x = SETUP_MASTER_X + 16; y = SETUP_BUTTONS_Y; w = half; h = SETUP_BUTTON_H; break;
+    case T_TYPE: x = SETUP_MASTER_X + 32 + half; y = SETUP_BUTTONS_Y; w = half; h = SETUP_BUTTON_H; break;
+    case T_TOGGLE: x = SETUP_TOGGLE_X; y = SETUP_TOGGLE_Y; w = SETUP_TOGGLE_W; h = SETUP_TOGGLE_H; break;
+    case T_CLOSE: x = SETUP_CLOSE_X; y = SETUP_CLOSE_Y; w = SETUP_CLOSE_W; h = SETUP_CLOSE_H; break;
+    case T_WIFI_ROW:
+        x = SETUP_WIFI_X + 8; y = SETUP_ROWS_Y + (s->capture_index - s->scan_page * SETUP_ROWS) * SETUP_ROW_H + 4;
+        w = SETUP_CARD_W - 16; h = SETUP_ROW_H - 8; break;
+    case T_MASTER_ROW:
+        x = SETUP_MASTER_X + 8; y = SETUP_ROWS_Y + (s->capture_index - s->found_page * SETUP_ROWS) * SETUP_ROW_H + 4;
+        w = SETUP_CARD_W - 16; h = SETUP_ROW_H - 8; break;
+    default: return;
+    }
+    // A three-pixel ring of ink: four bars, so whatever fill is inside stays.
+    canvas_fill_rect(c, x, y, w, 3, DESK_INK);
+    canvas_fill_rect(c, x, y + h - 3, w, 3, DESK_INK);
+    canvas_fill_rect(c, x, y, 3, h, DESK_INK);
+    canvas_fill_rect(c, x + w - 3, y, 3, h, DESK_INK);
+}
+
 void desk_setup_paint(struct canvas *c, const struct desk_setup *s, const struct desk_fonts *fonts) {
     if (!s->open)
         return;
@@ -200,6 +232,10 @@ void desk_setup_paint(struct canvas *c, const struct desk_setup *s, const struct
     wifi_card(c, s, fonts);
     master_card(c, s, fonts);
     footer(c, s, fonts);
+    button(c, fonts->label, SETUP_CLOSE_X, SETUP_CLOSE_Y, SETUP_CLOSE_W, SETUP_CLOSE_H, "Close", BUTTON_SECONDARY);
+    if (!s->confirm_open && s->capture != T_NONE && s->capture != T_FADER) {
+        pressed_outline_ring(c, s);
+    }
     if (s->confirm_open) {
         // A uniform scrim over the cards, so the question stands alone.
         canvas_blend_rect(c, SETUP_SHEET_X, SETUP_SHEET_Y, SETUP_SHEET_W, SETUP_SHEET_H, 0xB0000000u | (DESK_GLASS & 0xFFFFFF));

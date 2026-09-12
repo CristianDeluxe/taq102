@@ -22,6 +22,9 @@ struct desk_input {
 enum desk_target desk_input_target(const struct desk_model *m, int x, int y, int *index);
 
 void desk_input_init(struct desk_input *in);
+// Every contact's ownership dropped: a rail entry pressed before a modal
+// transition must not complete underneath it.
+void desk_input_cancel_all(struct desk_input *in);
 
 // Feeds one event. Returns the target that owns the contact, and on an UP
 // that completes a rail or bank tap, sets `*index` and returns that target;

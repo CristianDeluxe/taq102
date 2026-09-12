@@ -148,11 +148,11 @@ enum speed_target desk_speed_hit(const struct desk_speed *s, int x, int y, int *
     return SPEED_T_NONE;
 }
 
-static void mark_pending(struct desk_dial *d, int ms, int factor, int64_t now_ms) {
+static void mark_pending(struct desk_speed *s, struct desk_dial *d, int ms, int factor) {
     d->pending = 1;
     d->pending_ms = ms;
     d->pending_factor = factor;
-    d->pending_since = now_ms;
+    d->pending_since = s->submit_ms;
 }
 
 // A time for one dial, if it differs from what the master has.
@@ -163,7 +163,8 @@ static int time_action(struct desk_speed *s, int dial, int ms, int64_t now_ms, s
     a->kind = SPEED_ACT_TIME;
     a->widget_id = d->widget_id;
     a->ms = ms;
-    mark_pending(d, ms, d->factor, now_ms);
+    (void)now_ms;
+    mark_pending(s, d, ms, d->factor);
     s->dirty = 1;
     return 1;
 }
@@ -212,7 +213,7 @@ static struct speed_action fire(struct desk_speed *s, enum speed_target t, int d
         a.kind = SPEED_ACT_FACTOR;
         a.widget_id = d->widget_id;
         a.factor = factor;
-        mark_pending(d, d->base_ms, factor, now_ms);
+        mark_pending(s, d, d->base_ms, factor);
         s->dirty = 1;
         return a;
     }
@@ -221,9 +222,11 @@ static struct speed_action fire(struct desk_speed *s, enum speed_target t, int d
     }
 }
 
-struct speed_action desk_speed_touch_down(struct desk_speed *s, int x, int y, int64_t now_ms) {
+struct speed_action desk_speed_touch_down(struct desk_speed *s, int x, int y, int64_t now_ms,
+                                          int64_t contact_ms) {
     if (s->capture != SPEED_T_NONE)
         return none();
+    s->submit_ms = now_ms;
     int dial;
     enum speed_target t = desk_speed_hit(s, x, y, &dial);
     if (t == SPEED_T_NONE)
@@ -233,7 +236,7 @@ struct speed_action desk_speed_touch_down(struct desk_speed *s, int x, int y, in
     s->dirty = 1;
     // Tempo is the down edge: a tap fires now and its release is consumed.
     if (t == SPEED_T_TAP || t == SPEED_T_BOTH)
-        return fire(s, t, dial, now_ms);
+        return fire(s, t, dial, contact_ms > 0 ? contact_ms : now_ms);
     return none();
 }
 
@@ -243,6 +246,7 @@ struct speed_action desk_speed_touch_up(struct desk_speed *s, int x, int y, int6
     enum speed_target was = s->capture;
     int was_dial = s->capture_dial;
     s->capture = SPEED_T_NONE;
+    s->submit_ms = now_ms;
     s->dirty = 1;
     if (was == SPEED_T_TAP || was == SPEED_T_BOTH)
         return none();

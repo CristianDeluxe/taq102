@@ -65,8 +65,17 @@ static void fail(struct wifi_join *j, const char *reason) {
     j->word[0] = '\0';
     // The way back: the block goes, the supplicant re-reads, and the previous
     // network is selected again so the tablet returns to where it was.
-    if (j->wrote_block)
-        wifi_conf_remove(j->conf_path, j->ssid);
+    // The file goes back to what it was: a replaced block returns whole,
+    // key and all, and a new one disappears.
+    if (j->wrote_block) {
+        if (j->before || j->before_len == 0)
+            wifi_conf_restore(j->conf_path, j->before, j->before_len);
+        else
+            wifi_conf_remove(j->conf_path, j->ssid);
+    }
+    free(j->before);
+    j->before = NULL;
+    j->before_len = 0;
     ask_ok(j, "RECONFIGURE");
     if (j->prev_ssid[0])
         select_network(j, j->prev_ssid);
@@ -89,19 +98,26 @@ int wifi_join_start(struct wifi_join *j, const char *ssid, const char *psk, int 
         priority = wifi_conf_top_priority(&conf) + 1;
     // A known network keeps the block it has: its key is on file and stays.
     j->wrote_block = !(known && wifi_conf_knows(&conf, ssid));
+    free(j->before);
+    j->before = NULL;
+    j->before_len = 0;
+    if (j->wrote_block && wifi_conf_snapshot(j->conf_path, &j->before, &j->before_len) != 0) {
+        snprintf(j->reason, sizeof j->reason, "Cannot read the config");
+        return -1;
+    }
     if (j->wrote_block && wifi_conf_write_block(j->conf_path, ssid, psk, priority) != 0) {
         snprintf(j->reason, sizeof j->reason, "Cannot write the config");
         return -1;
     }
     if (!ask_ok(j, "RECONFIGURE")) {
         if (j->wrote_block)
-            wifi_conf_remove(j->conf_path, ssid);
+            wifi_conf_restore(j->conf_path, j->before, j->before_len);
         snprintf(j->reason, sizeof j->reason, "Supplicant refused the config");
         return -1;
     }
     if (select_network(j, ssid) != 0) {
         if (j->wrote_block)
-            wifi_conf_remove(j->conf_path, ssid);
+            wifi_conf_restore(j->conf_path, j->before, j->before_len);
         ask_ok(j, "RECONFIGURE");
         snprintf(j->reason, sizeof j->reason, "Supplicant refused the network");
         return -1;
@@ -149,6 +165,9 @@ enum wifi_join_state wifi_join_step(struct wifi_join *j, int64_t now_ms,
         }
     }
     if (j->stage == STAGE_ADDRESS && address && address[0]) {
+        free(j->before);
+        j->before = NULL;
+        j->before_len = 0;
         j->state = WIFI_JOIN_DONE;
         j->stage = STAGE_NONE;
         j->word[0] = '\0';
@@ -165,4 +184,6 @@ void wifi_join_free(struct wifi_join *j) {
     if (j->renew)
         aw_free(j->renew);
     j->renew = NULL;
+    free(j->before);
+    j->before = NULL;
 }
