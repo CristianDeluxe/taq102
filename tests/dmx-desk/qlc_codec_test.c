@@ -61,7 +61,7 @@ int main(void) {
 
     // A frame the desk does not act on reads as unknown rather than failing,
     // so one unhandled push cannot drop the link.
-    m = decoded("54|SPEED_STATE|500|0|0");
+    m = decoded("54|CLOCK|12|30");
     assert(m.kind == QLC_UNKNOWN);
     m = decoded("0|XYPAD|12.50|200.00");
     assert(m.kind == QLC_UNKNOWN);
@@ -99,6 +99,15 @@ int main(void) {
     encodes(qlc_encode_level(b, sizeof b, 42, 64), b, "42|64");
     encodes(qlc_encode_grand_master(b, sizeof b, 255), b, "GM_VALUE|255");
     encodes(qlc_encode_speed_ms(b, sizeof b, 54, 500), b, "54|SPEED_TIME|500");
+    encodes(qlc_encode_speed_factor(b, sizeof b, 34, 7), b, "34|SPEED_FACTOR|7");
+    assert(qlc_encode_speed_factor(b, sizeof b, 34, 1) == -1);
+    assert(qlc_encode_speed_factor(b, sizeof b, 34, 11) == -1);
+    // The dial's state push: time and the multiplier enum, both checked.
+    m = decoded("34|SPEED_STATE|500|6");
+    assert(m.kind == QLC_SPEED_STATE && m.widget_id == 34 && m.value == 500 && m.factor == 6);
+    assert(qlc_decode("34|SPEED_STATE|500|11", 21, &m) == -1);
+    assert(qlc_decode("34|SPEED_STATE|x|6", 18, &m) == -1);
+    assert(qlc_decode("34|SPEED_STATE|500", 18, &m) == -1);
     encodes(qlc_encode_slider_release(b, sizeof b, 42), b, "42|SLIDER_OVERRIDE|0");
     encodes(qlc_encode_color(b, sizeof b, 42, 0xFF0000, 0), b,
             "42|CNG_COLORS|#ff0000|#000000");

@@ -139,6 +139,72 @@ static int parse_control(const char *key, const cJSON *item, struct map_control 
     return 0;
 }
 
+// The multiplier enum as the map writes it: `{"raw": n, ...}`; the name and
+// factor beside it are for readers, the raw value is what the engine holds.
+static int parse_multiplier(const cJSON *node, const char *name, int *out) {
+    const cJSON *item = cJSON_GetObjectItemCaseSensitive(node, name);
+    if (!cJSON_IsObject(item))
+        return -1;
+    *out = int_field(item, "raw", 0, 10, -1);
+    return *out < 0 ? -1 : 0;
+}
+
+static int parse_dials(const cJSON *dials, struct show_map *out) {
+    out->dials = 0;
+    if (!dials || cJSON_IsNull(dials))
+        return 0;
+    if (!cJSON_IsObject(dials)) {
+        fprintf(stderr, "map: dials is not an object\n");
+        return -1;
+    }
+    const cJSON *item;
+    cJSON_ArrayForEach(item, dials) {
+        if (out->dials >= MAP_MAX_DIALS) {
+            fprintf(stderr, "map: more than %d dials\n", MAP_MAX_DIALS);
+            return -1;
+        }
+        struct map_dial *d = &out->dial[out->dials];
+        memset(d, 0, sizeof *d);
+        if (!item->string || strlen(item->string) >= sizeof d->key || !cJSON_IsObject(item)) {
+            fprintf(stderr, "map: dial key %.20s is not usable\n", item->string ? item->string : "");
+            return -1;
+        }
+        snprintf(d->key, sizeof d->key, "%s", item->string);
+        if (string_into(item, "caption", d->caption, sizeof d->caption, 1) != 0)
+            return -1;
+        d->widget_id = int_field(item, "widget", 0, 0x7FFFFFF, -1);
+        d->time_ms = int_field(item, "timeMs", 0, 600000, -1);
+        if (d->widget_id < 0 || d->time_ms < 0) {
+            fprintf(stderr, "map: dial %s lacks its widget or time\n", d->key);
+            return -1;
+        }
+        const cJSON *members = cJSON_GetObjectItemCaseSensitive(item, "members");
+        if (!cJSON_IsArray(members)) {
+            fprintf(stderr, "map: dial %s has no members\n", d->key);
+            return -1;
+        }
+        const cJSON *m;
+        cJSON_ArrayForEach(m, members) {
+            if (d->members >= MAP_MAX_DIAL_MEMBERS) {
+                fprintf(stderr, "map: dial %s has more than %d members\n", d->key, MAP_MAX_DIAL_MEMBERS);
+                return -1;
+            }
+            struct map_dial_member *mm = &d->member[d->members];
+            mm->function_id = int_field(m, "function", 0, 0x7FFFFFF, -1);
+            if (mm->function_id < 0 ||
+                parse_multiplier(m, "fadeIn", &mm->fade_in) != 0 ||
+                parse_multiplier(m, "fadeOut", &mm->fade_out) != 0 ||
+                parse_multiplier(m, "duration", &mm->duration) != 0) {
+                fprintf(stderr, "map: dial %s member %d is malformed\n", d->key, d->members);
+                return -1;
+            }
+            d->members++;
+        }
+        out->dials++;
+    }
+    return 0;
+}
+
 static int parse_pages(const cJSON *pages, const cJSON *controls, struct show_map *out) {
     // Every control parsed once, then placed where a section lists it.
     struct map_control *pool = calloc(MAP_MAX_CONTROLS, sizeof *pool);
@@ -291,6 +357,8 @@ int showmap_parse(const char *json, size_t len, struct show_map *out) {
         goto done;
     }
     if (parse_pages(pages, controls, out) != 0)
+        goto done;
+    if (parse_dials(cJSON_GetObjectItemCaseSensitive(root, "dials"), out) != 0)
         goto done;
     if (out->pages == 0 || out->count == 0) {
         fprintf(stderr, "map: nothing to show\n");
