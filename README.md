@@ -1774,3 +1774,46 @@ buffer's pending damage (41 to 31), and finally the background clear clipped
 too: 14 ms median, 16 at p95, present 4 ms, 8 MB resident. A page change
 still repaints everything once, in about 41 ms, which is one frame and not on
 the drag path. Evidence: `docs/evidence/2026-09-12-desk-phase2/`.
+
+## The gear, and a venue's Wi-Fi without ssh (2026-09-12)
+
+My first ask for the desk was the plainest: at an event, join
+whatever Wi-Fi there is, find the Mac running QLC+ or type its address, and
+see the battery and set the brightness, all from the tablet. That is now a
+gear at the left of the status bar. It opens a settings surface over the rail
+and the content while the master column stays live, with two cards and a
+footer: the Wi-Fi the tablet is on and what a scan found, the master it talks
+to and what a sweep found, a brightness fader and a `Dim on battery` toggle.
+
+The Wi-Fi card speaks to wpa_supplicant directly, over the control socket
+`wpa_cli` uses, with a second socket attached for the daemon's events: a
+scan ends when the daemon says so, not after a guessed four seconds, and no
+SSID or key ever reaches a shell. Joining is a transaction with a way back.
+The block goes into `/data/wifi.conf` atomically with the next priority, the
+daemon re-reads and is told to select that network by the id it reports,
+association is awaited on the event socket, a fixed command renews the
+lease, and an address is awaited. A wrong key (the daemon names it when it
+disables the network), a refusal, or twenty seconds of silence at any stage
+removes the block, re-reads, and selects the previous network again, so a
+typo at a venue costs a retry and not the link. A network the tablet already
+knows joins on the block it has and keeps its key whatever happens. The key
+itself is typed on an on-screen keyboard with three layers covering every
+printable ASCII character, masked unless `show` is held, and the transaction
+is the only thing that sees it. All of this is proven in the host suite
+against a fake supplicant that keeps a network list and pushes the events a
+real one would, on every path.
+
+The master card has no discovery to lean on, because QLC+ announces nothing,
+so it sweeps: the desk runs itself as a child with `--find 192.168.1.71/24
+9998`, the prefix read off wlan0's netmask, sixty-four non-blocking connects
+at a time with a 400 ms deadline, and a host is a master when `GET /` returns
+`QLC+` in its first two kilobytes. On the tablet a /24 takes two seconds and
+lists this Mac twice, Wi-Fi and Ethernet. A tap on a found row, or an address
+typed on the keypad, is written to `/data/desk.conf` and the session re-dials
+at once; from then on the desk starts without `--host`, and without the file
+it starts anyway and says `No master set` on the card. Brightness is the
+desk's own: the same settings file glcube keeps, a deferred save so a drag is
+one write, and the battery policy of the control centre behind the toggle.
+What remains is a finger: the join, the fader and the toggle are my
+checks, listed in `TODO.md`; the scan, the sweep and the file-driven link
+were run on the tablet and are in `docs/evidence/2026-09-12-desk-phase3/`.

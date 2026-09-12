@@ -153,8 +153,10 @@ static void confirm_sheet(struct canvas *c, const struct desk_setup *s, const st
     snprintf(line, sizeof line, "Join %s?", s->pending_ssid);
     text_at(c, fonts->tile, SETUP_CONFIRM_X + 24, SETUP_CONFIRM_Y + 28, SETUP_CONFIRM_W - 48, line, DESK_INK);
     text_at(c, fonts->label, SETUP_CONFIRM_X + 24, SETUP_CONFIRM_Y + 72, SETUP_CONFIRM_W - 48,
+            "Tablet controls disconnect; the Mac keeps running.", DESK_MUTED);
+    text_at(c, fonts->small, SETUP_CONFIRM_X + 24, SETUP_CONFIRM_Y + 104, SETUP_CONFIRM_W - 48,
             s->confirm_is_open_network ? "An open network: no key."
-            : s->confirm_psk[0] ? "The key you typed is kept on the tablet."
+            : s->confirm_psk[0] ? "The key you typed stays on the tablet."
             : "The key on file will be used.", DESK_MUTED);
     int bx = SETUP_CONFIRM_X + 16, by = SETUP_CONFIRM_Y + SETUP_CONFIRM_H - 64;
     int bw = (SETUP_CONFIRM_W - 48) / 2;

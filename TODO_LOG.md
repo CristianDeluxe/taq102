@@ -6,6 +6,43 @@
 
 ### 2026-09
 
+- [x] 2026-09-12 - **Desk, Phase 3: setup without ssh.** A gear at the left
+  of the status bar opens a settings surface over the rail and content, the
+  master column staying live. The Wi-Fi card talks to wpa_supplicant over its
+  control socket (`wpa_ctrl`: request socket plus an attached event socket,
+  no `wpa_cli`, no shell): a scan ends on `CTRL-EVENT-SCAN-RESULTS`, the
+  table is parsed into one row per SSID with the strongest level and the
+  security its flags declare (enterprise and WPA3-only rows are shown but not
+  offered); a tap on a WPA row opens the on-screen keyboard (three layers,
+  every printable ASCII character, masked with a `show` key, `done` dead
+  under eight characters), a known or open row skips it, and a confirmation
+  names what happens before one join action leaves the model. The join is a
+  transaction (`wifi_join`): block written atomically into `/data/wifi.conf`
+  with the next priority, `RECONFIGURE`, `SELECT_NETWORK` by the id
+  `LIST_NETWORKS` gives, association awaited, the lease renewed by a fixed
+  worker command, an address awaited; a wrong key, a refusal or twenty
+  seconds of silence at any stage removes the block (a known network keeps
+  its own), re-reads, and selects the previous network again. Proven against
+  a fake supplicant in-process: success, wrong key with rollback, silence
+  with rollback, a known block untouched by a failure. The master card runs
+  the subnet sweep as a child of the desk itself (`dmxdesk --find
+  192.168.1.71/24 9998`, prefix read off wlan0's netmask, batches of 64 with
+  a 400 ms deadline, `GET /` and `QLC+` in the first 2 KB; on the tablet 2 s
+  for a /24, both of this Mac's addresses listed), or takes an address typed
+  on a keypad; either is saved to `/data/desk.conf` and the session re-dials
+  at once (`--host` > the file > unconfigured, and the desk now starts
+  without a master, the card saying so). Brightness is the desk's own
+  (`desk_power` over the same `/data/taq102.conf` glcube keeps: fader 8..max,
+  a deferred save, the battery policy behind a `Dim on battery` toggle).
+  Passphrases: 8..63 printable ASCII, never in argv, logs or the map. On
+  the tablet: the scan matched `wpa_cli scan_results`, the sweep listed this
+  Mac and nothing dead, the desk linked from the file with no `--host`
+  (`docs/evidence/2026-09-12-desk-phase3/`). Deviations from the plan: the
+  gear is routed in `dmxdesk.c` rather than a `TARGET_GEAR` in `desk_input`;
+  `control_runtime` was not reused (it drags the control centre's panel model
+  and the Wi-Fi toggle worker along), `desk_power` carries the two things the
+  desk needs. The finger checks (join, fader, toggle) are my, in
+  `TODO.md`.
 - [x] 2026-09-12 - **Desk, Phase 2: the pages.** Geometry left the controls
   for placements resolved per page and bank (`desk_layout_resolve`); seven
   pages on the rail with an ink marker; the room's states ride every page in
