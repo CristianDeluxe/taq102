@@ -59,6 +59,7 @@ struct desk_speed {
     enum speed_target capture;
     int capture_dial;
     int refresh_wanted;         // a timeout asked for a fresh snapshot; the caller clears it
+    int64_t submit_ms;          // the desk's clock at the gesture that is firing
     int dirty;
 };
 
@@ -68,7 +69,10 @@ void desk_speed_validate(struct desk_speed *s, const struct vc_doc *console);
 // Every dial off, with the reason: the console is another show.
 void desk_speed_disable(struct desk_speed *s, const char *reason);
 
-struct speed_action desk_speed_touch_down(struct desk_speed *s, int x, int y, int64_t now_ms);
+// `contact_ms` is the touch's own timestamp, for tempo; `now_ms` the desk's
+// clock, for the echo deadline. A late-drained batch keeps its intervals.
+struct speed_action desk_speed_touch_down(struct desk_speed *s, int x, int y, int64_t now_ms,
+                                          int64_t contact_ms);
 struct speed_action desk_speed_touch_up(struct desk_speed *s, int x, int y, int64_t now_ms);
 void desk_speed_touch_cancel(struct desk_speed *s);
 

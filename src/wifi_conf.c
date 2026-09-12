@@ -230,6 +230,21 @@ int wifi_conf_write_block(const char *path, const char *ssid, const char *psk, i
     return rc;
 }
 
+int wifi_conf_snapshot(const char *path, char **text, size_t *len) {
+    *text = read_whole(path, len);
+    if (!*text) {
+        *len = 0;
+        return errno == ENOENT ? 0 : -1;
+    }
+    return 0;
+}
+
+int wifi_conf_restore(const char *path, const char *text, size_t len) {
+    if (!text)
+        return unlink(path) == 0 || errno == ENOENT ? 0 : -1;
+    return write_atomic(path, text, len, NULL, NULL, 0, "", 0);
+}
+
 int wifi_conf_remove(const char *path, const char *ssid) {
     size_t len;
     char *text = read_whole(path, &len);

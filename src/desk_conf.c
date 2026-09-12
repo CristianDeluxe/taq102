@@ -41,6 +41,8 @@ int desk_conf_valid_host(const char *host) {
             } else {
                 value = value * 10 + (host[i] - '0');
                 digits++;
+                if (value > 255)
+                    return 0;
             }
         }
         return octets == 4;

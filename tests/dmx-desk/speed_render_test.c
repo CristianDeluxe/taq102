@@ -68,7 +68,7 @@ int main(void) {
 
     desk_speed_validate(&s, &console);
     desk_speed_apply(&s, 274, 400, 7, 1000);          // "State updated" on the second
-    desk_speed_touch_down(&s, SPEED_CARD_X + SPEED_CELL_X(1) + 10, SPEED_CARD_Y(0) + SPEED_CELL_Y(0) + 10, 1000);
+    desk_speed_touch_down(&s, SPEED_CARD_X + SPEED_CELL_X(1) + 10, SPEED_CARD_Y(0) + SPEED_CELL_Y(0) + 10, 1000, 1000);
     desk_speed_touch_up(&s, SPEED_CARD_X + SPEED_CELL_X(1) + 10, SPEED_CARD_Y(0) + SPEED_CELL_Y(0) + 10, 1000);
     assert(s.dial[0].pending);
     desk_speed_paint(&canvas, &s, &fonts);

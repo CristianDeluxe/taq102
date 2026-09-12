@@ -273,7 +273,7 @@ static void paint_rail(struct canvas *c, const struct desk_model *model,
     struct desk_rect lock = desk_view_lock_target();
     // The ring reads amber while locked: the one state the rail carries.
     canvas_round_rect(c, lock.x, lock.y, lock.w, lock.h, lock.w / 2,
-                      model->locked ? DESK_AMBER : DESK_MUTED);
+                      model->locked ? DESK_INK : DESK_MUTED);
     canvas_round_rect(c, lock.x + 3, lock.y + 3, lock.w - 6, lock.h - 6, lock.w / 2 - 3, DESK_TILE);
     // A padlock: the shackle and the body, in muted.
     canvas_round_rect(c, lock.x + 26, lock.y + 16, 20, 18, 10, DESK_MUTED);
@@ -355,13 +355,18 @@ static void paint_banks(struct canvas *c, const struct desk_model *model,
 // on the screen can be read as a running cue.
 static void paint_link_banner(struct canvas *c, const struct desk_model *model,
                               const struct desk_fonts *fonts) {
-    if (model->link == DESK_LINK_READY)
-        return;
     int x = DESK_GRID_X, w = DESK_MASTER_X - DESK_GRID_X;
-    canvas_round_rect(c, x, DESK_BAR_H + 4, w, 40, 12, DESK_WARN);
     char line[96];
-    snprintf(line, sizeof line, "%s to the master - the Mac still has control",
-             link_words(model->link));
+    if (model->link == DESK_LINK_READY) {
+        if (!model->mismatch)
+            return;
+        // Linked, and to another show: said once, over the dead tiles.
+        snprintf(line, sizeof line, "The Mac has another show loaded - controls off");
+    } else {
+        snprintf(line, sizeof line, "%s to the master - the Mac still has control",
+                 link_words(model->link));
+    }
+    canvas_round_rect(c, x, DESK_BAR_H + 4, w, 40, 12, DESK_WARN);
     centred(c, fonts->label, x, DESK_BAR_H + 12, w, line, DESK_INK);
 }
 

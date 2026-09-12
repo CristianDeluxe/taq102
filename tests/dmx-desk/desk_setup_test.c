@@ -150,8 +150,9 @@ int main(void) {
     a = tap(&s, SETUP_TOGGLE_X + 10, SETUP_TOGGLE_Y + 10);
     assert(a.kind == SETUP_POWER_AWARE && a.value == 1 && s.power_aware);
 
-    // A tap outside the cards closes the surface.
+    // A tap outside the cards closes the surface; so does the Close button.
     assert(tap(&s, 60, 300).kind == SETUP_CLOSE);
+    assert(tap(&s, SETUP_CLOSE_X + 10, SETUP_CLOSE_Y + 10).kind == SETUP_CLOSE);
     desk_setup_close(&s);
     assert(!s.open && !s.kb.open);
     printf("desk_setup ok\n");

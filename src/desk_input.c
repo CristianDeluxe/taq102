@@ -39,6 +39,10 @@ void desk_input_init(struct desk_input *in) {
         in->slot[i].index = -1;
 }
 
+void desk_input_cancel_all(struct desk_input *in) {
+    desk_input_init(in);
+}
+
 enum desk_target desk_input_feed(struct desk_input *in, const struct desk_model *m,
                                  const struct touch_event *ev, int *index) {
     *index = -1;

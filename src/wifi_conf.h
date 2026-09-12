@@ -44,4 +44,10 @@ int wifi_conf_remove(const char *path, const char *ssid);
 // The highest priority among the known networks, or 0.
 int wifi_conf_top_priority(const struct wifi_conf *conf);
 
+// The file as it is, for putting back after a failed change: `*text` is
+// malloc'd (NULL with 0 length when there is no file). Restore writes it
+// whole, atomically, mode 0600.
+int wifi_conf_snapshot(const char *path, char **text, size_t *len);
+int wifi_conf_restore(const char *path, const char *text, size_t len);
+
 #endif

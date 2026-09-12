@@ -13,6 +13,14 @@
 #define SETUP_FOUND_MAX 16
 #define SETUP_WORD_MAX 32
 
+// The surface's targets, shared by the hit test and the painter so a
+// pressed one is outlined where it is pressed.
+enum setup_target {
+    T_NONE, T_OUTSIDE, T_WIFI_ROW, T_WIFI_PREV, T_WIFI_NEXT, T_SCAN,
+    T_MASTER_ROW, T_MASTER_PREV, T_MASTER_NEXT, T_FIND, T_TYPE,
+    T_FADER, T_TOGGLE, T_CONFIRM_YES, T_CONFIRM_NO, T_CONFIRM_NEW_KEY, T_KEYBOARD, T_CLOSE,
+};
+
 enum setup_action_kind {
     SETUP_NONE,
     SETUP_SCAN,             // ask the supplicant to scan
@@ -69,7 +77,7 @@ struct desk_setup {
     int confirm_is_open_network;
     int confirm_known;
     // Touch.
-    int capture;                        // enum setup_target, private
+    enum setup_target capture;
     int capture_index;
     int dragging_fader;
     int dirty;

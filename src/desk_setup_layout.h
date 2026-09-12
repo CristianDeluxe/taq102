@@ -40,6 +40,12 @@
 #define SETUP_CONFIRM_W 500
 #define SETUP_CONFIRM_H 220
 
+// An explicit way out, on the sheet where the rail would be.
+#define SETUP_CLOSE_X 16
+#define SETUP_CLOSE_Y 520
+#define SETUP_CLOSE_W 108
+#define SETUP_CLOSE_H 48
+
 // The gear in the status bar that opens and closes the surface.
 #define SETUP_GEAR_X 8
 #define SETUP_GEAR_Y 0

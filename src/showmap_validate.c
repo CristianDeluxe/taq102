@@ -81,6 +81,7 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
     desk_init(model);
     snprintf(model->master_name, sizeof model->master_name, "%s", map->key);
     int wrong_show = showmap_mismatch(map, doc);
+    model->mismatch = wrong_show;
 
     int enabled = 0;
     for (int i = 0; i < map->count; i++) {

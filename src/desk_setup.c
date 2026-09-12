@@ -7,12 +7,6 @@
 #include "desk_conf.h"
 #include "desk_setup_layout.h"
 
-enum setup_target {
-    T_NONE, T_OUTSIDE, T_WIFI_ROW, T_WIFI_PREV, T_WIFI_NEXT, T_SCAN,
-    T_MASTER_ROW, T_MASTER_PREV, T_MASTER_NEXT, T_FIND, T_TYPE,
-    T_FADER, T_TOGGLE, T_CONFIRM_YES, T_CONFIRM_NO, T_CONFIRM_NEW_KEY, T_KEYBOARD,
-};
-
 static struct setup_action none(void) {
     struct setup_action a;
     memset(&a, 0, sizeof a);
@@ -45,6 +39,8 @@ static enum setup_target hit(const struct desk_setup *s, int x, int y, int *inde
             return T_CONFIRM_YES;
         return T_NONE;
     }
+    if (inside(x, y, SETUP_CLOSE_X, SETUP_CLOSE_Y, SETUP_CLOSE_W, SETUP_CLOSE_H))
+        return T_CLOSE;
     // The Wi-Fi card.
     if (inside(x, y, SETUP_WIFI_X, SETUP_CARD_Y, SETUP_CARD_W, SETUP_CARD_H)) {
         int arrows_x = SETUP_WIFI_X + SETUP_CARD_W - 2 * SETUP_PAGE_W - 8;
@@ -181,7 +177,10 @@ static struct setup_action keyboard_done(struct desk_setup *s) {
         char *colon = strrchr(host, ':');
         if (colon) {
             *colon = '\0';
-            port = atoi(colon + 1);
+            // Checked: the whole field, digits only, in range, or not a port.
+            char *end = NULL;
+            long value = strtol(colon + 1, &end, 10);
+            port = (end && *end == '\0' && end != colon + 1 && value >= 1 && value <= 65535) ? (int)value : 0;
         }
         // The port is the whole field after the colon, digits only.
         int port_ok = !colon;
@@ -235,6 +234,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
     struct setup_action a = none();
     switch (was) {
     case T_OUTSIDE:
+    case T_CLOSE:
         a.kind = SETUP_CLOSE;
         return a;
     case T_SCAN:

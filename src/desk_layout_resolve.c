@@ -43,6 +43,7 @@ struct cursor {
     int page, bank, y, bank_end;
     int failed;
     const struct map_section *state;    // the room's states, laid compact on every bank but LIVE's
+    const struct map_section *hooks;    // the family's automation, laid compact on its later banks
 };
 
 static void place(struct cursor *cur, int control, int x, int y, enum desk_tile tile) {
@@ -86,9 +87,12 @@ static void next_bank(struct cursor *cur, int master, int panic) {
         return;
     }
     chrome(cur, master, panic);
-    // AUTO is one tap away on every bank, not only the first.
+    // AUTO is one tap away on every bank, not only the first; so is the
+    // family's own automation, in the same compact form.
     if (cur->page != 0 && cur->state)
         compact_row(cur, cur->state);
+    if (cur->hooks)
+        compact_row(cur, cur->hooks);
 }
 
 static void heading(struct cursor *cur, const char *text, int part, int parts, int section) {
@@ -182,6 +186,9 @@ static void lay_page(struct cursor *cur, const struct show_map *map, int page,
     cur->y = CONTENT_Y;
     cur->bank_end = bank_end;
     cur->state = state;
+    cur->hooks = NULL;
+    if (page != 0 && map->page[page].sections > 0 && strcmp(map->page[page].section[0].key, "hooks") == 0)
+        cur->hooks = &map->page[page].section[0];
     chrome(cur, master, panic);
     if (page != 0 && state)
         compact_row(cur, state);
@@ -248,7 +255,7 @@ int desk_layout_resolve(const struct show_map *map, int master, int panic,
     for (int page = 0; page < map->pages; page++) {
         // Lay the page once against the full height; if it needs more than
         // one bank, the selector strip takes the bottom and it is laid again.
-        struct cursor cur = { out, page, 0, CONTENT_Y, CONTENT_END, 0, state };
+        struct cursor cur = { out, page, 0, CONTENT_Y, CONTENT_END, 0, state, NULL };
         int placements_before = out->placements, headings_before = out->headings;
         lay_page(&cur, map, page, state, master, panic, CONTENT_END);
         if (cur.failed)
@@ -256,7 +263,7 @@ int desk_layout_resolve(const struct show_map *map, int master, int panic,
         if (out->banks[page] > 1) {
             out->placements = placements_before;
             out->headings = headings_before;
-            cur = (struct cursor){ out, page, 0, CONTENT_Y, CONTENT_END - SELECTOR_H, 0, state };
+            cur = (struct cursor){ out, page, 0, CONTENT_Y, CONTENT_END - SELECTOR_H, 0, state, NULL };
             lay_page(&cur, map, page, state, master, panic, CONTENT_END - SELECTOR_H);
             if (cur.failed)
                 return -1;
@@ -264,7 +271,7 @@ int desk_layout_resolve(const struct show_map *map, int master, int panic,
     }
     if (map->dials > 0 && map->pages < MAP_MAX_PAGES) {
         int page = map->pages;
-        struct cursor cur = { out, page, 0, CONTENT_Y, CONTENT_END, 0, state };
+        struct cursor cur = { out, page, 0, CONTENT_Y, CONTENT_END, 0, state, NULL };
         cur.page = page;
         chrome(&cur, master, panic);
         if (state)
