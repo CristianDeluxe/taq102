@@ -3,15 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "desk_layout.h"
-
-static void slot_rect(int slot, struct desk_control *out) {
-    int row = slot / DESK_COLS, col = slot % DESK_COLS;
-    out->w = DESK_TILE_W;
-    out->h = DESK_TILE_H;
-    out->x = DESK_GRID_X + col * (DESK_TILE_W + DESK_GAP);
-    out->y = DESK_GRID_Y + row * (DESK_TILE_H + DESK_GAP);
-}
 
 static void disable(struct desk_control *c, const char *reason) {
     c->enabled = 0;
@@ -92,7 +83,6 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
     int wrong_show = mismatch(map, doc);
 
     int enabled = 0;
-    int slot = 0;
     for (int i = 0; i < map->count; i++) {
         const struct map_control *m = &map->control[i];
         struct desk_control c;
@@ -117,12 +107,6 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
         else
             widget = check_cue(&c, m, doc);
 
-        // This phase lays out one section: the room's states, on the grid in
-        // their own order. Everything else is validated and kept, and gets
-        // its place when the pages arrive.
-        if (m->page == 0 && m->section == 0 && slot < DESK_COLS * DESK_ROWS)
-            slot_rect(slot++, &c);
-
         int index = desk_add(model, &c);
         if (index < 0) {
             fprintf(stderr, "desk: more controls than the model holds\n");
@@ -145,10 +129,6 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
     snprintf(master.label, sizeof master.label, "Master");
     master.widget_id = map->grand_master_widget;
     master.function_id = -1;
-    master.x = DESK_MASTER_TILE_X;
-    master.y = DESK_MASTER_TILE_Y;
-    master.w = DESK_MASTER_TILE_W;
-    master.h = DESK_MASTER_TILE_H;
     master.page = -1;
     master.enabled = !wrong_show;
     if (wrong_show)
@@ -170,10 +150,6 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
                  map->stop_all_fade_ms / 1000, (map->stop_all_fade_ms % 1000) / 100);
     stop.widget_id = map->stop_all_widget;
     stop.function_id = -1;
-    stop.x = DESK_MASTER_TILE_X;
-    stop.y = DESK_PANIC_Y;
-    stop.w = DESK_MASTER_TILE_W;
-    stop.h = DESK_PANIC_H;
     stop.page = -1;
     const struct vc_widget *w = map->stop_all_widget >= 0 ? vc_find(doc, map->stop_all_widget) : NULL;
     if (wrong_show)

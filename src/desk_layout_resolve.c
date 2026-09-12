@@ -20,11 +20,11 @@ struct tile_size { int w, h, per_row, gap; };
 
 static struct tile_size size_of(enum desk_tile tile) {
     switch (tile) {
-    case TILE_WIDE:    return (struct tile_size){ 452, 96, 1, ROW_GAP };
+    case TILE_WIDE:    return (struct tile_size){ 452, 88, 1, ROW_GAP };
     case TILE_SWATCH:  return (struct tile_size){ 100, 88, 6, ROW_GAP };
     case TILE_COMPACT: return (struct tile_size){ 86, 56, 7, COMPACT_GAP };
-    case TILE_HAZE:    return (struct tile_size){ 160, 96, 4, ROW_GAP };
-    default:           return (struct tile_size){ 218, 96, 3, ROW_GAP };
+    case TILE_HAZE:    return (struct tile_size){ 160, 88, 4, ROW_GAP };
+    default:           return (struct tile_size){ 218, 88, 3, ROW_GAP };
     }
 }
 
@@ -181,8 +181,14 @@ static void lay_page(struct cursor *cur, const struct show_map *map, int page,
     for (int s = 0; s < p->sections; s++) {
         const struct map_section *sec = &p->section[s];
         int is_state = page == 0 && s == 0 && strcmp(sec->key, "state") == 0;
+        // A section that does not fit what is left of the bank moves whole
+        // to the next one, unless at least two of its rows still fit here:
+        // then it is split, so a family's picks start beside its hooks.
         int need = section_height(map, sec, is_state);
-        if (cur->y + need > cur->bank_end && cur->y > CONTENT_Y)
+        int row_h = size_of(tile_for(&map->control[sec->first], 0)).h;
+        int two_rows = HEADING_H + HEADING_GAP + 2 * row_h + ROW_GAP;
+        if (cur->y + need > cur->bank_end && cur->y > CONTENT_Y &&
+            cur->y + two_rows > cur->bank_end)
             next_bank(cur, master, panic);
         int part = 1, parts = 1;
         int i = sec->first;
@@ -223,6 +229,8 @@ int desk_layout_resolve(const struct show_map *map, int master, int panic,
                         struct desk_layout *out) {
     memset(out, 0, sizeof *out);
     out->pages = map->pages;
+    for (int page = 0; page < map->pages; page++)
+        snprintf(out->title[page], sizeof out->title[page], "%s", map->page[page].title);
     const struct map_section *state = NULL;
     if (map->pages > 0 && map->page[0].sections > 0 &&
         strcmp(map->page[0].section[0].key, "state") == 0)

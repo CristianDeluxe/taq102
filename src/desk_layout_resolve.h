@@ -27,6 +27,7 @@ struct desk_layout {
     struct desk_heading heading[DESK_MAX_HEADINGS];
     int headings;
     int banks[MAP_MAX_PAGES];
+    char title[MAP_MAX_PAGES][MAP_CAPTION_MAX];
     int pages;
 };
 

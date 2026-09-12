@@ -27,7 +27,9 @@
 #include <unistd.h>
 
 #include "canvas.h"
+#include "desk_input.h"
 #include "desk_layout.h"
+#include "desk_layout_resolve.h"
 #include "desk_model.h"
 #include "desk_paint.h"
 #include "desk_present_drm.h"
@@ -184,6 +186,7 @@ int main(int argc, char **argv) {
         font_open("/usr/share/fonts/taq102/Inter-SemiBold.ttf", 22),
         font_open("/usr/share/fonts/taq102/Inter-SemiBold.ttf", 56),
         font_open("/usr/share/fonts/taq102/Inter-Regular.ttf", 20),
+        font_open("/usr/share/fonts/taq102/Inter-Regular.ttf", 16),
     };
     const struct statusbar_style bar_style = {
         DESK_GLASS, DESK_GLASS, DESK_INK, DESK_MUTED, DESK_INK, DESK_AMBER, DESK_WARN,
@@ -196,6 +199,16 @@ int main(int argc, char **argv) {
     int enabled = showmap_build(&model, &map, &console);
     printf("desk: %s, %d of %d controls enabled before the first snapshot\n",
            map.key, enabled, map.count);
+    // The map's controls come first in the model, then the master and the
+    // panic button, which is what the resolver is told.
+    struct desk_layout layout;
+    if (desk_layout_resolve(&map, map.count, map.count + 1, &layout) != 0) {
+        fprintf(stderr, "desk: the map does not fit the screen\n");
+        return 1;
+    }
+    desk_set_layout(&model, &layout);
+    struct desk_input input;
+    desk_input_init(&input);
 
     // The controller reports in its own units on the mainline driver and in
     // screen pixels on the vendor one, so its declared maxima decide the
@@ -266,6 +279,20 @@ int main(int argc, char **argv) {
             struct touch_event events[32];
             int n = touch_input_read_fd(touch, touch_fd, events, 32);
             for (int i = 0; i < n; i++) {
+                int index;
+                enum desk_target target = desk_input_feed(&input, &model, &events[i], &index);
+                if (target == TARGET_RAIL) {
+                    if (index >= 0)
+                        desk_set_view(&model, index, 0);
+                    continue;
+                }
+                if (target == TARGET_BANK) {
+                    if (index >= 0)
+                        desk_set_view(&model, model.page, index);
+                    continue;
+                }
+                if (target != TARGET_CONTENT)
+                    continue;
                 struct desk_action action = { DESK_ACT_NONE, -1, 0 };
                 switch (events[i].kind) {
                 case TOUCH_DOWN:
@@ -293,7 +320,10 @@ int main(int argc, char **argv) {
         if (qlc_session_take_snapshot(session, &fresh)) {
             vc_free(&console);
             console = fresh;
+            int page = model.page, bank = model.bank;
             enabled = showmap_build(&model, &map, &console);
+            desk_set_layout(&model, &layout);
+            desk_set_view(&model, page, bank);
             printf("desk: %d of %d controls enabled against the master's console\n",
                    enabled, map.count);
         }
@@ -362,6 +392,7 @@ int main(int argc, char **argv) {
     font_close(fonts.tile);
     font_close(fonts.value);
     font_close(fonts.label);
+    font_close(fonts.small);
     free(canvas.px);
     present_close(present);
     vc_free(&console);
