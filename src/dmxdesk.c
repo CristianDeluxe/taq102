@@ -1,9 +1,10 @@
 // The lighting desk: the tablet as a control surface for the QLC+ show
-// running on the Mac. It fetches the console the master has loaded, checks
-// the show map against it, draws the tiles, and sends one message per
-// gesture. What lights up is what the master says is running.
+// running on the Mac. It draws first, then dials: the session fetches the
+// console the master has loaded, the show map is checked against it, the
+// tiles are drawn, and one message goes out per gesture. What lights up is
+// what the master says is running.
 //
-//   dmxdesk --host 192.168.1.50 --map /etc/taq102/deluxe-eventos.json
+//   dmxdesk --host 192.168.1.50 --map /etc/taq102/show-map.json
 //
 // DMXDESK_DUMP=<file.ppm> writes the first frame and exits, so the screen can
 // be checked from a laptop without a camera. SIGUSR1 writes the same file
@@ -31,14 +32,15 @@
 #include "desk_paint.h"
 #include "desk_present_drm.h"
 #include "font.h"
-#include "http_get.h"
 #include "qlc_codec.h"
+#include "qlc_session.h"
 #include "showmap.h"
 #include "showmap_validate.h"
+#include "status.h"
+#include "statusbar.h"
 #include "touch_flip.h"
 #include "touch_input.h"
 #include "vcjson.h"
-#include "ws_client.h"
 
 #define VC_LIMIT (1024 * 1024)
 // The master pushes only when something changes, and its own ping is every
@@ -47,6 +49,9 @@
 #define HEARTBEAT_MS 400
 #define STALE_MS 750
 #define RECONNECT_MS 1500
+#define CONNECT_TIMEOUT_MS 3000
+#define FETCH_TIMEOUT_MS 4000
+#define STATUS_MS 1000
 
 static volatile sig_atomic_t stop;
 static void on_signal(int sig) { (void)sig; stop = 1; }
@@ -80,27 +85,6 @@ static void dump_ppm(const struct canvas *c, const char *path) {
     fclose(f);
 }
 
-// One connection's worth of state. A generation number is not needed while the
-// desk holds exactly one socket and drops everything on reconnect.
-struct link {
-    struct ws *ws;
-    int64_t last_heard_ms;
-    int64_t last_beat_ms;
-    int64_t next_try_ms;
-};
-
-static int fetch_console(const char *host, int port, struct vc_doc *doc) {
-    char *body = NULL;
-    size_t len = 0;
-    if (http_get(host, port, "/vc.json", 4000, VC_LIMIT, &body, &len) != 0)
-        return -1;
-    int rc = vc_parse(body, len, doc);
-    free(body);
-    if (rc != 0)
-        fprintf(stderr, "the console at %s is not one this desk can read\n", host);
-    return rc;
-}
-
 static void apply_frame(struct desk_model *model, const char *frame) {
     struct qlc_msg msg;
     if (qlc_decode(frame, strlen(frame), &msg) != 0)
@@ -117,7 +101,10 @@ static void apply_frame(struct desk_model *model, const char *frame) {
     }
 }
 
-static void send_action(struct link *link, struct desk_action action) {
+// One gesture, one frame. A frame refused because the link went down between
+// the touch and the send is dropped, never kept: a toggle sent late is a
+// second toggle.
+static void send_action(struct qlc_session *session, struct desk_action action) {
     char frame[64];
     int n = -1;
     switch (action.kind) {
@@ -130,16 +117,27 @@ static void send_action(struct link *link, struct desk_action action) {
     case DESK_ACT_NONE:
         return;
     }
-    if (n < 0 || !link->ws)
-        return;
-    if (ws_send_text(link->ws, frame) != 0) {
-        ws_close(link->ws);
-        link->ws = NULL;
+    if (n > 0)
+        qlc_session_send(session, frame);
+}
+
+static enum desk_link desk_link_of(enum qlc_link link) {
+    switch (link) {
+    case QLC_READY:      return DESK_LINK_READY;
+    case QLC_FETCHING:   return DESK_LINK_SYNCING;
+    case QLC_CONNECTING: return DESK_LINK_CONNECTING;
+    default:             return DESK_LINK_DOWN;
     }
 }
 
+// The bar's status is read once a second; only a change repaints.
+static int status_changed(const struct status *a, const struct status *b) {
+    return a->have_batt != b->have_batt || a->cap != b->cap || a->plugged != b->plugged ||
+           status_wifi_bars(a) != status_wifi_bars(b);
+}
+
 int main(int argc, char **argv) {
-    const char *host = "192.168.1.50";
+    const char *host = NULL;
     int port = 9999;
     const char *map_path = "/etc/taq102/show-map.json";
     const char *card = "/dev/dri/card0";
@@ -152,45 +150,49 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--card") && i + 1 < argc) card = argv[++i];
         else if (!strcmp(argv[i], "--touch") && i + 1 < argc) touch_device = argv[++i];
         else {
-            fprintf(stderr, "usage: %s [--host H] [--port P] [--map FILE]"
+            fprintf(stderr, "usage: %s --host H [--port P] [--map FILE]"
                             " [--card /dev/dri/cardN] [--touch /dev/input/eventN]\n",
                     argv[0]);
             return 2;
         }
+    }
+    if (!host || port <= 0 || port > 65535) {
+        fprintf(stderr, "dmxdesk: --host is required until the tablet keeps one of its own\n");
+        return 2;
     }
 
     struct show_map map;
     if (showmap_load(map_path, &map) != 0)
         return 1;
 
-    // A first read before the display comes up, so a map that does not match
-    // the show is reported on the terminal that started it rather than only
-    // on the tablet's own screen. Every later connection reads it again.
-    struct vc_doc console;
-    memset(&console, 0, sizeof console);
-    fetch_console(host, port, &console);
-
-    struct desk_model model;
-    int enabled = showmap_build(&model, &map, &console);
-    printf("desk: %s, %d of %d controls enabled\n", map.key, enabled, map.count);
-
+    // The display first. The model is built against an empty console, so
+    // every tile is drawn disabled with its reason before the network is
+    // touched; the session's first snapshot rebuilds it.
     struct present *present = present_open(card);
-    if (!present) {
-        vc_free(&console);
+    if (!present)
         return 1;
-    }
     int w = present_width(present), h = present_height(present);
     struct canvas canvas = { calloc((size_t)w * h, 4), w, h };
     if (!canvas.px) {
         present_close(present);
         return 1;
     }
-
     struct desk_fonts fonts = {
         font_open("/usr/share/fonts/taq102/Inter-SemiBold.ttf", 22),
         font_open("/usr/share/fonts/taq102/Inter-SemiBold.ttf", 56),
         font_open("/usr/share/fonts/taq102/Inter-Regular.ttf", 20),
     };
+    const struct statusbar_style bar_style = {
+        DESK_GLASS, DESK_GLASS, DESK_INK, DESK_MUTED, DESK_INK, DESK_AMBER, DESK_WARN,
+        "/usr/share/fonts/taq102/Inter-SemiBold.ttf",
+    };
+
+    struct vc_doc console;
+    memset(&console, 0, sizeof console);
+    struct desk_model model;
+    int enabled = showmap_build(&model, &map, &console);
+    printf("desk: %s, %d of %d controls enabled before the first snapshot\n",
+           map.key, enabled, map.count);
 
     // The controller reports in its own units on the mainline driver and in
     // screen pixels on the vendor one, so its declared maxima decide the
@@ -218,62 +220,44 @@ int main(int argc, char **argv) {
     signal(SIGINT, on_signal);
     signal(SIGUSR1, on_snapshot);
 
-    struct link link = { NULL, 0, 0, 0 };
+    struct qlc_session_config cfg = {
+        .port = port, .heartbeat_ms = HEARTBEAT_MS, .stale_ms = STALE_MS,
+        .reconnect_ms = RECONNECT_MS, .connect_timeout_ms = CONNECT_TIMEOUT_MS,
+        .fetch_timeout_ms = FETCH_TIMEOUT_MS, .snapshot_limit = VC_LIMIT,
+    };
+    snprintf(cfg.host, sizeof cfg.host, "%s", host);
+    struct qlc_session *session = qlc_session_new(&cfg);
+    if (!session)
+        return 1;
+
     const char *dump = getenv("DMXDESK_DUMP");
+    // DMXDESK_RTT=1 prints every heartbeat's round trip: the raw material for
+    // deciding whether 750 ms of silence is a dead master or a slow Wi-Fi.
+    int log_rtt = getenv("DMXDESK_RTT") != NULL;
+    int last_rtt_logged = -1;
     int force_flip = getenv("DMXDESK_FLIP") != NULL;
     unsigned long flips = 0;
     int64_t last_report_ms = now_ms();
+    int64_t last_status_ms = 0;
+    struct status status;
+    memset(&status, 0, sizeof status);
+    enum qlc_link last_link = QLC_DOWN;
+    char last_reason[96] = "";
 
     while (!stop) {
-        int64_t now = now_ms();
-
-        if (!link.ws && now >= link.next_try_ms) {
-            desk_set_link(&model, DESK_LINK_CONNECTING);
-            link.ws = ws_connect(host, port, "/qlcplusWS", 3000);
-            link.next_try_ms = now + RECONNECT_MS;
-            if (link.ws) {
-                link.last_beat_ms = 0;
-                // Every connection re-reads the console. Opening the socket
-                // sends no snapshot, and the document is the only source that
-                // says which widget a state belongs to, so a desk that skipped
-                // this would sit at unknown until someone touched the show.
-                // It also catches a master that has loaded a different
-                // workspace while the tablet was away.
-                desk_set_link(&model, DESK_LINK_SYNCING);
-                struct vc_doc fresh;
-                if (fetch_console(host, port, &fresh) == 0) {
-                    vc_free(&console);
-                    console = fresh;
-                    enabled = showmap_build(&model, &map, &console);
-                    printf("desk: %d of %d controls enabled\n", enabled, map.count);
-                }
-                // The clock on silence starts once the desk is actually
-                // listening. Fetching the console takes most of a second over
-                // Wi-Fi, and counting that as the master saying nothing is
-                // what made the first two connections drop themselves.
-                link.last_heard_ms = now_ms();
-                desk_set_link(&model, DESK_LINK_READY);
-            }
-        }
-
-        struct pollfd fds[2];
-        int count = 0;
-        int touch_slot = -1, link_slot = -1;
+        struct pollfd fds[3];
+        int count = 0, touch_slot = -1;
         if (touch) {
             touch_slot = count;
             fds[count].fd = touch_fd;
             fds[count].events = POLLIN;
+            fds[count].revents = 0;
             count++;
         }
-        if (link.ws) {
-            link_slot = count;
-            fds[count].fd = ws_fd(link.ws);
-            fds[count].events = POLLIN;
-            count++;
-        }
+        count += qlc_session_pollfds(session, fds + count, 2);
         // Forced flips run at the panel's own pace, not the loop's.
-        poll(fds, count, force_flip ? 0 : 100);
-        now = now_ms();
+        poll(fds, (nfds_t)count, force_flip ? 0 : 100);
+        int64_t now = now_ms();
 
         if (touch_slot >= 0 && (fds[touch_slot].revents & POLLIN)) {
             struct touch_event events[32];
@@ -297,38 +281,43 @@ int main(int argc, char **argv) {
                     desk_touch_cancel(&model, events[i].slot);
                     break;
                 }
-                send_action(&link, action);
+                send_action(session, action);
             }
         }
 
-        if (link_slot >= 0 && link.ws) {
-            char frame[4096];
-            int r;
-            while ((r = ws_recv_text(link.ws, frame, sizeof frame)) == 1) {
-                link.last_heard_ms = now;
-                apply_frame(&model, frame);
-            }
-            if (r < 0) {
-                ws_close(link.ws);
-                link.ws = NULL;
-                desk_set_link(&model, DESK_LINK_DOWN);
-            }
+        enum qlc_link link = qlc_session_step(session, now);
+        struct vc_doc fresh;
+        if (qlc_session_take_snapshot(session, &fresh)) {
+            vc_free(&console);
+            console = fresh;
+            enabled = showmap_build(&model, &map, &console);
+            printf("desk: %d of %d controls enabled against the master's console\n",
+                   enabled, map.count);
+        }
+        char frame[4096];
+        while (qlc_session_recv(session, frame, sizeof frame) == 1)
+            apply_frame(&model, frame);
+        desk_set_link(&model, desk_link_of(link));
+        if (log_rtt && link == QLC_READY && qlc_session_last_rtt(session) != last_rtt_logged) {
+            last_rtt_logged = qlc_session_last_rtt(session);
+            if (last_rtt_logged >= 0)
+                printf("rtt %d\n", last_rtt_logged);
+        }
+        if (link != last_link || strcmp(last_reason, qlc_session_reason(session)) != 0) {
+            last_link = link;
+            snprintf(last_reason, sizeof last_reason, "%s", qlc_session_reason(session));
+            fprintf(stderr, "desk: link %s (%s)\n",
+                    link == QLC_READY ? "ready" : link == QLC_FETCHING ? "reading the show"
+                    : link == QLC_CONNECTING ? "connecting" : "down", last_reason);
         }
 
-        if (link.ws && now - link.last_beat_ms >= HEARTBEAT_MS) {
-            link.last_beat_ms = now;
-            if (ws_send_text(link.ws, "QLC+API|isProjectLoaded") != 0) {
-                ws_close(link.ws);
-                link.ws = NULL;
-                desk_set_link(&model, DESK_LINK_DOWN);
-            }
-        }
-        if (link.ws && now - link.last_heard_ms > STALE_MS) {
-            fprintf(stderr, "desk: %lld ms without a word from the master\n",
-                    (long long)(now - link.last_heard_ms));
-            ws_close(link.ws);
-            link.ws = NULL;
-            desk_set_link(&model, DESK_LINK_DOWN);
+        if (now - last_status_ms >= STATUS_MS) {
+            last_status_ms = now;
+            struct status next;
+            status_read(&next);
+            if (status_changed(&status, &next))
+                model.dirty = 1;
+            status = next;
         }
 
         if (model.dirty || force_flip) {
@@ -337,6 +326,7 @@ int main(int argc, char **argv) {
             // the rate far below the panel's.
             if (model.dirty) {
                 desk_paint(&canvas, &model, &fonts);
+                statusbar_paint(&canvas, &status, &bar_style);
                 model.dirty = 0;
             }
             if (present_frame(present, &canvas) != 0)
@@ -349,8 +339,8 @@ int main(int argc, char **argv) {
         }
         if (now - last_report_ms >= 10000) {
             last_report_ms = now;
-            printf("desk: %lu flips so far, link %s\n", flips,
-                   link.ws ? "up" : "down");
+            printf("desk: %lu flips so far, link %s (%s)\n", flips,
+                   link == QLC_READY ? "up" : "down", qlc_session_reason(session));
             fflush(stdout);
         }
         if (snapshot) {
@@ -365,8 +355,7 @@ int main(int argc, char **argv) {
         touch_input_free(touch);
     if (touch_fd >= 0)
         close(touch_fd);
-    if (link.ws)
-        ws_close(link.ws);
+    qlc_session_free(session);
     font_close(fonts.tile);
     font_close(fonts.value);
     font_close(fonts.label);

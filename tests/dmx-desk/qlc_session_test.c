@@ -35,6 +35,8 @@ static char *slurp(const char *path, size_t *len) {
 struct fake {
     int ls, port;
     int ws_fd, http_fd;         // accepted sockets, -1 until they arrive
+    int pending[4];             // accepted, request line not yet seen
+    int npending;
     char buf[4096];
     size_t have;
     const char *snapshot;
@@ -59,6 +61,7 @@ static void fake_init(struct fake *k) {
 }
 
 static void fake_close(struct fake *k) {
+    for (int i = 0; i < k->npending; i++) close(k->pending[i]);
     if (k->ws_fd >= 0) close(k->ws_fd);
     if (k->http_fd >= 0) close(k->http_fd);
     close(k->ls);
@@ -75,19 +78,26 @@ static void fake_service(struct fake *k) {
     int c;
     while ((c = accept(k->ls, NULL, NULL)) >= 0) {
         nonblock(c);
+        assert(k->npending < 4);
+        k->pending[k->npending++] = c;
+    }
+    // A connection is told apart by its request line, which the client sends
+    // a step after connecting; until then it waits here unclassified.
+    for (int i = 0; i < k->npending; i++) {
         char peek[64] = { 0 };
-        for (int i = 0; i < 50 && !strchr(peek, '\n'); i++) {
-            usleep(1000);
-            recv(c, peek, sizeof peek - 1, MSG_PEEK);
-        }
+        recv(k->pending[i], peek, sizeof peek - 1, MSG_PEEK);
+        if (!strchr(peek, '\n'))
+            continue;
         if (strstr(peek, "/qlcplusWS")) {
             assert(k->ws_fd < 0);
-            k->ws_fd = c;
+            k->ws_fd = k->pending[i];
             k->have = 0;
         } else {
             assert(k->http_fd < 0);
-            k->http_fd = c;
+            k->http_fd = k->pending[i];
         }
+        k->pending[i] = k->pending[--k->npending];
+        i--;
     }
     if (k->ws_fd >= 0) {
         ssize_t n = read(k->ws_fd, k->buf + k->have, sizeof k->buf - 1 - k->have);
@@ -195,7 +205,7 @@ int main(void) {
     cfg = config(k.port);
     s = qlc_session_new(&cfg);
     now = 1000;
-    assert(drive_until(s, &k, &now, QLC_READY, 400, 5) == QLC_READY);
+    if (drive_until(s, &k, &now, QLC_READY, 400, 5) != QLC_READY) { fprintf(stderr, "first: link %d reason [%s]\n", qlc_session_link(s), qlc_session_reason(s)); assert(0); }
     struct vc_doc doc;
     assert(qlc_session_take_snapshot(s, &doc) == 1);
     assert(doc.count > 600);
@@ -219,6 +229,7 @@ int main(void) {
     }
     assert(qlc_session_link(s) == QLC_READY);
     assert(k.pings_seen >= 4);
+    assert(qlc_session_last_rtt(s) >= 0 && qlc_session_last_rtt(s) < 100);
     // A master that stops answering is dropped within stale_ms, with the
     // measured silence in the reason, and a send is refused afterwards.
     assert(qlc_session_send(s, "4|255") == 0);
@@ -230,7 +241,7 @@ int main(void) {
     close(k.ws_fd);
     k.ws_fd = -1;
     k.have = 0;
-    assert(drive_until(s, &k, &now, QLC_READY, 600, 5) == QLC_READY);
+    if (drive_until(s, &k, &now, QLC_READY, 600, 5) != QLC_READY) { fprintf(stderr, "again: link %d reason [%s]\n", qlc_session_link(s), qlc_session_reason(s)); assert(0); }
     assert(qlc_session_take_snapshot(s, &doc) == 1);
     vc_free(&doc);
     qlc_session_free(s);
@@ -264,7 +275,7 @@ int main(void) {
     s = qlc_session_new(&cfg);
     now = 0;
     assert(drive(s, &k, &now, 200, 5) == QLC_DOWN);
-    assert(strstr(qlc_session_reason(s), "404"));
+    if (!strstr(qlc_session_reason(s), "404")) { fprintf(stderr, "refusal: reason [%s]\n", qlc_session_reason(s)); assert(0); }
     qlc_session_free(s);
     fake_close(&k);
 

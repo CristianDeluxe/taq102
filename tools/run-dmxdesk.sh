@@ -5,8 +5,8 @@
 # leaves the tablet showing the desk. Nothing is written outside /tmp, which is
 # a tmpfs, so a reboot brings the appliance back exactly as it was.
 #
-#   tools/run-dmxdesk.sh                       # master is this Mac
 #   tools/run-dmxdesk.sh --host 192.168.1.50   # master is the show MacBook
+#   tools/run-dmxdesk.sh --host "$(ipconfig getifaddr en0)" --port 9998   # this Mac
 #   tools/run-dmxdesk.sh --dump frame.ppm      # one frame back here, then exit
 #   tools/run-dmxdesk.sh --stop                # put the appliance back
 set -eu
@@ -14,8 +14,9 @@ set -eu
 here=$(cd "$(dirname "$0")/.." && pwd)
 tablet=${TAQ102_HOST:-taq102.local}
 key=${TAQ102_KEY:-$HOME/.ssh/taq102}
-master=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo 127.0.0.1)
-port=9999
+# No master by default: the desk is told one, or (later) keeps its own.
+master=""
+port=""
 map=$here/show/deluxe-eventos.json
 dump=""
 stop=0
@@ -59,12 +60,15 @@ for e in /sys/class/input/event*; do
 		touch_node=/dev/input/$(basename "$e")
 	fi
 done
+# --host and --port go only when the caller gave them, so a host the tablet
+# keeps for itself (a later phase) is not overridden on every relaunch.
+set -- --map "$MAP" --touch "$touch_node"
+[ -n "$MASTER" ] && set -- "$@" --host "$MASTER"
+[ -n "$PORT" ] && set -- "$@" --port "$PORT"
 if [ -n "$DUMP" ]; then
-	DMXDESK_DUMP="$DUMP" /tmp/dmxdesk --host "$MASTER" --port "$PORT" \
-		--map "$MAP" --touch "$touch_node"
+	DMXDESK_DUMP="$DUMP" /tmp/dmxdesk "$@"
 else
-	nohup /tmp/dmxdesk --host "$MASTER" --port "$PORT" --map "$MAP" \
-		--touch "$touch_node" > /tmp/dmxdesk.log 2>&1 &
+	nohup /tmp/dmxdesk "$@" > /tmp/dmxdesk.log 2>&1 &
 	sleep 2
 	cat /tmp/dmxdesk.log
 fi
