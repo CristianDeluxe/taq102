@@ -22,10 +22,14 @@ int main(int argc, char **argv) {
     // fliptest [color-hex-a] [color-hex-b] [pause-ms]: default identical
     // amber at every vblank; give two colours to see whether alternating
     // content shows as flicker, and a pause to slow the flips down to a rate
+    // "vlines" as the first argument paints single-pixel vertical lines into
+    // both buffers instead: a flat field cannot show a displacement, and the
+    // camera rig measures displacement on lines.
     // a webcam can resolve (I sees the fast one; the camera does not).
     uint32_t col[2] = { 0xFFE08A00u, 0xFFE08A00u };
     int pause_ms = 0;
-    if (argc > 1) col[0] = col[1] = (uint32_t)strtoul(argv[1], NULL, 16);
+    int vlines = argc > 1 && !strcmp(argv[1], "vlines");
+    if (argc > 1 && !vlines) col[0] = col[1] = (uint32_t)strtoul(argv[1], NULL, 16);
     if (argc > 2) col[1] = (uint32_t)strtoul(argv[2], NULL, 16);
     if (argc > 3) pause_ms = atoi(argv[3]);
 
@@ -55,7 +59,8 @@ int main(int argc, char **argv) {
         if (p == MAP_FAILED) { perror("mmap"); return 1; }
         for (int y = 0; y < H; y++)
             for (int x = 0; x < W; x++)
-                p[y * (c.pitch / 4) + x] = col[i];
+                p[y * (c.pitch / 4) + x] = vlines ? ((x & 1) ? 0xFF000000u : 0xFFFFFFFFu)
+                                                  : col[i];
         munmap(p, c.size);
     }
 

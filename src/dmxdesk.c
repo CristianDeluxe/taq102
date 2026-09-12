@@ -8,6 +8,10 @@
 // DMXDESK_DUMP=<file.ppm> writes the first frame and exits, so the screen can
 // be checked from a laptop without a camera. SIGUSR1 writes the same file
 // without stopping, which is how a running desk is photographed.
+// DMXDESK_FLIP=1 repaints and flips on every loop, whether or not anything
+// changed: a diagnostic for telling a fault in the flip path from one in the
+// picture. The desk prints how many frames it flipped every ten seconds, so
+// "it is static" is a number rather than an assumption.
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
@@ -216,6 +220,9 @@ int main(int argc, char **argv) {
 
     struct link link = { NULL, 0, 0, 0 };
     const char *dump = getenv("DMXDESK_DUMP");
+    int force_flip = getenv("DMXDESK_FLIP") != NULL;
+    unsigned long flips = 0;
+    int64_t last_report_ms = now_ms();
 
     while (!stop) {
         int64_t now = now_ms();
@@ -264,7 +271,8 @@ int main(int argc, char **argv) {
             fds[count].events = POLLIN;
             count++;
         }
-        poll(fds, count, 100);
+        // Forced flips run at the panel's own pace, not the loop's.
+        poll(fds, count, force_flip ? 0 : 100);
         now = now_ms();
 
         if (touch_slot >= 0 && (fds[touch_slot].revents & POLLIN)) {
@@ -323,15 +331,27 @@ int main(int argc, char **argv) {
             desk_set_link(&model, DESK_LINK_DOWN);
         }
 
-        if (model.dirty) {
-            desk_paint(&canvas, &model, &fonts);
-            model.dirty = 0;
+        if (model.dirty || force_flip) {
+            // A forced flip re-presents the same canvas: the point is the
+            // flip, not the paint, and a full repaint on this CPU would cap
+            // the rate far below the panel's.
+            if (model.dirty) {
+                desk_paint(&canvas, &model, &fonts);
+                model.dirty = 0;
+            }
             if (present_frame(present, &canvas) != 0)
                 break;
+            flips++;
             if (dump) {
                 dump_ppm(&canvas, dump);
                 break;
             }
+        }
+        if (now - last_report_ms >= 10000) {
+            last_report_ms = now;
+            printf("desk: %lu flips so far, link %s\n", flips,
+                   link.ws ? "up" : "down");
+            fflush(stdout);
         }
         if (snapshot) {
             snapshot = 0;

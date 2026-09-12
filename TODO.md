@@ -30,24 +30,44 @@ appliance back. The journal is `README.md` here and
   RK816 charger cannot tell a wall adapter from a laptop port, and the board's
   declared `input-current-limit-microamp` is what stands in for it. Evidence:
   `docs/evidence/2026-09-10-charging/`.
-- [-] Tembleques on the panel, reported 2026-09-10 on v79 and gone by the end
-  of the same session without any display change. Probably self-inflicted, and
-  worth reading before poking the PMIC with the panel live: the report came
-  minutes after RK816 LDO4, LDO5 and LDO6 were disabled for half a second each
-  and then all three together for three seconds, hunting the Wi-Fi wedge. LDO6
-  is the rail whose absence once left this panel unpowered. The tablet was
-  rebooted several times afterwards and the artifact went with them. Not proven,
-  but the timing is close and the alternative is an artifact no instrument could
-  find. Measured while it was reportedly present, and all of it clean:
-  displacement 0.008 panel px against a 0.006 floor while the pre-fix PHY
-  configuration still measured 0.411 on the same rig; brightness flat across
-  vertical lines, grey, white and amber; page flips every vblank, every 100 ms
-  and not at all indistinguishable; backlight 255 down to 24 with no PWM
-  signature. Tables in `docs/evidence/2026-09-10-panel/`.
-  Left behind by the hunt, and worth keeping: `fliptest` is in the mainline
-  image's `taq102-diag` package now, `tools/panel-camera/flicker.py` measures
-  brightness the way `zigzag.py` measures displacement, and the iPhone works as
-  a Continuity Camera over USB-C on the Mac mini.
+- [!] Tembleques on the panel, third sighting 2026-09-12 (observed: "es la
+  tercera vez"), 17 h into the boot, on the desk and then on the cube, at any
+  backlight level. The 2026-09-10 verdict of "probably self-inflicted by the
+  LDO hunt" is withdrawn: nothing touched the PMIC this time. What this
+  sighting established, in order: the PHY PLL was at the good pair
+  (`REG03=0x02 REG04=0x1C`, 336 MHz) and the LVDS block at `E1=0x92 E4=0xAA
+  EB=0xF8` while I was seeing it; LDO4/5/6 enabled at 3.3 V; no
+  kernel event; the iPhone rig again measured the floor (0.004 px at 30 fps,
+  0.025 at 60 fps, flicker 0.13 levels). Then, by my eye, with the
+  fault still believed present: `testpattern bars` clean, `rescue-screen`
+  (Inter text, one buffer) clean, the desk static (1 flip) clean, the desk
+  flipping identical buffers at 49/s clean, the cube clean again. So it had
+  cleared itself between the report and the first pattern, as on the 10th,
+  and every A/B after that ran in the clean state and proves nothing about
+  the mechanism. Blocked on the next occurrence. Unblock: `panel-trap` now
+  logs the PHY, VOP clocks, rails, charger, load, drawing app and kernel
+  lines once a minute to `/data/panel-trap.log` (in `taq102-diag`, started by
+  hand on 2026-09-12; make the image start it). When it shimmers again: note
+  the time, do not restart anything, `diff` that minute against a clean one,
+  and run the camera on `fliptest vlines` before it clears.
+- [ ] Every QLC+ launch on the Mac resets the tablet's USB gadget: `dwc2: new
+  device` at uptime 51602, 64162 and ~65830 on 2026-09-12 line up with the
+  three launches (`open -na`, a shell relaunch, `launchctl submit`). QLC+'s
+  DMX USB plugin walks every USB device with libusb. Harmless so far (the
+  console re-enumerates) but it is a VBUS-side event on the same hub the
+  tablet charges from, and it belongs in any charging investigation.
+- [!] The tablet drained on the USB-C hub with the input limit already at
+  1500 mA: 2026-09-12, `usb/input_current_limit=1500000`, `0xa1=0x45`,
+  `current_now=-259..-292 mA` at brightness 255 from before 10:24 until
+  about 11:00 local, then `+300..+336 mA` with no register change and no
+  cable event. That is not the 2026-09-10 fault (450 mA limit; fixed by the
+  init override). With the limit fixed, the remaining variable is the
+  source: VBUS sagging under load makes the RK816's input voltage limiter
+  (`USB_VLIMIT_EN`) throttle the current, and neither the driver nor hwmon
+  exposes VBUS. Blocked on a VBUS measurement. Unblock: find the RK816 ADC
+  channel for USB voltage in the vendor `rk816_battery.c`, expose it, add it
+  to `panel-trap`; the trap already logs `0xa1`, `VB_MON`, extcon and the
+  battery current, so the next drain will at least say which side moved.
 - [ ] The charging bolt is a 5-by-7 bitmap scaled up, so it is the one blocky
   shape left in a bar that is otherwise smooth. Only visible while charging
   and only at close range; a small vector path would settle it.
