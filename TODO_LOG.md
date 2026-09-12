@@ -6,6 +6,18 @@
 
 ### 2026-09
 
+- [x] 2026-09-13 - **Desk: asynchronous supplicant requests and recovery.**
+  SCAN, STATUS, SCAN_RESULTS, join requests, and rollback now share one
+  non-blocking request transport driven by the desk poll loop. Late replies
+  are isolated by transport replacement; known-network backups restore
+  whole and survive failed restores. All 30 host tests pass with ASan/UBSan;
+  the ARM cross build passes with warnings as errors. A silent RECONFIGURE
+  failed with its file restored at 3,067 ms, with a longest measured step
+  of 2 ms against the test's 50 ms poll interval. Startup ATTACH and shutdown
+  DETACH remain synchronous and are tracked separately in TODO.md.
+  Evidence: `docs/evidence/2026-09-13-desk-async-supplicant-findings.md`.
+  Commits: `3b451fb`, `b526d5d`. No tablet or QLC+ instance contacted.
+
 - [x] 2026-09-12 - **Desk: the interface review, two rounds with the reviewer.**
   Every page and bank dumped from the tablet, six defects found by eye and
   fixed first: the master fader read `--` until somebody moved it on the Mac

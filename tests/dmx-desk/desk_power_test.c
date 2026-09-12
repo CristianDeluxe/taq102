@@ -28,7 +28,7 @@ static int get(const char *path) {
 }
 
 int main(void) {
-    char root[] = "/tmp/dmxdesk-power-XXXXXX";
+    char root[] = "./output/dmxdesk-power-XXXXXX";
     assert(mkdtemp(root));
     char bl[256], conf[256], node[256], maxp[256];
     snprintf(bl, sizeof bl, "%s/backlight", root);
@@ -68,6 +68,12 @@ int main(void) {
     desk_power_set_aware(&q, 0, 10000);
     assert(get(cur) == 200);
     desk_power_free(&q);
+    unlink(cur);
+    unlink(maxp);
+    unlink(conf);
+    rmdir(node);
+    rmdir(bl);
+    rmdir(root);
     printf("desk_power ok\n");
     return 0;
 }
