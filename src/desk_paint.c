@@ -137,17 +137,20 @@ static void paint_swatch(struct canvas *c, const struct desk_control *ctl,
         int sx = cx - SWATCH_D / 2 + i * SWATCH_D / n;
         int sw = (i + 1) * SWATCH_D / n - i * SWATCH_D / n;
         int cx0 = sx, cy0 = cy, cw = sw, ch = SWATCH_D;
-        if (old_w >= 0) {
+        // A clip of zero width means none was set; a set one is intersected.
+        if (old_w > 0) {
             // Intersect with the frame's own clip.
             int x1 = cx0 > old_x ? cx0 : old_x, y1 = cy0 > old_y ? cy0 : old_y;
             int x2 = cx0 + cw < old_x + old_w ? cx0 + cw : old_x + old_w;
             int y2 = cy0 + ch < old_y + old_h ? cy0 + ch : old_y + old_h;
             cx0 = x1; cy0 = y1; cw = x2 > x1 ? x2 - x1 : 0; ch = y2 > y1 ? y2 - y1 : 0;
         }
+        if (cw <= 0 || ch <= 0)
+            continue;
         canvas_set_clip(c, cx0, cy0, cw, ch);
         canvas_round_rect(c, cx - SWATCH_D / 2, cy, SWATCH_D, SWATCH_D, SWATCH_D / 2, ctl->swatch[i]);
     }
-    if (old_w >= 0)
+    if (old_w > 0)
         canvas_set_clip(c, old_x, old_y, old_w, old_h);
     else
         canvas_clear_clip(c);
@@ -218,8 +221,8 @@ static void paint_master(struct canvas *c, const struct desk_control *ctl,
     int bh = fonts->value ? font_height(fonts->value) + 8 : 40;
     canvas_round_rect(c, r.x + 8, r.y + r.h / 2 - bh / 2, r.w - 16, bh, 12, DESK_GLASS);
     centred(c, fonts->value, r.x, r.y + r.h / 2 - bh / 2 + 4, r.w, text, DESK_INK);
-    canvas_round_rect(c, r.x + 8, r.y + 10, r.w - 16, 28, 8, DESK_GLASS);
-    centred(c, fonts->label, r.x, r.y + 14, r.w, ctl->label, DESK_MUTED);
+    centred(c, fonts->label, r.x, r.y + 16, r.w, ctl->label,
+            known && ctl->level > 220 && live ? DESK_GLASS : DESK_MUTED);
 }
 
 // The one red on the desk: the console's own StopAll, drawn as a warning
