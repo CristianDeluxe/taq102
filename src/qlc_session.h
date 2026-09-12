@@ -53,6 +53,10 @@ int qlc_session_recv(struct qlc_session *s, char *buf, size_t cap);
 int qlc_session_send(struct qlc_session *s, const char *frame);
 
 enum qlc_link qlc_session_link(const struct qlc_session *s);
+// The round trip of the last heartbeat answered, in milliseconds, or -1
+// before the first answer of this connection. A number for the log, so the
+// staleness threshold is argued from measurements rather than guessed.
+int qlc_session_last_rtt(const struct qlc_session *s);
 // Why the link is down, or why it was last lost.
 const char *qlc_session_reason(const struct qlc_session *s);
 

@@ -124,7 +124,7 @@ static enum http_fetch_state read_headers(struct http_fetch *f) {
             if (strncmp(f->head, "HTTP/1.1 200", 12) != 0 &&
                 strncmp(f->head, "HTTP/1.0 200", 12) != 0) {
                 char line[80];
-                snprintf(line, sizeof line, "%s", f->head);
+                snprintf(line, sizeof line, "%.79s", f->head);
                 char *cr = strchr(line, '\r');
                 if (cr)
                     *cr = '\0';

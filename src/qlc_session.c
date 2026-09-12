@@ -19,6 +19,8 @@ struct qlc_session {
     struct ws *ws;
     struct http_fetch *fetch;
     int64_t next_try_ms, phase_started_ms, last_heard_ms, last_beat_ms;
+    int64_t beat_sent_ms;       // 0 when no heartbeat is outstanding
+    int last_rtt_ms;
     char ring[RING_FRAMES][RING_FRAME_MAX];
     int ring_head, ring_count;
     struct vc_doc snapshot;
@@ -100,6 +102,10 @@ static int pump_frames(struct qlc_session *s, int64_t now) {
     int r;
     while ((r = ws_recv_text(s->ws, frame, sizeof frame)) == 1) {
         s->last_heard_ms = now;
+        if (s->beat_sent_ms && strncmp(frame, "QLC+API|isProjectLoaded", 23) == 0) {
+            s->last_rtt_ms = (int)(now - s->beat_sent_ms);
+            s->beat_sent_ms = 0;
+        }
         if (s->ring_count == RING_FRAMES) {
             // The oldest frame goes: a desk that cannot keep up with pushes
             // resynchronises from the next snapshot anyway.
@@ -191,6 +197,8 @@ enum qlc_link qlc_session_step(struct qlc_session *s, int64_t now) {
         // first connections drop themselves.
         s->last_heard_ms = now;
         s->last_beat_ms = now;
+        s->beat_sent_ms = 0;
+        s->last_rtt_ms = -1;
         s->link = QLC_READY;
         snprintf(s->reason, sizeof s->reason, "linked");
         break;
@@ -206,6 +214,7 @@ enum qlc_link qlc_session_step(struct qlc_session *s, int64_t now) {
         // inside the window it treats as stale.
         if (now - s->last_beat_ms >= s->cfg.heartbeat_ms) {
             s->last_beat_ms = now;
+            s->beat_sent_ms = now;
             if (ws_send_text(s->ws, "QLC+API|isProjectLoaded") != 0) {
                 drop(s, now, "socket refused the heartbeat");
                 break;
@@ -256,4 +265,5 @@ int qlc_session_send(struct qlc_session *s, const char *frame) {
 }
 
 enum qlc_link qlc_session_link(const struct qlc_session *s) { return s ? s->link : QLC_DOWN; }
+int qlc_session_last_rtt(const struct qlc_session *s) { return s ? s->last_rtt_ms : -1; }
 const char *qlc_session_reason(const struct qlc_session *s) { return s ? s->reason : "no session"; }
