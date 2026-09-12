@@ -690,6 +690,12 @@ int main(int argc, char **argv) {
                                 fprintf(stderr, "desk: find: cannot start the sweep\n");
                             }
                             break;
+                        case SETUP_FIND_CANCEL:
+                            // The sweep dies now; its poll reports it stopped
+                            // and the card says so.
+                            aw_cancel(finder);
+                            snprintf(setup.master_note, sizeof setup.master_note, "Search stopped");
+                            break;
                         case SETUP_SET_MASTER:
                             snprintf(conf.master, sizeof conf.master, "%s", act.host);
                             conf.port = act.port;
@@ -844,7 +850,7 @@ int main(int argc, char **argv) {
             int exit_status = 0;
             if (aw_poll(finder, &exit_status) || !aw_busy(finder)) {
                 finder_collect(&setup);
-                if (setup.found_count == 0)
+                if (setup.found_count == 0 && strcmp(setup.master_note, "Search stopped") != 0)
                     snprintf(setup.master_note, sizeof setup.master_note, "%s",
                              exit_status != 0 ? "Search failed" : "No QLC+ on this network");
                 fprintf(stderr, "desk: find: %d master%s%s\n", setup.found_count,

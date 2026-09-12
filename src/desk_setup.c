@@ -283,9 +283,8 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
             s->scan_page++;
         return none();
     case T_FIND:
-        if (s->master_busy[0])
-            return none();
-        a.kind = SETUP_FIND;
+        // While a sweep runs the same button stops it.
+        a.kind = s->master_busy[0] ? SETUP_FIND_CANCEL : SETUP_FIND;
         return a;
     case T_TYPE: {
         char initial[SETUP_HOST_MAX + 8];

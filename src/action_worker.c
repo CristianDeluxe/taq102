@@ -89,6 +89,13 @@ struct action_worker *aw_new(void) {
     return w;
 }
 
+void aw_cancel(struct action_worker *w) {
+    if (!w) return;
+    pthread_mutex_lock(&w->lock);
+    if (w->pid && !w->stopped) stop_child(w);
+    pthread_mutex_unlock(&w->lock);
+}
+
 int aw_start(struct action_worker *w, const char *const argv[], int timeout_s) {
     if (!w || !argv || !argv[0] || !argv[0][0] || timeout_s <= 0) return -1;
     pthread_mutex_lock(&w->lock);

@@ -113,6 +113,10 @@ int main(void) {
     // The master card: find, a found row, a typed address.
     int fx = SETUP_MASTER_X + 20, tx = SETUP_MASTER_X + SETUP_CARD_W - 40;
     assert(tap(&s, fx, by).kind == SETUP_FIND);
+    // While the sweep runs the same button asks to stop it.
+    snprintf(s.master_busy, sizeof s.master_busy, "Finding");
+    assert(tap(&s, fx, by).kind == SETUP_FIND_CANCEL);
+    s.master_busy[0] = '\0';
     char hosts[2][SETUP_HOST_MAX] = { "192.168.1.65", "192.168.1.56" };
     desk_setup_set_found(&s, hosts, 2, 0);
     desk_setup_set_master(&s, "", 9998, 0);
