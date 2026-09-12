@@ -6,7 +6,8 @@
 //   dmxdesk --host 192.168.1.50 --map /etc/taq102/deluxe-eventos.json
 //
 // DMXDESK_DUMP=<file.ppm> writes the first frame and exits, so the screen can
-// be checked from a laptop without a camera.
+// be checked from a laptop without a camera. SIGUSR1 writes the same file
+// without stopping, which is how a running desk is photographed.
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
@@ -45,6 +46,9 @@
 
 static volatile sig_atomic_t stop;
 static void on_signal(int sig) { (void)sig; stop = 1; }
+
+static volatile sig_atomic_t snapshot;
+static void on_snapshot(int sig) { (void)sig; snapshot = 1; }
 
 static int64_t now_ms(void) {
     struct timespec ts;
@@ -208,6 +212,7 @@ int main(int argc, char **argv) {
 
     signal(SIGTERM, on_signal);
     signal(SIGINT, on_signal);
+    signal(SIGUSR1, on_snapshot);
 
     struct link link = { NULL, 0, 0, 0 };
     const char *dump = getenv("DMXDESK_DUMP");
@@ -220,7 +225,6 @@ int main(int argc, char **argv) {
             link.ws = ws_connect(host, port, "/qlcplusWS", 3000);
             link.next_try_ms = now + RECONNECT_MS;
             if (link.ws) {
-                link.last_heard_ms = now;
                 link.last_beat_ms = 0;
                 // Every connection re-reads the console. Opening the socket
                 // sends no snapshot, and the document is the only source that
@@ -236,6 +240,11 @@ int main(int argc, char **argv) {
                     enabled = showmap_build(&model, &map, &console);
                     printf("desk: %d of %d controls enabled\n", enabled, map.count);
                 }
+                // The clock on silence starts once the desk is actually
+                // listening. Fetching the console takes most of a second over
+                // Wi-Fi, and counting that as the master saying nothing is
+                // what made the first two connections drop themselves.
+                link.last_heard_ms = now_ms();
                 desk_set_link(&model, DESK_LINK_READY);
             }
         }
@@ -323,6 +332,12 @@ int main(int argc, char **argv) {
                 dump_ppm(&canvas, dump);
                 break;
             }
+        }
+        if (snapshot) {
+            snapshot = 0;
+            dump_ppm(&canvas, "/tmp/desk.ppm");
+            printf("desk: wrote /tmp/desk.ppm\n");
+            fflush(stdout);
         }
     }
 

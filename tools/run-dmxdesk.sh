@@ -84,6 +84,10 @@ fi
 
 [ -x "$here/output/dmxdesk" ] || "$here/tools/build-dmxdesk.sh"
 map_name=$(basename "$map")
+# A running desk holds its own file open, and scp onto a busy binary fails.
+# shellcheck disable=SC2086
+ssh $ssh_opts "root@$tablet" \
+	'for p in $(pidof dmxdesk 2>/dev/null); do kill "$p" || true; done; sleep 1; rm -f /tmp/dmxdesk' || true
 # Dropbear has no sftp server, so scp needs its old direct-transfer protocol.
 # shellcheck disable=SC2086
 scp -O $ssh_opts "$here/output/dmxdesk" "$map" "root@$tablet:/tmp/"
