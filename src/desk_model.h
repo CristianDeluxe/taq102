@@ -56,6 +56,7 @@ struct desk_model {
     struct desk_layout layout;
     int page, bank;         // the view on screen
     enum desk_link link;
+    int locked;             // the surface accepts nothing; painted as such
     char master_name[64];   // what the desk is talking to, for the rail
     int dirty;
     // One capture at a time: the slot is remembered so a second finger cannot
@@ -98,6 +99,10 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
 struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y);
 struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y);
 void desk_touch_cancel(struct desk_model *m, int slot);
+// Drops any capture, whatever finger holds it: a display or lock transition
+// must not deliver a gesture that started on the other side of it.
+void desk_cancel_all(struct desk_model *m);
+void desk_set_locked(struct desk_model *m, int locked);
 
 // State from the master. A function id can drive more than one control.
 void desk_apply_function(struct desk_model *m, int function_id, int running);

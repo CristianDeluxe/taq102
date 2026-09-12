@@ -55,14 +55,17 @@ for p in $(pidof glcube 2>/dev/null); do kill -9 "$p" || true; done
 # Mainline registers silead_ts before the power key, so the touch node is
 # chosen by device name rather than by its number.
 touch_node=/dev/input/event1
+power_node=""
 for e in /sys/class/input/event*; do
-	if [ "$(cat "$e/device/name" 2>/dev/null)" = silead_ts ]; then
-		touch_node=/dev/input/$(basename "$e")
-	fi
+	case "$(cat "$e/device/name" 2>/dev/null)" in
+	silead_ts) touch_node=/dev/input/$(basename "$e") ;;
+	"rk805 pwrkey") power_node=/dev/input/$(basename "$e") ;;
+	esac
 done
 # --host and --port go only when the caller gave them, so a host the tablet
 # keeps for itself (a later phase) is not overridden on every relaunch.
 set -- --map "$MAP" --touch "$touch_node"
+[ -n "$power_node" ] && set -- "$@" --power "$power_node"
 [ -n "$MASTER" ] && set -- "$@" --host "$MASTER"
 [ -n "$PORT" ] && set -- "$@" --port "$PORT"
 if [ -n "$DUMP" ]; then

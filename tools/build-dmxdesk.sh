@@ -38,6 +38,7 @@ cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
     -o \$BUILD/dmxdesk \
     \$SRC/dmxdesk.c \$SRC/desk_model.c \$SRC/desk_paint.c \$SRC/desk_present_drm.c \
     \$SRC/desk_layout_resolve.c \$SRC/desk_caption.c \$SRC/desk_view.c \$SRC/desk_input.c \
+    \$SRC/desk_lock.c \$SRC/display_power.c \$SRC/power_key.c \
     \$SRC/showmap.c \$SRC/showmap_validate.c \$SRC/vcjson.c \$SRC/qlc_codec.c \
     \$SRC/qlc_session.c \$SRC/ws_client.c \$SRC/send_queue.c \$SRC/http_fetch.c \
     \$SRC/status.c \$SRC/statusbar.c \$SRC/canvas.c \$SRC/canvas_blend.c \

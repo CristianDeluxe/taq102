@@ -240,7 +240,9 @@ static void paint_rail(struct canvas *c, const struct desk_model *model,
                         current ? DESK_INK : DESK_MUTED);
     }
     struct desk_rect lock = desk_view_lock_target();
-    canvas_round_rect(c, lock.x, lock.y, lock.w, lock.h, lock.w / 2, DESK_MUTED);
+    // The ring reads amber while locked: the one state the rail carries.
+    canvas_round_rect(c, lock.x, lock.y, lock.w, lock.h, lock.w / 2,
+                      model->locked ? DESK_AMBER : DESK_MUTED);
     canvas_round_rect(c, lock.x + 3, lock.y + 3, lock.w - 6, lock.h - 6, lock.w / 2 - 3, DESK_TILE);
     // A padlock: the shackle and the body, in muted.
     canvas_round_rect(c, lock.x + 26, lock.y + 16, 20, 18, 10, DESK_MUTED);
@@ -283,7 +285,7 @@ static void paint_banks(struct canvas *c, const struct desk_model *model,
         struct desk_rect b = desk_view_bank_button(i);
         int current = i == model->bank;
         canvas_round_rect(c, b.x, b.y, b.w, b.h, 12, current ? DESK_INK : DESK_TILE);
-        char digit[4];
+        char digit[16];
         snprintf(digit, sizeof digit, "%d", i + 1);
         centred(c, fonts->label, b.x, b.y + (b.h - (fonts->label ? font_height(fonts->label) : 15)) / 2,
                 b.w, digit, current ? DESK_GLASS : DESK_MUTED);
@@ -331,4 +333,10 @@ void desk_paint(struct canvas *canvas, const struct desk_model *model,
 
     // Last, so it covers the tiles it is about rather than hiding behind them.
     paint_link_banner(canvas, model, fonts);
+    if (model->locked) {
+        int x = DESK_GRID_X, w = DESK_MASTER_X - DESK_GRID_X;
+        canvas_round_rect(canvas, x, DESK_H - 100, w, 40, 12, DESK_AMBER);
+        centred(canvas, fonts->label, x, DESK_H - 92, w,
+                "Surface locked - hold the padlock to unlock", DESK_GLASS);
+    }
 }

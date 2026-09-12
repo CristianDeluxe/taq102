@@ -28,13 +28,16 @@
 
 #include "canvas.h"
 #include "desk_input.h"
+#include "desk_lock.h"
 #include "desk_layout.h"
 #include "desk_layout_resolve.h"
 #include "desk_model.h"
 #include "desk_paint.h"
 #include "desk_present_drm.h"
+#include "display_power.h"
 #include "font.h"
 #include "qlc_codec.h"
+#include "power_key.h"
 #include "qlc_session.h"
 #include "showmap.h"
 #include "showmap_validate.h"
@@ -147,6 +150,7 @@ int main(int argc, char **argv) {
     const char *map_path = "/etc/taq102/vibra.desk.json";
     const char *card = "/dev/dri/card0";
     const char *touch_device = "/dev/input/event1";
+    const char *power_device = NULL;
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--host") && i + 1 < argc) host = argv[++i];
@@ -154,9 +158,11 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--map") && i + 1 < argc) map_path = argv[++i];
         else if (!strcmp(argv[i], "--card") && i + 1 < argc) card = argv[++i];
         else if (!strcmp(argv[i], "--touch") && i + 1 < argc) touch_device = argv[++i];
+        else if (!strcmp(argv[i], "--power") && i + 1 < argc) power_device = argv[++i];
         else {
             fprintf(stderr, "usage: %s --host H [--port P] [--map FILE]"
-                            " [--card /dev/dri/cardN] [--touch /dev/input/eventN]\n",
+                            " [--card /dev/dri/cardN] [--touch /dev/input/eventN]"
+                            " [--power /dev/input/eventN]\n",
                     argv[0]);
             return 2;
         }
@@ -232,6 +238,15 @@ int main(int argc, char **argv) {
     if (!touch)
         fprintf(stderr, "no touch on %s: the desk will only show\n", touch_device);
 
+    // The power key blanks and locks; without a node the desk simply never
+    // blanks, which is show mode anyway.
+    int power_fd = power_device ? open(power_device, O_RDONLY | O_NONBLOCK | O_CLOEXEC) : -1;
+    if (power_device && power_fd < 0)
+        fprintf(stderr, "no power key on %s: the desk will not blank\n", power_device);
+    struct power_key power_key = { { 0 }, 0 };
+    struct desk_lock lock;
+    desk_lock_init(&lock);
+
     signal(SIGTERM, on_signal);
     signal(SIGINT, on_signal);
     signal(SIGUSR1, on_snapshot);
@@ -261,11 +276,18 @@ int main(int argc, char **argv) {
     char last_reason[96] = "";
 
     while (!stop) {
-        struct pollfd fds[3];
-        int count = 0, touch_slot = -1;
+        struct pollfd fds[4];
+        int count = 0, touch_slot = -1, power_slot = -1;
         if (touch) {
             touch_slot = count;
             fds[count].fd = touch_fd;
+            fds[count].events = POLLIN;
+            fds[count].revents = 0;
+            count++;
+        }
+        if (power_fd >= 0) {
+            power_slot = count;
+            fds[count].fd = power_fd;
             fds[count].events = POLLIN;
             fds[count].revents = 0;
             count++;
@@ -275,12 +297,48 @@ int main(int argc, char **argv) {
         poll(fds, (nfds_t)count, force_flip ? 0 : 100);
         int64_t now = now_ms();
 
+        if (power_slot >= 0 && (fds[power_slot].revents & POLLIN) &&
+            power_key_read(&power_key, power_fd)) {
+            desk_lock_power_key(&lock, now);
+            desk_cancel_all(&model);
+            if (touch) {
+                struct touch_event dropped[32];
+                touch_input_cancel_all(touch, dropped, 32);
+            }
+            if (lock.state == DESK_BLANKED) {
+                if (display_power_off() != 0)
+                    fprintf(stderr, "desk: cannot blank the display\n");
+            } else {
+                if (display_power_on() != 0)
+                    fprintf(stderr, "desk: cannot wake the display\n");
+                model.dirty = 1;
+            }
+            fprintf(stderr, "desk: power key, surface %s\n",
+                    lock.state == DESK_BLANKED ? "blanked" : "locked");
+        }
+
         if (touch_slot >= 0 && (fds[touch_slot].revents & POLLIN)) {
             struct touch_event events[32];
             int n = touch_input_read_fd(touch, touch_fd, events, 32);
             for (int i = 0; i < n; i++) {
+                if (events[i].kind == TOUCH_DOWN)
+                    desk_lock_contact(&lock, 1);
+                else if (events[i].kind == TOUCH_UP || events[i].kind == TOUCH_CANCEL)
+                    desk_lock_contact(&lock, 0);
                 int index;
                 enum desk_target target = desk_input_feed(&input, &model, &events[i], &index);
+                if (target == TARGET_LOCK) {
+                    int changed = events[i].kind == TOUCH_DOWN ? desk_lock_target_down(&lock, now)
+                                : events[i].kind == TOUCH_UP ? desk_lock_target_up(&lock, now) : 0;
+                    if (changed) {
+                        desk_cancel_all(&model);
+                        fprintf(stderr, "desk: surface %s\n",
+                                lock.state == DESK_LOCKED ? "locked" : "unlocked");
+                    }
+                    continue;
+                }
+                if (!desk_lock_allows(&lock))
+                    continue;
                 if (target == TARGET_RAIL) {
                     if (index >= 0)
                         desk_set_view(&model, index, 0);
@@ -331,6 +389,7 @@ int main(int argc, char **argv) {
         while (qlc_session_recv(session, frame, sizeof frame) == 1)
             apply_frame(&model, frame);
         desk_set_link(&model, desk_link_of(link));
+        desk_set_locked(&model, lock.state != DESK_UNLOCKED);
         if (log_rtt && link == QLC_READY && qlc_session_last_rtt(session) != last_rtt_logged) {
             last_rtt_logged = qlc_session_last_rtt(session);
             if (last_rtt_logged >= 0)
@@ -353,6 +412,10 @@ int main(int argc, char **argv) {
             status = next;
         }
 
+        // A blanked display is not painted: the CRTC is off and a flip would
+        // only wake the pipeline the operator just switched off.
+        if (lock.state == DESK_BLANKED)
+            model.dirty = 0;
         if (model.dirty || force_flip) {
             // A forced flip re-presents the same canvas: the point is the
             // flip, not the paint, and a full repaint on this CPU would cap
@@ -388,6 +451,8 @@ int main(int argc, char **argv) {
         touch_input_free(touch);
     if (touch_fd >= 0)
         close(touch_fd);
+    if (power_fd >= 0)
+        close(power_fd);
     qlc_session_free(session);
     font_close(fonts.tile);
     font_close(fonts.value);
