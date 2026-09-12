@@ -1,0 +1,17 @@
+// Turns a parsed map plus the console the master actually has loaded into the
+// desk's controls. A control the console cannot back is added disabled, with
+// the reason written where the tile will show it, rather than dropped: an
+// operator who sees "not in this show" knows more than one who sees a gap.
+#ifndef SHOWMAP_VALIDATE_H
+#define SHOWMAP_VALIDATE_H
+
+#include "desk_model.h"
+#include "showmap.h"
+#include "vcjson.h"
+
+// Fills `model` from `map`, checking every control against `doc`. Returns the
+// number of controls that came out enabled.
+int showmap_build(struct desk_model *model, const struct show_map *map,
+                  const struct vc_doc *doc);
+
+#endif

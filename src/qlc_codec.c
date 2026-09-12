@@ -11,6 +11,8 @@ struct field { const char *p; size_t n; };
 
 static int next_field(const char *frame, size_t len, size_t *pos,
                       struct field *out) {
+    out->p = frame;
+    out->n = 0;
     if (*pos > len)
         return -1;
     const char *start = frame + *pos;
@@ -55,11 +57,11 @@ int qlc_decode(const char *frame, size_t len, struct qlc_msg *out) {
 
     memset(out, 0, sizeof *out);
     size_t pos = 0;
-    struct field head;
+    struct field head = { frame, 0 };
     int more = next_field(frame, len, &pos, &head);
 
     if (field_is(&head, "FUNCTION")) {
-        struct field id, state;
+        struct field id = { frame, 0 }, state = { frame, 0 };
         if (more != 1 || next_field(frame, len, &pos, &id) != 1)
             return -1;
         next_field(frame, len, &pos, &state);
@@ -76,7 +78,7 @@ int qlc_decode(const char *frame, size_t len, struct qlc_msg *out) {
     }
 
     if (field_is(&head, "GM_VALUE")) {
-        struct field value;
+        struct field value = { frame, 0 };
         if (more != 1)
             return -1;
         next_field(frame, len, &pos, &value);
@@ -87,7 +89,7 @@ int qlc_decode(const char *frame, size_t len, struct qlc_msg *out) {
     }
 
     if (field_is(&head, "QLC+API")) {
-        struct field query;
+        struct field query = { frame, 0 };
         if (more != 1)
             return -1;
         more = next_field(frame, len, &pos, &query);
@@ -103,10 +105,10 @@ int qlc_decode(const char *frame, size_t len, struct qlc_msg *out) {
     // that type carries. A type this desk does not act on is not an error.
     if (field_int(&head, 0, 0x7FFFFFF, &out->widget_id) != 0 || more != 1)
         return -1;
-    struct field type;
+    struct field type = { frame, 0 };
     more = next_field(frame, len, &pos, &type);
     if (field_is(&type, "BUTTON") || field_is(&type, "SLIDER")) {
-        struct field value;
+        struct field value = { frame, 0 };
         if (more != 1)
             return -1;
         next_field(frame, len, &pos, &value);
