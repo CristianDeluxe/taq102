@@ -37,6 +37,7 @@
 #include "display_power.h"
 #include "font.h"
 #include "qlc_codec.h"
+#include "perf_window.h"
 #include "power_key.h"
 #include "qlc_session.h"
 #include "showmap.h"
@@ -266,6 +267,13 @@ int main(int argc, char **argv) {
     // deciding whether 750 ms of silence is a dead master or a slow Wi-Fi.
     int log_rtt = getenv("DMXDESK_RTT") != NULL;
     int last_rtt_logged = -1;
+    // DMXDESK_PERF=1 keeps the last thousand paint and present times and
+    // prints their p50/p95 with RSS and MemAvailable every ten seconds: the
+    // numbers the perf gate is argued from.
+    int log_perf = getenv("DMXDESK_PERF") != NULL;
+    struct perf_window paint_ms, present_ms;
+    perf_window_init(&paint_ms);
+    perf_window_init(&present_ms);
     int force_flip = getenv("DMXDESK_FLIP") != NULL;
     unsigned long flips = 0;
     int64_t last_report_ms = now_ms();
@@ -421,12 +429,18 @@ int main(int argc, char **argv) {
             // flip, not the paint, and a full repaint on this CPU would cap
             // the rate far below the panel's.
             if (model.dirty) {
+                int64_t t0 = now_ms();
                 desk_paint(&canvas, &model, &fonts);
                 statusbar_paint(&canvas, &status, &bar_style);
                 model.dirty = 0;
+                if (log_perf)
+                    perf_window_add(&paint_ms, (int)(now_ms() - t0));
             }
+            int64_t t1 = now_ms();
             if (present_frame(present, &canvas) != 0)
                 break;
+            if (log_perf)
+                perf_window_add(&present_ms, (int)(now_ms() - t1));
             flips++;
             if (dump) {
                 dump_ppm(&canvas, dump);
@@ -437,6 +451,14 @@ int main(int argc, char **argv) {
             last_report_ms = now;
             printf("desk: %lu flips so far, link %s (%s)\n", flips,
                    link == QLC_READY ? "up" : "down", qlc_session_reason(session));
+            if (log_perf) {
+                printf("perf: paint p50 %d p95 %d ms (%d) present p50 %d p95 %d ms (%d)"
+                       " rss %ld kB memavail %ld kB\n",
+                       perf_window_percentile(&paint_ms, 50), perf_window_percentile(&paint_ms, 95),
+                       paint_ms.count, perf_window_percentile(&present_ms, 50),
+                       perf_window_percentile(&present_ms, 95), present_ms.count,
+                       perf_rss_kb(), perf_memavailable_kb());
+            }
             fflush(stdout);
         }
         if (snapshot) {
