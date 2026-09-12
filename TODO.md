@@ -384,12 +384,16 @@ MacBook as master. Design and evidence:
   `TODO_LOG.md` 2026-09-12. Next: Phase 2, the pages (`docs/`
   gets its plan when it starts), then setup without ssh, speed, finite
   accents, position.
-- [ ] Phase 2, the pages: LIVE with its accents and haze sections, COLOR,
-  PIXELES, CABEZAS, GOBOS, PRISMA with hooks then picks in banks, CONTROL with
-  the chases; the rail with an ink marker; captions on two lines measured
-  against Inter; the lock target and the power key; regional repaint and the
-  perf gate. The map already carries every control (132) validated; the
-  desk lays out only the state section today.
+- [ ] Phase 3, setup without ssh: the gear in the status bar, the Wi-Fi card
+  (scan, join with the on-screen keyboard, rollback), the master card (the
+  /24 sweep for QLC+, an address typed on a keypad, `/data/desk.conf`), the
+  screen-brightness fader and the power-aware toggle through
+  `control_runtime`. Plan in `docs/` when it starts.
+- [ ] The link banner covers the compact state row on the family pages while
+  connecting; it is transient and nothing is pressable then, but a banner
+  that sits under the row instead would read better.
+- [ ] A page or bank change repaints the whole screen once, about 41 ms on
+  the tablet: one frame, off the drag path, so it stays.
 - [ ] Bumps (Phase 5) stay rejected as first designed: the reviewer showed a
   SingleShot start does not carry Flash priority or ForceLTP, so a colour
   bump over a running wheel mixes to white, and the vertical smoke scene

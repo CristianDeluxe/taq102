@@ -1749,3 +1749,28 @@ carried disabled: the desk holds nothing open across a network, and the reviewer
 showed that a single-shot chaser is no substitute for Flash priority. This
 phase lays out the room's seven states and the panic button; the pages come
 next.
+
+## The desk got its pages, and learned to paint only what changed (2026-09-12)
+
+Seven pages on the rail, laid out by a resolver from the generated map:
+sections with headings, tiles sized by role (a wide AUTO, colour picks as
+swatch rings with the colours their scenes write, four haze rhythms to a
+row), banks with pills when a page overflows, and the room's seven states
+riding every other page in a compact row so AUTO is one tap away from
+anywhere. Captions wrap on two lines measured against Inter, never guessed.
+A padlock on the rail locks the surface with a tap and unlocks with a held
+second; the power key blanks the panel and wakes it locked; the desk never
+sleeps by itself, because a desk waiting for a cue is idle only by the
+appliance's definition.
+
+The perf gate then failed by a mile: a full repaint cost 217 ms on this CPU,
+against a 33 ms budget. Four changes, each measured on the tablet with the
+fader dragging itself (`DMXDESK_DRAG=1`, since the mainline kernel has no
+uinput to fake a finger): rounded rectangles drawn as row spans instead of a
+float test per pixel (217 to 41 ms), the status bar painted once per change
+and copied, damage tracked per control with every primitive clipped to it
+and the presenter copying only the union of this frame's and the other
+buffer's pending damage (41 to 31), and finally the background clear clipped
+too: 14 ms median, 16 at p95, present 4 ms, 8 MB resident. A page change
+still repaints everything once, in about 41 ms, which is one frame and not on
+the drag path. Evidence: `docs/evidence/2026-09-12-desk-phase2/`.
