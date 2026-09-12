@@ -28,13 +28,13 @@
 #define DESK_RADIUS 28
 
 // The master fills from the bottom like the control centre's brightness tile,
-// and blackout sits under it.
+// and the panic button sits under it.
 #define DESK_MASTER_TILE_X (DESK_MASTER_X + DESK_GAP)
 #define DESK_MASTER_TILE_Y DESK_GRID_Y
 #define DESK_MASTER_TILE_W (DESK_MASTER_W - 2 * DESK_GAP)
 #define DESK_MASTER_TILE_H 380
-#define DESK_BLACKOUT_Y (DESK_MASTER_TILE_Y + DESK_MASTER_TILE_H + DESK_GAP)
-#define DESK_BLACKOUT_H 92
+#define DESK_PANIC_Y (DESK_MASTER_TILE_Y + DESK_MASTER_TILE_H + DESK_GAP)
+#define DESK_PANIC_H 92
 
 // The appliance palette, unchanged: amber means on, and on this screen the
 // show paints it, not the finger.

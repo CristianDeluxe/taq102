@@ -6,9 +6,7 @@
 
 #include <cjson/cJSON.h>
 
-#include "desk_layout.h"
-
-#define MAP_MAX_BYTES (256 * 1024)
+#define MAP_MAX_BYTES (512 * 1024)
 
 static int string_into(const cJSON *node, const char *name, char *dst,
                        size_t cap, int required) {
@@ -21,8 +19,8 @@ static int string_into(const cJSON *node, const char *name, char *dst,
         fprintf(stderr, "map: %s is longer than %zu bytes\n", name, cap - 1);
         return -1;
     }
-    // The wire is pipe-separated, so a label carrying one would be a command
-    // injected through a caption.
+    // The wire is pipe-separated, so a caption carrying one would be a
+    // command injected through a label.
     if (strchr(item->valuestring, '|')) {
         fprintf(stderr, "map: %s contains the wire's delimiter\n", name);
         return -1;
@@ -42,23 +40,209 @@ static int int_field(const cJSON *node, const char *name, int min, int max,
     return (int)v;
 }
 
-static int parse_action(const cJSON *node, enum map_action *out) {
-    const cJSON *item = cJSON_GetObjectItemCaseSensitive(node, "action");
-    if (!cJSON_IsString(item) || !item->valuestring)
+static int bool_field(const cJSON *node, const char *name, int fallback) {
+    const cJSON *item = cJSON_GetObjectItemCaseSensitive(node, name);
+    if (cJSON_IsTrue(item))
+        return 1;
+    if (cJSON_IsFalse(item))
+        return 0;
+    return fallback;
+}
+
+static int parse_role(const char *word, enum map_role *out) {
+    static const struct { const char *word; enum map_role role; } table[] = {
+        { "state", MAP_ROLE_STATE }, { "accent", MAP_ROLE_ACCENT },
+        { "haze", MAP_ROLE_HAZE },   { "hook", MAP_ROLE_HOOK },
+        { "pick", MAP_ROLE_PICK },   { "chase", MAP_ROLE_CHASE },
+        { "toggle", MAP_ROLE_TOGGLE },
+    };
+    for (size_t i = 0; i < sizeof table / sizeof table[0]; i++) {
+        if (strcmp(word, table[i].word) == 0) {
+            *out = table[i].role;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static int parse_swatch(const char *text, uint32_t *out) {
+    if (strlen(text) != 7 || text[0] != '#')
         return -1;
-    if (strcmp(item->valuestring, "toggle") == 0)
-        *out = MAP_TOGGLE;
-    else if (strcmp(item->valuestring, "master") == 0)
-        *out = MAP_MASTER;
-    else if (strcmp(item->valuestring, "blackout") == 0)
-        *out = MAP_BLACKOUT;
-    else {
-        // Flash and momentary are deliberately absent: a held button over a
-        // network has no deadline, and this show's fog is one of them.
-        fprintf(stderr, "map: unknown action %s\n", item->valuestring);
+    uint32_t v = 0;
+    for (int i = 1; i < 7; i++) {
+        char ch = text[i];
+        int digit = ch >= '0' && ch <= '9' ? ch - '0'
+                  : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10
+                  : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10 : -1;
+        if (digit < 0)
+            return -1;
+        v = (v << 4) | (uint32_t)digit;
+    }
+    *out = v;
+    return 0;
+}
+
+// One control's own fields; its page, section and position come from the
+// section that lists it.
+static int parse_control(const char *key, const cJSON *item, struct map_control *c) {
+    memset(c, 0, sizeof *c);
+    if (strlen(key) >= sizeof c->key || strchr(key, '|')) {
+        fprintf(stderr, "map: control key %.20s is not usable\n", key);
         return -1;
     }
+    strcpy(c->key, key);
+    if (!cJSON_IsObject(item) ||
+        string_into(item, "caption", c->caption, sizeof c->caption, 1) != 0 ||
+        string_into(item, "detail", c->detail, sizeof c->detail, 0) != 0 ||
+        string_into(item, "reason", c->reason, sizeof c->reason, 0) != 0) {
+        fprintf(stderr, "map: control %s is incomplete\n", key);
+        return -1;
+    }
+    char word[16];
+    if (string_into(item, "role", word, sizeof word, 1) != 0 || parse_role(word, &c->role) != 0) {
+        fprintf(stderr, "map: control %s has an unknown role\n", key);
+        return -1;
+    }
+    if (string_into(item, "action", word, sizeof word, 1) != 0)
+        return -1;
+    if (strcmp(word, "toggle") == 0)
+        c->held = 0;
+    else if (strcmp(word, "flash") == 0)
+        c->held = 1;
+    else {
+        fprintf(stderr, "map: control %s has an unknown action %s\n", key, word);
+        return -1;
+    }
+    c->widget_id = int_field(item, "widget", 0, 0x7FFFFFF, -1);
+    if (c->widget_id < 0) {
+        fprintf(stderr, "map: control %s has no widget\n", key);
+        return -1;
+    }
+    c->function_id = int_field(item, "function", 0, 0x7FFFFFF, -1);
+    c->solo_id = int_field(item, "solo", 0, 0x7FFFFFF, -1);
+    c->enabled = bool_field(item, "enabled", 0);
+    // A held button is never enabled here whatever the generator said: the
+    // desk holds nothing open across a network.
+    if (c->held)
+        c->enabled = 0;
+    const cJSON *swatches = cJSON_GetObjectItemCaseSensitive(item, "swatches");
+    const cJSON *s = NULL;
+    cJSON_ArrayForEach(s, swatches) {
+        if (c->swatches >= MAP_MAX_SWATCHES)
+            break;
+        if (!cJSON_IsString(s) || parse_swatch(s->valuestring, &c->swatch[c->swatches]) != 0) {
+            fprintf(stderr, "map: control %s has a swatch that is not #rrggbb\n", key);
+            return -1;
+        }
+        c->swatches++;
+    }
     return 0;
+}
+
+static int parse_pages(const cJSON *pages, const cJSON *controls, struct show_map *out) {
+    // Every control parsed once, then placed where a section lists it.
+    struct map_control *pool = calloc(MAP_MAX_CONTROLS, sizeof *pool);
+    int pooled = 0;
+    if (!pool)
+        return -1;
+    int rc = -1;
+    const cJSON *item = NULL;
+    cJSON_ArrayForEach(item, controls) {
+        if (pooled >= MAP_MAX_CONTROLS) {
+            fprintf(stderr, "map: more than %d controls\n", MAP_MAX_CONTROLS);
+            goto done;
+        }
+        if (parse_control(item->string ? item->string : "", item, &pool[pooled]) != 0)
+            goto done;
+        for (int i = 0; i < pooled; i++) {
+            if (pool[i].widget_id == pool[pooled].widget_id) {
+                fprintf(stderr, "map: %s and %s share widget %d\n", pool[i].key,
+                        pool[pooled].key, pool[pooled].widget_id);
+                goto done;
+            }
+        }
+        pooled++;
+    }
+    if (pooled == 0) {
+        fprintf(stderr, "map: no controls\n");
+        goto done;
+    }
+
+    const cJSON *page = NULL;
+    cJSON_ArrayForEach(page, pages) {
+        if (out->pages >= MAP_MAX_PAGES) {
+            fprintf(stderr, "map: more than %d pages\n", MAP_MAX_PAGES);
+            goto done;
+        }
+        struct map_page *p = &out->page[out->pages];
+        if (!cJSON_IsObject(page) ||
+            string_into(page, "key", p->key, sizeof p->key, 1) != 0 ||
+            string_into(page, "title", p->title, sizeof p->title, 1) != 0)
+            goto done;
+        const cJSON *sections = cJSON_GetObjectItemCaseSensitive(page, "sections");
+        const cJSON *section = NULL;
+        cJSON_ArrayForEach(section, sections) {
+            if (p->sections >= MAP_MAX_SECTIONS) {
+                fprintf(stderr, "map: page %s has more than %d sections\n", p->key, MAP_MAX_SECTIONS);
+                goto done;
+            }
+            struct map_section *sec = &p->section[p->sections];
+            if (!cJSON_IsObject(section) ||
+                string_into(section, "key", sec->key, sizeof sec->key, 1) != 0 ||
+                string_into(section, "title", sec->title, sizeof sec->title, 1) != 0)
+                goto done;
+            sec->solo_id = int_field(section, "solo", 0, 0x7FFFFFF, -1);
+            sec->first = out->count;
+            const cJSON *keys = cJSON_GetObjectItemCaseSensitive(section, "controls");
+            const cJSON *k = NULL;
+            cJSON_ArrayForEach(k, keys) {
+                if (!cJSON_IsString(k) || !k->valuestring)
+                    goto done;
+                int found = -1;
+                for (int i = 0; i < pooled; i++) {
+                    if (strcmp(pool[i].key, k->valuestring) == 0) {
+                        found = i;
+                        break;
+                    }
+                }
+                if (found < 0) {
+                    fprintf(stderr, "map: section %s/%s lists %s, which is not a control\n",
+                            p->key, sec->key, k->valuestring);
+                    goto done;
+                }
+                if (pool[found].page >= 0 && pool[found].section >= 0 && pool[found].caption[0] == '\1') {
+                    goto done;
+                }
+                if (out->count >= MAP_MAX_CONTROLS)
+                    goto done;
+                struct map_control *c = &out->control[out->count];
+                *c = pool[found];
+                c->page = out->pages;
+                c->section = p->sections;
+                // Mark the pooled copy as placed by blanking its key, so a
+                // control listed twice is caught.
+                pool[found].key[0] = '\0';
+                out->count++;
+                sec->count++;
+            }
+            p->sections++;
+        }
+        out->pages++;
+    }
+    for (int i = 0; i < pooled; i++) {
+        if (pool[i].key[0]) {
+            fprintf(stderr, "map: control %s is listed by no section\n", pool[i].key);
+            goto done;
+        }
+    }
+    if (out->count != pooled) {
+        fprintf(stderr, "map: a control is listed twice\n");
+        goto done;
+    }
+    rc = 0;
+done:
+    free(pool);
+    return rc;
 }
 
 int showmap_parse(const char *json, size_t len, struct show_map *out) {
@@ -79,10 +263,13 @@ int showmap_parse(const char *json, size_t len, struct show_map *out) {
     }
 
     int rc = -1;
-    if (int_field(root, "schema", 1, 1, -1) != 1) {
-        fprintf(stderr, "map: schema is not 1\n");
+    out->schema = int_field(root, "schema", 2, 2, -1);
+    if (out->schema != 2) {
+        fprintf(stderr, "map: schema is not 2\n");
         goto done;
     }
+    if (string_into(root, "qlcVersion", out->qlc_version, sizeof out->qlc_version, 1) != 0)
+        goto done;
     const cJSON *show = cJSON_GetObjectItemCaseSensitive(root, "show");
     if (!cJSON_IsObject(show) ||
         string_into(show, "key", out->key, sizeof out->key, 1) != 0 ||
@@ -91,47 +278,23 @@ int showmap_parse(const char *json, size_t len, struct show_map *out) {
         fprintf(stderr, "map: the show block is incomplete\n");
         goto done;
     }
+    const cJSON *gm = cJSON_GetObjectItemCaseSensitive(root, "grandMaster");
+    out->grand_master_widget = cJSON_IsObject(gm) ? int_field(gm, "widget", 0, 0x7FFFFFF, -1) : -1;
+    const cJSON *stop = cJSON_GetObjectItemCaseSensitive(root, "stopAll");
+    out->stop_all_widget = cJSON_IsObject(stop) ? int_field(stop, "widget", 0, 0x7FFFFFF, -1) : -1;
+    out->stop_all_fade_ms = cJSON_IsObject(stop) ? int_field(stop, "fadeOutMs", 0, 60000, 0) : 0;
 
+    const cJSON *pages = cJSON_GetObjectItemCaseSensitive(root, "pages");
     const cJSON *controls = cJSON_GetObjectItemCaseSensitive(root, "controls");
-    if (!cJSON_IsArray(controls) || cJSON_GetArraySize(controls) < 1) {
-        fprintf(stderr, "map: no controls\n");
+    if (!cJSON_IsArray(pages) || !cJSON_IsObject(controls)) {
+        fprintf(stderr, "map: pages or controls missing\n");
         goto done;
     }
-
-    const cJSON *item = NULL;
-    cJSON_ArrayForEach(item, controls) {
-        if (out->count >= MAP_MAX_CONTROLS) {
-            fprintf(stderr, "map: more than %d controls\n", MAP_MAX_CONTROLS);
-            goto done;
-        }
-        if (!cJSON_IsObject(item))
-            goto done;
-        struct map_control *c = &out->control[out->count];
-        if (string_into(item, "label", c->label, sizeof c->label, 1) != 0 ||
-            parse_action(item, &c->action) != 0)
-            goto done;
-        c->widget_id = int_field(item, "widget", 0, 0x7FFFFFF, -1);
-        c->function_id = int_field(item, "function", 0, 0x7FFFFFF, -1);
-        c->row = int_field(item, "row", 0, DESK_ROWS - 1, -1);
-        c->col = int_field(item, "col", 0, DESK_COLS - 1, -1);
-        if (c->action == MAP_TOGGLE && (c->row < 0 || c->col < 0)) {
-            fprintf(stderr, "map: %s has no slot on the grid\n", c->label);
-            goto done;
-        }
-        if (c->action == MAP_TOGGLE && c->widget_id < 0) {
-            fprintf(stderr, "map: %s has no widget to press\n", c->label);
-            goto done;
-        }
-        for (int i = 0; i < out->count; i++) {
-            const struct map_control *other = &out->control[i];
-            if (other->action == MAP_TOGGLE && c->action == MAP_TOGGLE &&
-                other->row == c->row && other->col == c->col) {
-                fprintf(stderr, "map: %s and %s share a slot\n", other->label,
-                        c->label);
-                goto done;
-            }
-        }
-        out->count++;
+    if (parse_pages(pages, controls, out) != 0)
+        goto done;
+    if (out->pages == 0 || out->count == 0) {
+        fprintf(stderr, "map: nothing to show\n");
+        goto done;
     }
     rc = 0;
 

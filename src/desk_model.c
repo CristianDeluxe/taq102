@@ -12,7 +12,8 @@ static struct desk_action none(void) {
 }
 
 static int inside(const struct desk_control *c, int x, int y) {
-    return x >= c->x && x < c->x + c->w && y >= c->y && y < c->y + c->h;
+    return c->w > 0 && c->h > 0 &&
+           x >= c->x && x < c->x + c->w && y >= c->y && y < c->y + c->h;
 }
 
 static int hit(const struct desk_model *m, int x, int y) {
@@ -107,7 +108,8 @@ struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y) {
     if (slot != m->capture_slot || m->capture_index < 0)
         return none();
     struct desk_control *c = &m->control[m->capture_index];
-    int fired = c->kind == DESK_CUE && inside(c, x, y) && usable(m, c);
+    int fired = (c->kind == DESK_CUE || c->kind == DESK_STOP_ALL) && inside(c, x, y) &&
+                usable(m, c);
     c->pressed = 0;
     m->capture_slot = NO_CAPTURE;
     m->capture_index = -1;
@@ -115,8 +117,10 @@ struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y) {
     if (!fired)
         return none();
     // One gesture, one message. The tile does not change colour here: the
-    // master's own push is what lights it.
-    struct desk_action a = { DESK_ACT_TOGGLE, c->widget_id, 255 };
+    // master's own push is what lights it. The panic button is the same
+    // shape of gesture, a completed tap, with nothing to light afterwards.
+    struct desk_action a = { c->kind == DESK_STOP_ALL ? DESK_ACT_STOP_ALL : DESK_ACT_TOGGLE,
+                             c->widget_id, 255 };
     return a;
 }
 

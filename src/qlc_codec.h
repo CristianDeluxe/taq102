@@ -42,6 +42,9 @@ int qlc_decode(const char *frame, size_t len, struct qlc_msg *out);
 // QLC+ toggles on either, so callers send this once per gesture and never
 // resend it after an ambiguous disconnect.
 int qlc_encode_toggle(char *buf, size_t cap, int widget_id);
+// The console's StopAll button: the same frame as a toggle, and the button
+// itself stops every function without keeping a state of its own.
+int qlc_encode_stop_all(char *buf, size_t cap, int widget_id);
 // Flash needs both edges: on at contact, off at release or cancel.
 int qlc_encode_flash(char *buf, size_t cap, int widget_id, int on);
 // A slider widget, in its own configured range.

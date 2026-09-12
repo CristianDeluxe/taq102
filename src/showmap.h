@@ -1,40 +1,82 @@
-// The show map: which of the master's controls this desk shows, where, and
-// under what name. Written by hand beside the show, parsed here, and never
-// trusted: the map says what the operator wants, and validation against the
-// loaded console decides what the desk may actually do.
+// The show map: what the desk shows of the master's console, organised into
+// pages and sections, generated beside the show by `qlctool deskmap` and never
+// trusted: the map says what the generator meant, and validation against the
+// console the master actually serves decides what the desk may press.
 //
-// Positions are a row and a column, not pixels. The desk resolves them against
-// its own grid, so a map cannot place two tiles on top of each other or push
-// one under the master column.
+// Schema 2. Controls are stored in page order, then section order, then the
+// section's own order, so a section is one contiguous run of the array.
 #ifndef SHOWMAP_H
 #define SHOWMAP_H
 
 #include <stddef.h>
+#include <stdint.h>
 
-#define MAP_MAX_CONTROLS 32
-#define MAP_LABEL_MAX 32
-#define MAP_KEY_MAX 64
+#define MAP_MAX_PAGES 8
+#define MAP_MAX_SECTIONS 8
+#define MAP_MAX_CONTROLS 256
+#define MAP_KEY_MAX 48
+#define MAP_CAPTION_MAX 48
+#define MAP_MAX_SWATCHES 4
 
-enum map_action { MAP_TOGGLE, MAP_MASTER, MAP_BLACKOUT };
+enum map_role {
+    MAP_ROLE_STATE,     // the room's one state at a time
+    MAP_ROLE_ACCENT,    // a hit held on the Mac; carried disabled
+    MAP_ROLE_HAZE,      // an ambient fog rhythm
+    MAP_ROLE_HOOK,      // a family's automatic owner
+    MAP_ROLE_PICK,      // a latched manual choice within a family
+    MAP_ROLE_CHASE,     // a dimmer chase
+    MAP_ROLE_TOGGLE,    // any other toggle
+};
 
 struct map_control {
-    char label[MAP_LABEL_MAX];
-    enum map_action action;
-    int row, col;       // grid slot; ignored by master and blackout
-    int widget_id;      // -1 when the action needs no widget
-    int function_id;    // -1 when it drives none
+    char key[MAP_KEY_MAX];
+    char caption[MAP_CAPTION_MAX];
+    char detail[MAP_CAPTION_MAX];
+    enum map_role role;
+    int held;           // the Mac's button is a Flash: never pressed from here
+    int widget_id;      // never -1 for a control
+    int function_id;    // -1 when the generator recorded none
+    int solo_id;        // the solo frame the widget must sit in, or -1
+    int page, section;  // indices into the map's pages and that page's sections
+    int enabled;        // the generator's word; validation may still disable
+    char reason[MAP_CAPTION_MAX];
+    uint32_t swatch[MAP_MAX_SWATCHES];   // 0xRRGGBB
+    int swatches;
+};
+
+struct map_section {
+    char key[MAP_KEY_MAX];
+    char title[MAP_CAPTION_MAX];
+    int solo_id;        // -1 when the section is not a solo frame
+    int first, count;   // the run in show_map.control
+};
+
+struct map_page {
+    char key[MAP_KEY_MAX];
+    char title[MAP_CAPTION_MAX];
+    struct map_section section[MAP_MAX_SECTIONS];
+    int sections;
 };
 
 struct show_map {
+    int schema;
+    char qlc_version[16];
     char key[MAP_KEY_MAX];
-    char workspace[MAP_KEY_MAX];
+    char workspace[128];
     char sha256[65];
+    int grand_master_widget;    // -1 when the console has no GrandMaster slider
+    int stop_all_widget;        // -1 when there is no StopAll button
+    int stop_all_fade_ms;
+    struct map_page page[MAP_MAX_PAGES];
+    int pages;
     struct map_control control[MAP_MAX_CONTROLS];
     int count;
 };
 
 // Parses `len` bytes of map JSON. 0 on success, -1 on anything malformed, with
-// the reason on stderr. A map with no controls is malformed.
+// the reason on stderr: a wrong schema, a section naming a control that is
+// not there, a control no section lists, two controls on one widget, a swatch
+// that is not #rrggbb, or any string past its bound.
 int showmap_parse(const char *json, size_t len, struct show_map *out);
 
 // Reads the file, with the same rules and a size cap.

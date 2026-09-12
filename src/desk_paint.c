@@ -58,10 +58,15 @@ static void paint_cue(struct canvas *c, const struct desk_control *ctl,
         ink = DESK_MUTED;
     centred(c, fonts->tile, ctl->x + 12, text_y, ctl->w - 24, ctl->label, ink);
 
-    // An unknown state says so rather than looking off.
+    // An unknown state says so rather than looking off; a known one shows
+    // the map's second line, when there is one.
     if (ctl->state == DESK_UNKNOWN && ctl->enabled)
         centred(c, fonts->label, ctl->x + 12, ctl->y + ctl->h - 44,
                 ctl->w - 24, "unknown", DESK_MUTED);
+    else if (ctl->enabled && ctl->detail[0])
+        centred(c, fonts->label, ctl->x + 12, ctl->y + ctl->h - 44,
+                ctl->w - 24, ctl->detail,
+                ctl->state == DESK_ON ? DESK_GLASS : DESK_MUTED);
     if (!ctl->enabled && ctl->reason[0])
         centred(c, fonts->label, ctl->x + 12, ctl->y + ctl->h - 44,
                 ctl->w - 24, ctl->reason, DESK_MUTED);
@@ -105,14 +110,20 @@ static void paint_master(struct canvas *c, const struct desk_control *ctl,
             known && ctl->level > 220 ? DESK_GLASS : DESK_MUTED);
 }
 
-static void paint_blackout(struct canvas *c, const struct desk_control *ctl,
-                           const struct desk_fonts *fonts) {
-    tile_base(c, ctl, DESK_TILE);
+// The one red on the desk: the console's own StopAll, drawn as a warning
+// rather than as a cue because it has no state to light and never will.
+static void paint_stop_all(struct canvas *c, const struct desk_control *ctl,
+                           const struct desk_fonts *fonts, enum desk_link link) {
+    int live = ctl->enabled && link == DESK_LINK_READY;
+    tile_base(c, ctl, live ? DESK_WARN : DESK_TILE);
+    if (ctl->pressed)
+        press_outline(c, ctl, live ? DESK_WARN : DESK_TILE);
     centred(c, fonts->tile, ctl->x + 8, ctl->y + 18, ctl->w - 16, ctl->label,
-            DESK_MUTED);
-    if (ctl->reason[0])
+            live ? DESK_INK : DESK_MUTED);
+    const char *under = !ctl->enabled && ctl->reason[0] ? ctl->reason : ctl->detail;
+    if (under[0])
         centred(c, fonts->label, ctl->x + 8, ctl->y + ctl->h - 34, ctl->w - 16,
-                ctl->reason, DESK_MUTED);
+                under, live ? DESK_INK : DESK_MUTED);
 }
 
 static const char *link_words(enum desk_link link) {
@@ -166,10 +177,12 @@ void desk_paint(struct canvas *canvas, const struct desk_model *model,
 
     for (int i = 0; i < model->count; i++) {
         const struct desk_control *ctl = &model->control[i];
+        if (ctl->w <= 0 || ctl->h <= 0)
+            continue;               // validated, kept, not on this screen
         switch (ctl->kind) {
         case DESK_CUE:      paint_cue(canvas, ctl, fonts, model->link); break;
         case DESK_MASTER:   paint_master(canvas, ctl, fonts, model->link); break;
-        case DESK_BLACKOUT: paint_blackout(canvas, ctl, fonts); break;
+        case DESK_STOP_ALL: paint_stop_all(canvas, ctl, fonts, model->link); break;
         }
     }
 
