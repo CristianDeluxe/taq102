@@ -326,7 +326,14 @@ MacBook as master. Design and evidence:
   so its widget state cannot stand for the rig's, and grand master at zero is
   not blackout. The tile ships disabled and showing unknown until experiment 1
   settles a route with an authoritative readback.
-- [ ] The desk needs its own heartbeat. Pushes are change-driven and the
+- [ ] The desk dropped its link once in 20 minutes of idle running on 2026-09-12
+  (`803 ms without a word from the master`, one line in `/tmp/dmxdesk.log`,
+  reconnected by itself). The 750 ms staleness threshold may simply be tighter
+  than this Wi-Fi, which already has its own `rtw88_8723cs: failed to get tx
+  report` history. Measure the heartbeat round trip over an hour before
+  loosening it: a threshold chosen to hide a stall is worse than a drop that
+  recovers.
+- [x] The desk needs its own heartbeat. Pushes are change-driven and the
   server's WebSocket ping is every 5000 ms, so the 750 ms staleness rule would
   disconnect a healthy idle desk. Acceptance: a scene held untouched for ten
   minutes with the link still up.
