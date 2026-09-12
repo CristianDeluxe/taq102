@@ -293,11 +293,27 @@ static void paint_headings(struct canvas *c, const struct desk_model *model,
         const struct desk_heading *h = &model->layout.heading[i];
         if (h->page != model->page || h->bank != model->bank)
             continue;
-        char text[64];
-        if (h->parts > 1)
-            snprintf(text, sizeof text, "%s  %d/%d", h->text, h->part, h->parts);
-        else
+        char text[96];
+        if (h->parts > 1) {
+            // A choice running on another part of this section is named
+            // here, so the operator knows what is on without paging.
+            const char *elsewhere = NULL;
+            for (int j = 0; j < model->layout.placements && !elsewhere; j++) {
+                const struct desk_placement *p = &model->layout.placement[j];
+                if (p->page != model->page || p->bank == model->bank || p->tile == TILE_COMPACT ||
+                    p->tile == TILE_MASTER || p->tile == TILE_PANIC)
+                    continue;
+                const struct desk_control *ctl = &model->control[p->control];
+                if (ctl->section == h->section && ctl->state == DESK_ON)
+                    elsewhere = ctl->label;
+            }
+            if (elsewhere)
+                snprintf(text, sizeof text, "%s  %d/%d  \xc2\xb7  %s", h->text, h->part, h->parts, elsewhere);
+            else
+                snprintf(text, sizeof text, "%s  %d/%d", h->text, h->part, h->parts);
+        } else {
             snprintf(text, sizeof text, "%s", h->text);
+        }
         if (fonts->label)
             font_draw_fit(fonts->label, c, h->x, h->y + font_baseline(fonts->label), h->w, text,
                           DESK_MUTED);
@@ -320,6 +336,18 @@ static void paint_banks(struct canvas *c, const struct desk_model *model,
         snprintf(digit, sizeof digit, "%d", i + 1);
         centred(c, fonts->label, b.x, b.y + (b.h - (fonts->label ? font_height(fonts->label) : 15)) / 2,
                 b.w, digit, current ? DESK_GLASS : DESK_MUTED);
+        // An amber dot on a bank where something the master says is running
+        // sits: amber keeps its one meaning, and the running thing is findable.
+        int running = 0;
+        for (int j = 0; j < model->layout.placements && !running; j++) {
+            const struct desk_placement *p = &model->layout.placement[j];
+            if (p->page == model->page && p->bank == i && p->tile != TILE_COMPACT &&
+                p->tile != TILE_MASTER && p->tile != TILE_PANIC &&
+                model->control[p->control].state == DESK_ON)
+                running = 1;
+        }
+        if (running)
+            canvas_round_rect(c, b.x + b.w - 16, b.y + 6, 8, 8, 4, DESK_AMBER);
     }
 }
 

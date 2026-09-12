@@ -91,7 +91,7 @@ static void next_bank(struct cursor *cur, int master, int panic) {
         compact_row(cur, cur->state);
 }
 
-static void heading(struct cursor *cur, const char *text, int part, int parts) {
+static void heading(struct cursor *cur, const char *text, int part, int parts, int section) {
     if (cur->out->headings >= DESK_MAX_HEADINGS) {
         cur->failed = 1;
         return;
@@ -103,6 +103,7 @@ static void heading(struct cursor *cur, const char *text, int part, int parts) {
     h->y = cur->y;
     h->w = CONTENT_W;
     snprintf(h->text, sizeof h->text, "%s", text);
+    h->section = section;
     h->part = part;
     h->parts = parts;
     cur->y += HEADING_H + HEADING_GAP;
@@ -202,7 +203,7 @@ static void lay_page(struct cursor *cur, const struct show_map *map, int page,
         while (i < sec->first + sec->count && !cur->failed) {
             // How many parts this section will take is known only once it is
             // split; headings are patched afterwards.
-            heading(cur, sec->title, part, parts);
+            heading(cur, sec->title, part, parts, s);
             int next = lay_rows(cur, map, sec, i, is_state);
             if (next == i) {
                 // Not even one row fit: a fresh bank.

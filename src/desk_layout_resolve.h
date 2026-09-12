@@ -19,6 +19,7 @@ struct desk_heading {
     int x, y, w;
     char text[MAP_CAPTION_MAX];
     int part, parts;    // 1/1 when the section was not split
+    int section;        // the map section, so a painter can name what runs on another part
 };
 
 struct desk_layout {
