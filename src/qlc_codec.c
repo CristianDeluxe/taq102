@@ -140,6 +140,10 @@ int qlc_encode_toggle(char *buf, size_t cap, int widget_id) {
     return emit(buf, cap, "%d|255", widget_id);
 }
 
+int qlc_encode_stop_all(char *buf, size_t cap, int widget_id) {
+    return qlc_encode_toggle(buf, cap, widget_id);
+}
+
 int qlc_encode_flash(char *buf, size_t cap, int widget_id, int on) {
     if (!widget_ok(widget_id))
         return -1;

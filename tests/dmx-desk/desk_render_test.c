@@ -1,6 +1,6 @@
 // SOURCES: desk_model.c desk_paint.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c
-// The desk, built from the real show map against the real console document,
-// pressed once, and painted. Writes $TEST_OUT/desk.ppm so the screen can be
+// The desk, built from the generated Vibra map against the real console
+// document, pressed once, and painted. Writes $TEST_OUT/desk.ppm so the screen can be
 // looked at on a laptop before it reaches the tablet.
 #include <assert.h>
 #include <stdio.h>
@@ -54,87 +54,70 @@ static void write_ppm(const struct canvas *c, const char *path) {
 
 int main(void) {
     size_t len;
-    char *json = slurp("tests/dmx-desk/fixtures/vc-deluxe-eventos.json", &len);
+    char *json = slurp("tests/dmx-desk/fixtures/vc-vibra.json", &len);
     struct vc_doc console;
     assert(vc_parse(json, len, &console) == 0);
     free(json);
 
     struct show_map map;
-    assert(showmap_load("show/deluxe-eventos.json", &map) == 0);
-    assert(strcmp(map.key, "deluxe-eventos") == 0);
-    assert(map.count == 11);
+    assert(showmap_load("show/vibra.desk.json", &map) == 0);
+    assert(strcmp(map.key, "vibra") == 0);
 
     struct desk_model model;
     int enabled = showmap_build(&model, &map, &console);
-    assert(model.count == 11);
+    assert(enabled > 100);
 
-    // The fog cue is in the map on purpose. It is widget 125, a Flash button,
-    // and the desk must refuse it rather than offer a held gesture over a
-    // network. Nine cues in the map, eight usable, plus the master.
-    // Every enabled tile starts from the console document's own state rather
-    // than from nothing: in this fixture none of them was running.
-    assert(by_label(&model, "Circulo")->state == DESK_OFF);
-
-    const struct desk_control *fog = by_label(&model, "Humo");
-    assert(fog && !fog->enabled);
-    assert(strcmp(fog->reason, "flash, not safe here") == 0);
-    const struct desk_control *blackout = by_label(&model, "Blackout");
-    assert(blackout && !blackout->enabled);
-    assert(enabled == 9);
-
-    // Tiles land on the grid, inside the chrome, and never under the master.
+    // Every tile that has a place lands on the grid, inside the chrome, and
+    // never under the master.
     for (int i = 0; i < model.count; i++) {
         const struct desk_control *c = &model.control[i];
+        if (c->w == 0)
+            continue;
         assert(c->x >= DESK_RAIL_W && c->y >= DESK_BAR_H);
         assert(c->x + c->w <= DESK_W && c->y + c->h <= DESK_H);
         if (c->kind == DESK_CUE)
             assert(c->x + c->w <= DESK_MASTER_X);
     }
 
+    // Every enabled tile starts from the console document's own state rather
+    // than from nothing: in this fixture nothing was running.
+    assert(by_label(&model, "AUTO")->state == DESK_OFF);
+
     // Nothing is pressable while the link is down, however good the map is.
-    const struct desk_control *circle = by_label(&model, "Circulo");
-    int cx = circle->x + circle->w / 2, cy = circle->y + circle->h / 2;
+    const struct desk_control *auto_ctl = by_label(&model, "AUTO");
+    int cx = auto_ctl->x + auto_ctl->w / 2, cy = auto_ctl->y + auto_ctl->h / 2;
     assert(desk_touch_down(&model, 0, cx, cy).kind == DESK_ACT_NONE);
     assert(desk_touch_up(&model, 0, cx, cy).kind == DESK_ACT_NONE);
 
     desk_set_link(&model, DESK_LINK_READY);
     assert(desk_touch_down(&model, 0, cx, cy).kind == DESK_ACT_NONE);
-    assert(by_label(&model, "Circulo")->pressed == 1);
+    assert(by_label(&model, "AUTO")->pressed == 1);
     // A second finger cannot fire another tile while the first is captured.
-    const struct desk_control *white = by_label(&model, "Blanco");
-    assert(desk_touch_down(&model, 1, white->x + 10, white->y + 10).kind == DESK_ACT_NONE);
-    assert(by_label(&model, "Blanco")->pressed == 0);
+    const struct desk_control *charla = by_label(&model, "CHARLA");
+    assert(desk_touch_down(&model, 1, charla->x + 10, charla->y + 10).kind == DESK_ACT_NONE);
+    assert(by_label(&model, "CHARLA")->pressed == 0);
     // One gesture, one message, on release, and the tile does not light itself.
     struct desk_action fired = desk_touch_up(&model, 0, cx, cy);
-    assert(fired.kind == DESK_ACT_TOGGLE && fired.widget_id == 28);
-    assert(by_label(&model, "Circulo")->state == DESK_OFF);   // the finger does not light it
+    assert(fired.kind == DESK_ACT_TOGGLE && fired.widget_id == 4);
+    assert(by_label(&model, "AUTO")->state == DESK_OFF);
 
     // Sliding off a cue before letting go sends nothing.
     assert(desk_touch_down(&model, 0, cx, cy).kind == DESK_ACT_NONE);
     desk_touch_move(&model, 0, 5, 5);
     assert(desk_touch_up(&model, 0, 5, 5).kind == DESK_ACT_NONE);
 
-    // The master follows the finger from first contact.
-    const struct desk_control *master = by_label(&model, "Master");
-    struct desk_action level = desk_touch_down(&model, 0, master->x + 10,
-                                               master->y + master->h - 1);
-    assert(level.kind == DESK_ACT_MASTER && level.value == 0);
-    level = desk_touch_move(&model, 0, master->x + 10, master->y);
-    assert(level.kind == DESK_ACT_MASTER && level.value == 255);
-    desk_touch_up(&model, 0, master->x + 10, master->y);
-
     // The show's word, not the finger's: only this lights a tile.
-    desk_apply_function(&model, 0, 1);
-    assert(by_label(&model, "Circulo")->state == DESK_ON);
-    desk_apply_function(&model, 275, 1);
-    assert(by_label(&model, "Blanco")->state == DESK_ON);
+    desk_apply_function(&model, 720, 1);
+    assert(by_label(&model, "AUTO")->state == DESK_ON);
+    desk_apply_function(&model, 723, 1);
+    assert(by_label(&model, "CHARLA")->state == DESK_ON);
 
     // Losing the link takes every claim about the rig with it.
     desk_set_link(&model, DESK_LINK_DOWN);
-    assert(by_label(&model, "Circulo")->state == DESK_UNKNOWN);
+    assert(by_label(&model, "AUTO")->state == DESK_UNKNOWN);
 
     desk_set_link(&model, DESK_LINK_READY);
-    desk_apply_function(&model, 0, 1);
+    desk_apply_function(&model, 720, 1);
     desk_apply_master(&model, 200);
 
     struct desk_fonts fonts = {

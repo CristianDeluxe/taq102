@@ -7,14 +7,17 @@
 
 #include <stdint.h>
 
-#define DESK_MAX_CONTROLS 32
-#define DESK_LABEL_MAX 32
+#include "showmap.h"
+
+#define DESK_MAX_CONTROLS (MAP_MAX_CONTROLS + 2)
+#define DESK_LABEL_MAX 48
 #define DESK_REASON_MAX 48
+#define DESK_MAX_SWATCHES MAP_MAX_SWATCHES
 
 enum desk_kind {
     DESK_CUE,        // a Toggle button in the console
     DESK_MASTER,     // the grand master
-    DESK_BLACKOUT,   // drawn, and disabled until its route is qualified
+    DESK_STOP_ALL,   // the console's own StopAll: the panic button
 };
 
 // A control's state is three-valued on purpose. Until the desk has been told,
@@ -27,9 +30,14 @@ enum desk_link { DESK_LINK_DOWN, DESK_LINK_CONNECTING, DESK_LINK_SYNCING,
 struct desk_control {
     enum desk_kind kind;
     char label[DESK_LABEL_MAX];
+    char detail[DESK_LABEL_MAX];    // the second line, when the map has one
     int widget_id;      // -1 when the control has no console widget
     int function_id;    // -1 when it drives no function
-    int x, y, w, h;
+    int page, section;  // where the map puts it; -1 for the chrome controls
+    enum map_role role;
+    uint32_t swatch[DESK_MAX_SWATCHES];   // 0xAARRGGBB
+    int swatches;
+    int x, y, w, h;     // a zero size is a control with no place on screen yet
     enum desk_state state;
     int level;          // DESK_MASTER: 0..255, the master's own word
     int requested_level;// DESK_MASTER: what the finger asked for; never painted as the rig's
@@ -50,7 +58,7 @@ struct desk_model {
     int capture_index;
 };
 
-enum desk_action_kind { DESK_ACT_NONE, DESK_ACT_TOGGLE, DESK_ACT_MASTER };
+enum desk_action_kind { DESK_ACT_NONE, DESK_ACT_TOGGLE, DESK_ACT_MASTER, DESK_ACT_STOP_ALL };
 
 struct desk_action {
     enum desk_action_kind kind;

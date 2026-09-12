@@ -114,6 +114,9 @@ static void send_action(struct qlc_session *session, struct desk_action action) 
     case DESK_ACT_MASTER:
         n = qlc_encode_grand_master(frame, sizeof frame, action.value);
         break;
+    case DESK_ACT_STOP_ALL:
+        n = qlc_encode_stop_all(frame, sizeof frame, action.widget_id);
+        break;
     case DESK_ACT_NONE:
         return;
     }
@@ -139,7 +142,7 @@ static int status_changed(const struct status *a, const struct status *b) {
 int main(int argc, char **argv) {
     const char *host = NULL;
     int port = 9999;
-    const char *map_path = "/etc/taq102/show-map.json";
+    const char *map_path = "/etc/taq102/vibra.desk.json";
     const char *card = "/dev/dri/card0";
     const char *touch_device = "/dev/input/event1";
 

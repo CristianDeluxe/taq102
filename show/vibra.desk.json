@@ -1,0 +1,2696 @@
+{
+ "schema": 2,
+ "generator": "qlctool deskmap",
+ "qlcVersion": "5.2.2",
+ "show": {
+  "key": "vibra",
+  "workspace": "Vibra.qxw",
+  "sha256": "1e1eec182a4ecebb29e0fbc8b4b214b1763667ed610e19f71d84a8e0ed8083c4"
+ },
+ "grandMaster": {
+  "widget": 246
+ },
+ "stopAll": {
+  "widget": 21,
+  "fadeOutMs": 1000
+ },
+ "pages": [
+  {
+   "key": "live",
+   "title": "LIVE",
+   "sections": [
+    {
+     "key": "state",
+     "title": "LA SALA ESTÁ ASÍ",
+     "solo": 3,
+     "controls": [
+      "auto",
+      "charla",
+      "tranquilo",
+      "fiesta",
+      "locura",
+      "blanco-total",
+      "todo-negro"
+     ]
+    },
+    {
+     "key": "accents",
+     "title": "GOLPES",
+     "solo": null,
+     "controls": [
+      "flash",
+      "flash-lento",
+      "flash-color",
+      "humo-ya",
+      "humo-vert",
+      "strobo",
+      "strobo-suave",
+      "color-beam"
+     ]
+    },
+    {
+     "key": "haze",
+     "title": "HUMO AMBIENTE",
+     "solo": 29,
+     "controls": [
+      "humo-cada-1-min",
+      "cada-2-min",
+      "cada-4-min",
+      "cada-8-min"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "color",
+   "title": "COLOR",
+   "sections": [
+    {
+     "key": "accents",
+     "title": "GOLPES",
+     "solo": null,
+     "controls": [
+      "rojo",
+      "verde",
+      "azul",
+      "ultravioleta",
+      "amarillo",
+      "cyan",
+      "magenta",
+      "blanco",
+      "naranja",
+      "rosa"
+     ]
+    },
+    {
+     "key": "hooks",
+     "title": "AUTO",
+     "solo": 63,
+     "controls": [
+      "auto-colores",
+      "mezcla",
+      "luz-charla"
+     ]
+    },
+    {
+     "key": "picks",
+     "title": "ELEGIR",
+     "solo": 63,
+     "controls": [
+      "rig-rojo",
+      "rig-verde",
+      "rig-azul",
+      "rig-ultravioleta",
+      "rig-amarillo",
+      "rig-cyan",
+      "rig-magenta",
+      "rig-blanco",
+      "rig-naranja",
+      "rig-rosa",
+      "cabezas-rojo-resto-azul",
+      "cabezas-azul-resto-ambar",
+      "cabezas-magenta-resto-cyan",
+      "cabezas-amarillo-resto-ultravioleta",
+      "cabezas-blanco-resto-rojo",
+      "rig-multicolor-1",
+      "rig-multicolor-2",
+      "rig-4-colores-1",
+      "rig-4-colores-2",
+      "rig-4-colores-3",
+      "rig-4-colores-4",
+      "arcoiris-junto",
+      "arcoiris-fases"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "pixels",
+   "title": "PIXELES",
+   "sections": [
+    {
+     "key": "hooks",
+     "title": "AUTO",
+     "solo": 91,
+     "controls": [
+      "auto-paneles",
+      "paneles-charla"
+     ]
+    },
+    {
+     "key": "picks",
+     "title": "ELEGIR",
+     "solo": 91,
+     "controls": [
+      "effect-1",
+      "effect-5",
+      "effect-8",
+      "effect-12",
+      "effect-16",
+      "effect-20",
+      "effect-23",
+      "effect-27",
+      "effect-31",
+      "effect-35",
+      "effect-38",
+      "effect-42",
+      "paneles-manual"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "heads",
+   "title": "CABEZAS",
+   "sections": [
+    {
+     "key": "hooks",
+     "title": "AUTO",
+     "solo": 108,
+     "controls": [
+      "auto-lento",
+      "auto-normal",
+      "auto-rapido",
+      "centro"
+     ]
+    },
+    {
+     "key": "picks",
+     "title": "ELEGIR",
+     "solo": 108,
+     "controls": [
+      "circulo",
+      "ocho",
+      "linea",
+      "diamante",
+      "cuadrado",
+      "hoja",
+      "lissajous",
+      "ola-vertical",
+      "barrido-unison",
+      "beams-abanico",
+      "beams-cruce",
+      "escenario"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "gobos",
+   "title": "GOBOS",
+   "sections": [
+    {
+     "key": "hooks",
+     "title": "AUTO",
+     "solo": 126,
+     "controls": [
+      "auto-gobos",
+      "reposo"
+     ]
+    },
+    {
+     "key": "picks",
+     "title": "ELEGIR",
+     "solo": 126,
+     "controls": [
+      "gobo-1",
+      "gobo-2",
+      "gobo-3",
+      "gobo-4",
+      "gobo-5",
+      "gobo-6",
+      "gobo-7",
+      "gobo-8",
+      "gobo-9",
+      "gobo-10",
+      "gobo-11",
+      "gobo-12",
+      "gobo-13",
+      "gobo-14",
+      "gobo-15",
+      "gobo-16",
+      "gobo-17",
+      "gobo-repartido-1",
+      "gobo-repartido-2",
+      "gobo-repartido-3",
+      "gobo-repartido-4",
+      "gobo-repartido-5",
+      "gobo-repartido-6",
+      "gobo-repartido-7",
+      "gobo-repartido-8",
+      "gobo-shake-gobo-1",
+      "gobo-shake-gobo-9",
+      "gobo-shake-gobo-17"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "prism",
+   "title": "PRISMA",
+   "sections": [
+    {
+     "key": "hooks",
+     "title": "AUTO",
+     "solo": 159,
+     "controls": [
+      "auto-prisma",
+      "reposo-162"
+     ]
+    },
+    {
+     "key": "picks",
+     "title": "ELEGIR",
+     "solo": 159,
+     "controls": [
+      "insert-prism",
+      "1",
+      "2",
+      "3",
+      "4",
+      "1-y-3",
+      "2-y-4",
+      "prisma-giro-rapido",
+      "prisma-giro-inverso"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "control",
+   "title": "CONTROL",
+   "sections": [
+    {
+     "key": "chases",
+     "title": "BARRIDOS",
+     "solo": null,
+     "controls": [
+      "barrido-de-intensidad",
+      "barrido-inverso",
+      "pares-impares",
+      "rotacion-de-barridos"
+     ]
+    },
+    {
+     "key": "haze-light",
+     "title": "HUMO VERTICAL",
+     "solo": null,
+     "controls": [
+      "humo-vertical"
+     ]
+    }
+   ]
+  }
+ ],
+ "controls": {
+  "auto": {
+   "widget": 4,
+   "function": 720,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "AUTO",
+   "detail": "el show se lleva solo",
+   "role": "state",
+   "solo": 3,
+   "key": "Q",
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "charla": {
+   "widget": 5,
+   "function": 723,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "CHARLA",
+   "detail": "alguien habla",
+   "role": "state",
+   "solo": 3,
+   "key": "F1",
+   "swatches": [
+    "#ffd6aa"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "tranquilo": {
+   "widget": 6,
+   "function": 724,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "TRANQUILO",
+   "detail": "bajón",
+   "role": "state",
+   "solo": 3,
+   "key": "F2",
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "fiesta": {
+   "widget": 7,
+   "function": 725,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "FIESTA",
+   "detail": "marcha normal",
+   "role": "state",
+   "solo": 3,
+   "key": "F3",
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "locura": {
+   "widget": 8,
+   "function": 726,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "LOCURA",
+   "detail": "todo a la vez",
+   "role": "state",
+   "solo": 3,
+   "key": "F4",
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "blanco-total": {
+   "widget": 9,
+   "function": 0,
+   "functionType": "Scene",
+   "action": "toggle",
+   "caption": "BLANCO TOTAL",
+   "detail": "luz de trabajo",
+   "role": "state",
+   "solo": 3,
+   "key": "X",
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "todo-negro": {
+   "widget": 10,
+   "function": 1,
+   "functionType": "Scene",
+   "action": "toggle",
+   "caption": "TODO NEGRO",
+   "detail": "apaga las luces",
+   "role": "state",
+   "solo": 3,
+   "key": "º",
+   "swatches": [
+    "#000000"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "flash": {
+   "widget": 12,
+   "function": 2,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "FLASH",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": "Space",
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "flash-lento": {
+   "widget": 13,
+   "function": 3,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "FLASH LENTO",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": "-",
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "flash-color": {
+   "widget": 14,
+   "function": 4,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "FLASH COLOR",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": ".",
+   "swatches": [],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "humo-ya": {
+   "widget": 15,
+   "function": 638,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "HUMO YA",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": "H",
+   "swatches": [],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "humo-vert": {
+   "widget": 16,
+   "function": 644,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "HUMO VERT",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": "U",
+   "swatches": [],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "strobo": {
+   "widget": 17,
+   "function": 660,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "STROBO",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": "F",
+   "swatches": [],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "strobo-suave": {
+   "widget": 18,
+   "function": 661,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "STROBO SUAVE",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": "T",
+   "swatches": [],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "color-beam": {
+   "widget": 19,
+   "function": 616,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "COLOR BEAM",
+   "detail": "",
+   "role": "toggle",
+   "solo": null,
+   "key": "C",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "humo-cada-1-min": {
+   "widget": 30,
+   "function": 640,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "HUMO cada 1 min",
+   "detail": "",
+   "role": "haze",
+   "solo": 29,
+   "key": "J",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "cada-2-min": {
+   "widget": 31,
+   "function": 641,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "cada 2 min",
+   "detail": "",
+   "role": "haze",
+   "solo": 29,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "cada-4-min": {
+   "widget": 32,
+   "function": 642,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "cada 4 min",
+   "detail": "",
+   "role": "haze",
+   "solo": 29,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "cada-8-min": {
+   "widget": 33,
+   "function": 643,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "cada 8 min",
+   "detail": "",
+   "role": "haze",
+   "solo": 29,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "rojo": {
+   "widget": 53,
+   "function": 5,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "ROJO",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#ff0000"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "verde": {
+   "widget": 54,
+   "function": 6,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "VERDE",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#00ff00"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "azul": {
+   "widget": 55,
+   "function": 7,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "AZUL",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#0000ff"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "ultravioleta": {
+   "widget": 56,
+   "function": 8,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "ULTRAVIOLETA",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#a000ff"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "amarillo": {
+   "widget": 57,
+   "function": 9,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "AMARILLO",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#ffff00"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "cyan": {
+   "widget": 58,
+   "function": 10,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "CYAN",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#00ffff"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "magenta": {
+   "widget": 59,
+   "function": 11,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "MAGENTA",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#ff00ff"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "blanco": {
+   "widget": 60,
+   "function": 12,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "BLANCO",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "naranja": {
+   "widget": 61,
+   "function": 13,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "NARANJA",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#ff7f00"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "rosa": {
+   "widget": 62,
+   "function": 14,
+   "functionType": "Scene",
+   "action": "flash",
+   "caption": "ROSA",
+   "detail": "",
+   "role": "accent",
+   "solo": null,
+   "key": null,
+   "swatches": [
+    "#ff0064"
+   ],
+   "enabled": false,
+   "reason": "held on the Mac"
+  },
+  "auto-colores": {
+   "widget": 65,
+   "function": 706,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "AUTO colores",
+   "detail": "",
+   "role": "hook",
+   "solo": 63,
+   "key": "W",
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "mezcla": {
+   "widget": 66,
+   "function": 707,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Mezcla",
+   "detail": "",
+   "role": "hook",
+   "solo": 63,
+   "key": "E",
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "luz-charla": {
+   "widget": 67,
+   "function": 722,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Luz Charla",
+   "detail": "",
+   "role": "hook",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ffd6aa"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-rojo": {
+   "widget": 68,
+   "function": 727,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Rojo",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ff0000"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-verde": {
+   "widget": 69,
+   "function": 728,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Verde",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#00ff00"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-azul": {
+   "widget": 70,
+   "function": 729,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Azul",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#0000ff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-ultravioleta": {
+   "widget": 71,
+   "function": 730,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig UltraVioleta",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#a000ff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-amarillo": {
+   "widget": 72,
+   "function": 731,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Amarillo",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ffff00"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-cyan": {
+   "widget": 73,
+   "function": 732,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Cyan",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#00ffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-magenta": {
+   "widget": 74,
+   "function": 733,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Magenta",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ff00ff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-blanco": {
+   "widget": 75,
+   "function": 734,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Blanco",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ffffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-naranja": {
+   "widget": 76,
+   "function": 735,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Naranja",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ff7f00"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-rosa": {
+   "widget": 77,
+   "function": 736,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Rosa",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ff0064"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "cabezas-rojo-resto-azul": {
+   "widget": 78,
+   "function": 737,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Cabezas Rojo / Resto Azul",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ff0000",
+    "#0000ff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "cabezas-azul-resto-ambar": {
+   "widget": 79,
+   "function": 738,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Cabezas Azul / Resto Ambar",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#0000ff",
+    "#ffb700"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "cabezas-magenta-resto-cyan": {
+   "widget": 80,
+   "function": 739,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Cabezas Magenta / Resto Cyan",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ff00ff",
+    "#00ffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "cabezas-amarillo-resto-ultravioleta": {
+   "widget": 81,
+   "function": 740,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Cabezas Amarillo / Resto UltraVioleta",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ffff00",
+    "#a000ff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "cabezas-blanco-resto-rojo": {
+   "widget": 82,
+   "function": 741,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Cabezas Blanco / Resto Rojo",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ffffff",
+    "#ff0000"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-multicolor-1": {
+   "widget": 83,
+   "function": 742,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Multicolor 1",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ff0000",
+    "#00ff00",
+    "#0000ff",
+    "#a000ff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-multicolor-2": {
+   "widget": 84,
+   "function": 743,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig Multicolor 2",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#a000ff",
+    "#ffff00",
+    "#00ffff",
+    "#ff00ff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-4-colores-1": {
+   "widget": 85,
+   "function": 744,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig 4 Colores 1",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#0000ff",
+    "#ff0000",
+    "#00ff00",
+    "#ffffff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-4-colores-2": {
+   "widget": 86,
+   "function": 745,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig 4 Colores 2",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ff0000",
+    "#00ff00",
+    "#ffffff",
+    "#0000ff"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-4-colores-3": {
+   "widget": 87,
+   "function": 746,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig 4 Colores 3",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#00ff00",
+    "#ffffff",
+    "#0000ff",
+    "#ff0000"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "rig-4-colores-4": {
+   "widget": 88,
+   "function": 747,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Rig 4 Colores 4",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": null,
+   "swatches": [
+    "#ffffff",
+    "#0000ff",
+    "#ff0000",
+    "#00ff00"
+   ],
+   "enabled": true,
+   "reason": ""
+  },
+  "arcoiris-junto": {
+   "widget": 89,
+   "function": 748,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Arcoiris junto",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": "'",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "arcoiris-fases": {
+   "widget": 90,
+   "function": 749,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Arcoiris fases",
+   "detail": "",
+   "role": "pick",
+   "solo": 63,
+   "key": "¡",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "auto-paneles": {
+   "widget": 93,
+   "function": 270,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "AUTO paneles",
+   "detail": "",
+   "role": "hook",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "paneles-charla": {
+   "widget": 94,
+   "function": 428,
+   "functionType": "Scene",
+   "action": "toggle",
+   "caption": "Paneles Charla",
+   "detail": "",
+   "role": "hook",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-1": {
+   "widget": 95,
+   "function": 750,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 1",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-5": {
+   "widget": 96,
+   "function": 751,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 5",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-8": {
+   "widget": 97,
+   "function": 752,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 8",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-12": {
+   "widget": 98,
+   "function": 753,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 12",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-16": {
+   "widget": 99,
+   "function": 754,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 16",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-20": {
+   "widget": 100,
+   "function": 755,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 20",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-23": {
+   "widget": 101,
+   "function": 756,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 23",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-27": {
+   "widget": 102,
+   "function": 757,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 27",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-31": {
+   "widget": 103,
+   "function": 758,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 31",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-35": {
+   "widget": 104,
+   "function": 759,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 35",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-38": {
+   "widget": 105,
+   "function": 760,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 38",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "effect-42": {
+   "widget": 106,
+   "function": 761,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Effect 42",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "paneles-manual": {
+   "widget": 107,
+   "function": 762,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Paneles Manual",
+   "detail": "",
+   "role": "pick",
+   "solo": 91,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "auto-lento": {
+   "widget": 110,
+   "function": 551,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "AUTO lento",
+   "detail": "",
+   "role": "hook",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "auto-normal": {
+   "widget": 111,
+   "function": 563,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "AUTO normal",
+   "detail": "",
+   "role": "hook",
+   "solo": 108,
+   "key": "A",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "auto-rapido": {
+   "widget": 112,
+   "function": 564,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "AUTO rapido",
+   "detail": "",
+   "role": "hook",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "centro": {
+   "widget": 113,
+   "function": 565,
+   "functionType": "Scene",
+   "action": "toggle",
+   "caption": "Centro",
+   "detail": "",
+   "role": "hook",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "circulo": {
+   "widget": 114,
+   "function": 763,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Circulo",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "ocho": {
+   "widget": 115,
+   "function": 764,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Ocho",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "linea": {
+   "widget": 116,
+   "function": 765,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Linea",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "diamante": {
+   "widget": 117,
+   "function": 766,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Diamante",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "cuadrado": {
+   "widget": 118,
+   "function": 767,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Cuadrado",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "hoja": {
+   "widget": 119,
+   "function": 768,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Hoja",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "lissajous": {
+   "widget": 120,
+   "function": 769,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Lissajous",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "ola-vertical": {
+   "widget": 121,
+   "function": 770,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Ola Vertical",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "barrido-unison": {
+   "widget": 122,
+   "function": 771,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Barrido Unison",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "beams-abanico": {
+   "widget": 123,
+   "function": 772,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Beams Abanico",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "beams-cruce": {
+   "widget": 124,
+   "function": 773,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Beams Cruce",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "escenario": {
+   "widget": 125,
+   "function": 774,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Escenario",
+   "detail": "",
+   "role": "pick",
+   "solo": 108,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "auto-gobos": {
+   "widget": 127,
+   "function": 598,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "AUTO gobos",
+   "detail": "",
+   "role": "hook",
+   "solo": 126,
+   "key": "G",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "reposo": {
+   "widget": 128,
+   "function": 636,
+   "functionType": "Scene",
+   "action": "toggle",
+   "caption": "Reposo",
+   "detail": "",
+   "role": "hook",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-1": {
+   "widget": 131,
+   "function": 775,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 1",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-2": {
+   "widget": 132,
+   "function": 776,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 2",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-3": {
+   "widget": 133,
+   "function": 777,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 3",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-4": {
+   "widget": 134,
+   "function": 778,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 4",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-5": {
+   "widget": 135,
+   "function": 779,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 5",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-6": {
+   "widget": 136,
+   "function": 780,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 6",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-7": {
+   "widget": 137,
+   "function": 781,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 7",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-8": {
+   "widget": 138,
+   "function": 782,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 8",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-9": {
+   "widget": 139,
+   "function": 783,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 9",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-10": {
+   "widget": 140,
+   "function": 784,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 10",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-11": {
+   "widget": 141,
+   "function": 785,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 11",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-12": {
+   "widget": 142,
+   "function": 786,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 12",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-13": {
+   "widget": 143,
+   "function": 787,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 13",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-14": {
+   "widget": 144,
+   "function": 788,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 14",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-15": {
+   "widget": 145,
+   "function": 789,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 15",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-16": {
+   "widget": 146,
+   "function": 790,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 16",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-17": {
+   "widget": 147,
+   "function": 791,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo 17",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-repartido-1": {
+   "widget": 148,
+   "function": 792,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Repartido 1",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-repartido-2": {
+   "widget": 149,
+   "function": 793,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Repartido 2",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-repartido-3": {
+   "widget": 150,
+   "function": 794,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Repartido 3",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-repartido-4": {
+   "widget": 151,
+   "function": 795,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Repartido 4",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-repartido-5": {
+   "widget": 152,
+   "function": 796,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Repartido 5",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-repartido-6": {
+   "widget": 153,
+   "function": 797,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Repartido 6",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-repartido-7": {
+   "widget": 154,
+   "function": 798,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Repartido 7",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-repartido-8": {
+   "widget": 155,
+   "function": 799,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Repartido 8",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-shake-gobo-1": {
+   "widget": 156,
+   "function": 800,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Shake - Gobo 1",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-shake-gobo-9": {
+   "widget": 157,
+   "function": 801,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Shake - Gobo 9",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "gobo-shake-gobo-17": {
+   "widget": 158,
+   "function": 802,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Gobo Shake - Gobo 17",
+   "detail": "",
+   "role": "pick",
+   "solo": 126,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "auto-prisma": {
+   "widget": 161,
+   "function": 635,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "AUTO prisma",
+   "detail": "",
+   "role": "hook",
+   "solo": 159,
+   "key": "P",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "reposo-162": {
+   "widget": 162,
+   "function": 637,
+   "functionType": "Scene",
+   "action": "toggle",
+   "caption": "Reposo",
+   "detail": "",
+   "role": "hook",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "insert-prism": {
+   "widget": 163,
+   "function": 803,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Insert Prism",
+   "detail": "",
+   "role": "pick",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "1": {
+   "widget": 164,
+   "function": 804,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "1",
+   "detail": "",
+   "role": "pick",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "2": {
+   "widget": 165,
+   "function": 805,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "2",
+   "detail": "",
+   "role": "pick",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "3": {
+   "widget": 166,
+   "function": 806,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "3",
+   "detail": "",
+   "role": "pick",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "4": {
+   "widget": 167,
+   "function": 807,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "4",
+   "detail": "",
+   "role": "pick",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "1-y-3": {
+   "widget": 168,
+   "function": 808,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "1 y 3",
+   "detail": "",
+   "role": "pick",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "2-y-4": {
+   "widget": 169,
+   "function": 809,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "2 y 4",
+   "detail": "",
+   "role": "pick",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "prisma-giro-rapido": {
+   "widget": 170,
+   "function": 810,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Prisma Giro Rapido",
+   "detail": "",
+   "role": "pick",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "prisma-giro-inverso": {
+   "widget": 171,
+   "function": 811,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Prisma Giro Inverso",
+   "detail": "",
+   "role": "pick",
+   "solo": 159,
+   "key": null,
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "barrido-de-intensidad": {
+   "widget": 239,
+   "function": 649,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Barrido de intensidad",
+   "detail": "",
+   "role": "chase",
+   "solo": null,
+   "key": "V",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "barrido-inverso": {
+   "widget": 240,
+   "function": 654,
+   "functionType": "Collection",
+   "action": "toggle",
+   "caption": "Barrido inverso",
+   "detail": "",
+   "role": "chase",
+   "solo": null,
+   "key": "B",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "pares-impares": {
+   "widget": 241,
+   "function": 657,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "Pares / impares",
+   "detail": "",
+   "role": "chase",
+   "solo": null,
+   "key": "Z",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "rotacion-de-barridos": {
+   "widget": 242,
+   "function": 712,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "Rotación de barridos",
+   "detail": "",
+   "role": "chase",
+   "solo": null,
+   "key": "K",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  },
+  "humo-vertical": {
+   "widget": 252,
+   "function": 271,
+   "functionType": "Chaser",
+   "action": "toggle",
+   "caption": "HUMO VERTICAL",
+   "detail": "su luz",
+   "role": "toggle",
+   "solo": null,
+   "key": "N",
+   "swatches": [],
+   "enabled": true,
+   "reason": ""
+  }
+ },
+ "dials": {
+  "tempo-show": {
+   "widget": 34,
+   "caption": "Tempo Show",
+   "key": null,
+   "timeMs": 500,
+   "members": [
+    {
+     "function": 706,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 9,
+      "name": "8",
+      "factor": 8.0
+     }
+    },
+    {
+     "function": 598,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 9,
+      "name": "8",
+      "factor": 8.0
+     }
+    },
+    {
+     "function": 616,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 635,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 657,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 6,
+      "name": "1",
+      "factor": 1.0
+     }
+    }
+   ]
+  },
+  "vel-movimiento": {
+   "widget": 274,
+   "caption": "Vel. Movimiento",
+   "key": null,
+   "timeMs": 500,
+   "members": [
+    {
+     "function": 484,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 485,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 486,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 508,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 509,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 510,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 511,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 512,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 513,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 517,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 521,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 543,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 544,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 9,
+      "name": "8",
+      "factor": 8.0
+     }
+    },
+    {
+     "function": 545,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 9,
+      "name": "8",
+      "factor": 8.0
+     }
+    },
+    {
+     "function": 546,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 9,
+      "name": "8",
+      "factor": 8.0
+     }
+    },
+    {
+     "function": 547,
+     "fadeIn": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "fadeOut": {
+      "raw": 0,
+      "name": "None",
+      "factor": null
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 552,
+     "fadeIn": {
+      "raw": 9,
+      "name": "8",
+      "factor": 8.0
+     },
+     "fadeOut": {
+      "raw": 9,
+      "name": "8",
+      "factor": 8.0
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    },
+    {
+     "function": 553,
+     "fadeIn": {
+      "raw": 9,
+      "name": "8",
+      "factor": 8.0
+     },
+     "fadeOut": {
+      "raw": 9,
+      "name": "8",
+      "factor": 8.0
+     },
+     "duration": {
+      "raw": 10,
+      "name": "16",
+      "factor": 16.0
+     }
+    }
+   ]
+  }
+ }
+}

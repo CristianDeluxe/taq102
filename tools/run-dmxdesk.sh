@@ -17,7 +17,7 @@ key=${TAQ102_KEY:-$HOME/.ssh/taq102}
 # No master by default: the desk is told one, or (later) keeps its own.
 master=""
 port=""
-map=$here/show/deluxe-eventos.json
+map=$here/show/vibra.desk.json
 dump=""
 stop=0
 
@@ -68,7 +68,7 @@ set -- --map "$MAP" --touch "$touch_node"
 if [ -n "$DUMP" ]; then
 	DMXDESK_DUMP="$DUMP" /tmp/dmxdesk "$@"
 else
-	nohup /tmp/dmxdesk "$@" > /tmp/dmxdesk.log 2>&1 &
+	DMXDESK_RTT=1 nohup /tmp/dmxdesk "$@" > /tmp/dmxdesk.log 2>&1 &
 	sleep 2
 	cat /tmp/dmxdesk.log
 fi
