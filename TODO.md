@@ -386,6 +386,11 @@ MacBook as master. Design and evidence:
   `TODO_LOG.md` 2026-09-12. What remains is gated on I: Phase 5
   finite accents (the fog and bump decisions below) and Phase 6 position (the
   XY pad's range experiment below). The desk is usable for a show as it is.
+- [ ] `wpa_ctrl_abandon` that fails to redial leaves the request channel dead
+  for the rest of the run (pre-existing: no reconnect on a dial failure;
+  the reviewer of the asynchronous work noted the exposure grew since
+  abandon now runs on every timeout). Smallest action: a bounded retry of
+  the dial on the next request.
 - [ ] Supplicant lifecycle waits remain outside the desk loop:
   `wpa_ctrl_open` waits up to 1 s for `ATTACH`, and `wpa_ctrl_close` waits up
   to 200 ms for `DETACH` (including cleanup after a failed open). Runtime

@@ -1899,3 +1899,45 @@ being the supplicant requests made asynchronous, since a scan still holds
 the loop, panic button included, for up to 300 ms. The findings are in
 `docs/evidence/2026-09-12-desk-ui-review-findings.md` and `...-round2-findings.md`,
 the frames before and after in `docs/evidence/2026-09-12-desk-review/`.
+
+## The leftovers, and the reviewer writing the hardest one (2026-09-13)
+
+Six things remained from the review, and I said do them all, with
+the reviewer. The hardest was the supplicant: every request to wpa_supplicant
+blocked the desk's one loop until its reply or its timeout, a scan for up
+to a third of a second and a join's `RECONFIGURE` for up to three, with the
+panic button hostage meanwhile. That went to the reviewer in a worktree of its
+own with a briefing that named the shape (no threads, the control socket
+already non-blocking, one outstanding request, deadlines, the join as
+stages driven from the loop, rollback as stages too) and the proof (the
+same fake supplicant, a silent daemon failing in about three seconds with
+the file restored and no step blocking past the poll). It came back in
+three commits with thirty tests green and the cross build clean, its own
+account of what still waits (the `ATTACH` at startup and the `DETACH` at
+exit, outside the loop). A reviewer agent then read the merge as an
+adversary, path by path: no request that can hang, no late reply that can
+answer the wrong command, no double close, no key in a log line, the
+starvation between card and join bounded both ways, and the tests found to
+exercise what the account claimed. Two minor points, both about a queued
+scan's busy word and clock starting when it was asked rather than when it
+went out, fixed here.
+
+The other five were the desk's. A cue that sent its frame now carries a
+small ink mark and refuses a second tap until the master answers or a
+second and a half passes, so a nervous double tap is one toggle, and the
+mark is ink because amber is the master's word alone. Disabled and unknown
+tiles share one look: a disabled one sinks to glass and says in plain words
+why (`Mac only - hold it there`), an unknown one keeps its tile and says
+`unknown`, and a wrapped name never loses that line. The hits held on the
+Mac, which filled a bank of dead tiles on LIVE and two on COLOR, ride
+compact now, seven to a row, under a heading that says Mac only once. The
+safety captions live where the words come from, in the generator: `TODO
+NEGRO` reads `look a negro, no un stop` and each haze rhythm `dispara ya`,
+because a tile that says `apaga las luces` at a venue gets pressed as a
+stop. And the sweep's own button reads Stop while it runs, through a cancel
+the action worker did not have.
+
+On the tablet the surface's scan lists the room's networks with the link
+untouched; the heartbeat's worst round trip is 40 ms plain and 219 ms with
+the sheet open and a scan running, which is a full-sheet paint, not a wait.
+Backlog: the lifecycle waits and a dead channel after a failed redial.
