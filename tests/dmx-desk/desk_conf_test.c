@@ -8,7 +8,7 @@
 
 int main(void) {
     char path[256];
-    snprintf(path, sizeof path, "/tmp/dmxdesk-conf-%d", (int)getpid());
+    snprintf(path, sizeof path, "./output/dmxdesk-conf-%d", (int)getpid());
     unlink(path);
     struct desk_conf c;
     assert(desk_conf_load(&c, path) == 0 && c.master[0] == '\0' && c.port == 9999);

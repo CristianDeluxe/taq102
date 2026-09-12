@@ -21,7 +21,7 @@ static char *slurp(const char *path) {
 
 int main(void) {
     char path[256];
-    snprintf(path, sizeof path, "/tmp/dmxdesk-wifi-%d.conf", (int)getpid());
+    snprintf(path, sizeof path, "./output/dmxdesk-wifi-%d.conf", (int)getpid());
     unlink(path);
 
     // A missing file is an empty list, and the first block creates it.

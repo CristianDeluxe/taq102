@@ -67,7 +67,7 @@ int main(void) {
     // 127.0.0.1/30 is 127.0.0.1 and 127.0.0.2; the sweep skips itself
     // (given as .2) and probes .1, where the fake listens.
     char out_path[256];
-    snprintf(out_path, sizeof out_path, "/tmp/dmxdesk-find-%d", (int)getpid());
+    snprintf(out_path, sizeof out_path, "./output/dmxdesk-find-%d", (int)getpid());
     FILE *out = fopen(out_path, "w+");
     assert(out);
     int64_t t0 = now_ms();
