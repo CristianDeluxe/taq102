@@ -6,6 +6,32 @@
 
 ### 2026-09
 
+- [x] 2026-09-13 - **Infrastructure:** QLC+ would not start, and it was
+  Pioneer's `FwUpdateManagerd` wedging libusb, not QLC+.
+  - Symptom: `qlcplus-qml` never bound its web port, so the tablet had no
+    master and there was no lighting desk. My words: "no soy capaz de
+    iniciar qlc".
+  - Root cause, measured rather than guessed: `sample` put 2656 of 2656 stacks
+    at one trap - `App::initDoc` -> `IOPluginCache::load` ->
+    `DMXUSB::rescanWidgets` -> `LibFTDIInterface::interfaces` -> `ftdi_init` ->
+    `libusb_init_context` -> `IOCreatePlugInInterfaceForService` ->
+    `IOServiceOpen` -> `mach_msg2_trap`. QLC+ enumerates DMX USB widgets at
+    startup and the enumeration never returns.
+  - Causation proven by a single variable: killing the daemon let the ALREADY
+    HUNG process continue and bind 9998 seconds later, with no restart, and the
+    tablet relinked by itself.
+  - Resolution: I chose to disable the agent outright.
+    `launchctl disable gui/501/com.pioneerdj.FwUpdateManagerd` plus `bootout`;
+    it now reads `disabled` in `launchctl print-disabled gui/501`, so it does
+    not return at login. Its sibling `com.pioneerdj.rekordboxdj.agent` was
+    already disabled. Undo is `launchctl enable
+    gui/501/com.pioneerdj.FwUpdateManagerd`; Pioneer firmware checks must be
+    started by hand from FwUpdateManager until then.
+  - Evidence: QLC+ answers HTTP 200 on 9998 with the Vibra show loaded, and the
+    tablet logs `link up (linked)` at 19 ms.
+  - Same wedge as the 2026-09-09 `rkdeveloptool ld` hang; the surviving item is
+    that `loader-watch.sh` has no per-call timeout.
+
 - [x] 2026-09-13 - **Desk: the bank pager catches lower-edge presses.**
   `146dd73` fixes the remaining complaint after the earlier 8 px release
   margin: presses near the bezel never became bank presses in the first
