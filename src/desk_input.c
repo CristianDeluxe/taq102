@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "desk_layout.h"
+#include "desk_pager_hit.h"
 #include "desk_view.h"
 
 enum desk_target desk_input_target(const struct desk_model *m, int x, int y, int *index) {
@@ -23,7 +24,7 @@ enum desk_target desk_input_target(const struct desk_model *m, int x, int y, int
     int banks = m->layout.pages > 0 ? m->layout.banks[m->page] : 1;
     if (banks > 1 && y >= DESK_PAGER_Y) {
         for (int i = 0; i < banks; i++) {
-            if (desk_rect_contains(desk_view_pager(i, &m->layout, m->page), x, y)) {
+            if (desk_rect_contains(desk_pager_hit(i, &m->layout, m->page), x, y)) {
                 *index = i;
                 return TARGET_BANK;
             }
@@ -52,8 +53,11 @@ enum desk_target desk_input_feed(struct desk_input *in, const struct desk_model 
         in->slot[ev->slot].target = desk_input_target(m, (int)ev->x, (int)ev->y, &at);
         in->slot[ev->slot].index = at;
         in->slot[ev->slot].page = m->page;
+        // The rectangle the release margin is measured against has to be the
+        // one the press was accepted in, or a tap that lands in the pager's
+        // margin is taken and then dropped on the lift.
         in->slot[ev->slot].rect = in->slot[ev->slot].target == TARGET_RAIL
-                               ? desk_view_tab(at) : desk_view_pager(at, &m->layout, m->page);
+                               ? desk_view_tab(at) : desk_pager_hit(at, &m->layout, m->page);
         return in->slot[ev->slot].target;
     }
     enum desk_target owner = in->slot[ev->slot].target;

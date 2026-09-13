@@ -37,7 +37,7 @@ cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
     -I\$SRC -I\$BUILD/include -I\$SYSROOT/usr/include -I\$SYSROOT/usr/include/libdrm \
     -o \$BUILD/dmxdesk \
     \$SRC/dmxdesk.c \$SRC/desk_model.c \$SRC/desk_rebuild_model.c \$SRC/desk_paint.c \$SRC/desk_present_drm.c \
-    \$SRC/desk_layout_resolve.c \$SRC/desk_show_layout.c \$SRC/desk_hold.c \$SRC/desk_build_holds.c \$SRC/desk_caption.c \$SRC/desk_view.c \$SRC/desk_view_pager.c \$SRC/desk_pager_label.c \$SRC/desk_pager_caption.c \$SRC/desk_pager_bank_caption.c \$SRC/desk_input.c \
+    \$SRC/desk_layout_resolve.c \$SRC/desk_show_layout.c \$SRC/desk_hold.c \$SRC/desk_build_holds.c \$SRC/desk_caption.c \$SRC/desk_view.c \$SRC/desk_view_pager.c \$SRC/desk_pager_hit.c \$SRC/desk_pager_label.c \$SRC/desk_pager_caption.c \$SRC/desk_pager_bank_caption.c \$SRC/desk_input.c \
     \$SRC/desk_lock.c \$SRC/display_power.c \$SRC/power_key.c \$SRC/perf_window.c \
     \$SRC/showmap.c \$SRC/showmap_validate.c \$SRC/vcjson.c \$SRC/qlc_codec.c \
     \$SRC/qlc_session.c \$SRC/ws_client.c \$SRC/send_queue.c \$SRC/http_fetch.c \
