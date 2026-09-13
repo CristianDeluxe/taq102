@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_paint.c icon.c desk_caption.c desk_view.c desk_layout_resolve.c desk_show_layout.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c desk_fonts.c
+// SOURCES: desk_model.c desk_paint.c desk_pager_caption.c desk_pager_bank_caption.c icon.c desk_caption.c desk_view.c desk_view_pager.c desk_pager_label.c desk_layout_resolve.c desk_show_layout.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c desk_fonts.c
 // The desk, built from the generated Vibra map against the real console
 // document, pressed once, and painted. Writes $TEST_OUT/desk.ppm so the screen can be
 // looked at on a laptop before it reaches the tablet.
@@ -12,6 +12,7 @@
 #include "desk_layout_resolve.h"
 #include "desk_model.h"
 #include "desk_paint.h"
+#include "desk_view.h"
 #include "showmap.h"
 #include "showmap_validate.h"
 #include "vcjson.h"
@@ -153,6 +154,48 @@ int main(void) {
     desk_paint(&canvas, &model, &fonts);
     snprintf(path, sizeof path, "%s/desk-nolink.ppm", out ? out : "/tmp");
     write_ppm(&canvas, path);
+
+    // Six parts of one long section keep their distinguishing part numbers.
+    // No label may spill into a gap, and the running dot keeps its old meaning.
+    memset(&layout, 0, sizeof layout);
+    layout.pages = 1;
+    layout.banks[0] = DESK_MAX_BANKS;
+    layout.headings = DESK_MAX_BANKS;
+    strcpy(layout.title[0], "COLOR");
+    for (int i = 0; i < DESK_MAX_BANKS; i++) {
+        layout.heading[i].bank = i;
+        layout.heading[i].part = i + 1;
+        layout.heading[i].parts = DESK_MAX_BANKS;
+        layout.heading[i].x = DESK_CONTENT_X;
+        layout.heading[i].y = DESK_CONTENT_Y;
+        layout.heading[i].w = DESK_CONTENT_W;
+        strcpy(layout.heading[i].text, "Dirección y barridos de intensidad");
+    }
+    layout.placements = 1;
+    layout.placement[0] = (struct desk_placement){ .control = 0, .page = 0, .bank = 5,
+        .x = 16, .y = 88, .w = 128, .h = 88, .tile = TILE_CUE };
+    desk_set_layout(&model, &layout);
+    desk_set_link(&model, DESK_LINK_READY);
+    model.control[0].state = DESK_ON;
+    for (int fallback = 0; fallback <= 1; fallback++) {
+        struct desk_fonts empty = {0};
+        desk_paint(&canvas, &model, fallback ? &empty : &fonts);
+        for (int i = 0; i < DESK_MAX_BANKS; i++) {
+            struct desk_rect r = desk_view_pager(i, &layout, 0);
+            assert(canvas.px[(r.y + 8) * canvas.w + r.x + 8] ==
+                   (i == 0 ? DESK_INK : DESK_TILE));
+            if (i < DESK_MAX_BANKS - 1)
+                for (int y = r.y; y < r.y + r.h; y++)
+                    for (int x = r.x + r.w; x < r.x + r.w + DESK_GAP; x++)
+                        assert(canvas.px[y * canvas.w + x] == DESK_GLASS);
+        }
+        struct desk_rect last = desk_view_pager(5, &layout, 0);
+        assert(canvas.px[(last.y + 8) * canvas.w + last.x + last.w - 8] == DESK_AMBER);
+        if (!fallback) {
+            snprintf(path, sizeof path, "%s/desk-six-banks.ppm", out ? out : "/tmp");
+            write_ppm(&canvas, path);
+        }
+    }
 
     font_close(fonts.tile);
     font_close(fonts.value);

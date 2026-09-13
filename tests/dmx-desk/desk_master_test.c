@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_paint.c icon.c desk_caption.c desk_view.c canvas.c canvas_blend.c font.c desk_fonts.c
+// SOURCES: desk_model.c desk_paint.c desk_pager_caption.c desk_pager_bank_caption.c icon.c desk_caption.c desk_view.c desk_view_pager.c desk_pager_label.c canvas.c canvas_blend.c font.c desk_fonts.c
 // The master is unknown until the master speaks, a drag moves only what the
 // desk asked for, and a finger on a tile never repaints what the show said.
 #include <assert.h>
