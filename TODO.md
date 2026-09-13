@@ -26,6 +26,39 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 ## Security
 
 ## Bugs
+- [!] The Mac and the tablet must land on the SAME layer-2 segment or the desk
+  cannot link, and the house has two access points. Measured 2026-09-13: the
+  Mac's Wi-Fi held `192.168.1.62` while associated to my booster AP,
+  and from the tablet (`192.168.1.71`, on the main router, BSSID
+  `00:00:5e:00:53:01`, same OUI as the `.1` gateway) that address was ARP
+  INCOMPLETE, unpingable and HTTP-dead, while the Mac's wired `192.168.1.76`
+  answered normally. So the booster is not bridging these two clients into one
+  segment, or it isolates them. The evening was spent blaming QLC+ and the
+  finder for what was a network partition.
+  Why it matters: at a venue the tablet is Wi-Fi only, and if the Mac drifts
+  onto a different AP mid-show the desk goes dark with both machines "on the
+  network". Ethernet as the Mac's primary (1000baseT, default route, service
+  order 1) is what protects against this and is already configured.
+  Blocked on I: whether that booster is meant to bridge. Smallest
+  action: put both on the main router's SSID, or set the booster to bridge
+  mode, then re-run `/tmp/dmxdesk --find 192.168.1.71/24 9998` from the tablet
+  with the Mac on Wi-Fi only and confirm it still lists the Mac.
+- [ ] Diagnose the Mac's `.62` interface reachability from the tablet. During
+  finder verification on 2026-09-13, the Mac had `192.168.1.76` on `en0` and
+  `192.168.1.62` on `en1`; both answered HTTP 200 locally on port 9998. From
+  tablet `192.168.1.71`, `.62` stayed ARP `INCOMPLETE`, ping received no reply,
+  and `wget -T 3` timed out. The finder successfully discovered `.76:9998`.
+  Next: inspect the two interfaces' LAN reachability before expecting the
+  tablet to connect through `.62`. No network configuration or running desk
+  was changed. Evidence: `output/finder-live-results.json` and `TODO_LOG.md`.
+- [!] Owner triage of the host geometry audit's findings is pending. The new
+  `desk_geometry_test` sweeps the real show, every page/bank and reachable setup
+  surfaces; it intentionally fails on application findings and strict policy
+  findings. Evidence and all observations:
+  `docs/evidence/2026-09-13-desk-geometry-audit.md` and its raw report. Next: decide
+  which visual/range defects to fix and which modal, inert-region and hit-slop
+  contracts to declare. No application fixes, deployment or commit were made
+  in the detector task.
 - [ ] Reconcile the desk's inert touch-flip configuration and misleading log.
   `src/dmxdesk.c` configures `DMXDESK_TOUCH_FLIP` and prints
   `touch: declared 1663x895, mapping 1024x600, xy`, but never calls
@@ -49,6 +82,22 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   flip path through `control_input_reset`. Next: cover both axes and both
   endpoints with regression assertions, fix the subtraction, and qualify
   orientation before enabling it in the desk. No behaviour change now.
+- [ ] Qualify the RK816 input-limit cache fix in mainline patch 0008 on a
+  later authorised kernel boot. On 2026-09-13, sysfs reported 1500 mA while
+  hardware held 450 mA (0xa1=0x40); an accepted repeat override did not write
+  through the nonvolatile regmap cache. One direct 0x45 write restored
+  +634..+640 mA charging within 10 s. The patch now makes USB_CTRL volatile,
+  forces immediate masked writes, uses live PMIC presence, and expires the
+  override in the unplug IRQ. Patch application and the userspace callback
+  regression passed; complete kernel compilation and live IRQ/sysfs tests
+  remain unverified. Evidence: `docs/evidence/2026-09-13-charging/README.md`.
+- [ ] Decide the appliance's automatic known-supply policy after VBUS returns.
+  The existing init override runs only at boot, so a mains cut while the tablet
+  stays up leaves no automatic reapplication. Recommendation: a supervised
+  appliance service watching USB/AC presence with polling fallback, applying
+  the explicitly configured limit on return or a live-limit mismatch, verifying
+  readback and reporting persistent discharge. No policy implemented; see
+  `docs/evidence/2026-09-13-charging/README.md` for scope and verification.
 - [ ] `usb2phy` charger detection reports all cable states zero with VBUS
   present and the gadget enumerated (2026-09-10). This does not diagnose wiring
   or bvalid: `EXTCON_USB` is only published for SDP, and peripheral mode does
@@ -102,10 +151,13 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   Not yet known: whether a same-value rewrite re-arms it, or only a change;
   what the VBUS event is (another device on the hub drawing, a USB reset).
   Unblock: `panel-trap` now logs VBUS and `0xa1` every minute; at the next
-  drain, first try `i2cset -f -y 2 0x1a 0xa1 0x45` (same value) and read the
+  drain **with 0xa1 already 0x45**, first try
+  `i2cset -f -y 2 0x1a 0xa1 0x45` (same value) and read the
   current 15 s later. If that re-arms it, the fix is a periodic rewrite in
   `rk816_charging_monitor` when plugged in and discharging; if only a change
   does, the fix toggles VLIM. Either way it is a driver change we own.
+  The 2026-09-13 recovery changed 0x40 to 0x45 and diagnosed a separate stale
+  regmap cache; it does not settle this same-value or voltage-limiter question.
 - [ ] The charging bolt is a 5-by-7 bitmap scaled up, so it is the one blocky
   shape left in a bar that is otherwise smooth. Only visible while charging
   and only at close range; a small vector path would settle it.
