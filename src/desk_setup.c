@@ -269,7 +269,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
             return none();
         }
         char title[80];
-        snprintf(title, sizeof title, "Clave de %s", w->ssid);
+        snprintf(title, sizeof title, "Contrase\xc3\xb1" "a de %s", w->ssid);
         keyboard_open(&s->kb, KB_TEXT, title, "", 1, 8, 63);
         s->kb_purpose = KB_FOR_PSK;
         return none();
@@ -333,7 +333,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
         // The block on file is replaced once the new key is typed and confirmed.
         s->confirm_open = 0;
         char title[80];
-        snprintf(title, sizeof title, "Nueva clave de %s", s->pending_ssid);
+        snprintf(title, sizeof title, "Nueva contrase\xc3\xb1" "a de %s", s->pending_ssid);
         keyboard_open(&s->kb, KB_TEXT, title, "", 1, 8, 63);
         s->kb_purpose = KB_FOR_PSK;
         return none();

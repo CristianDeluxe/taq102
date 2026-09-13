@@ -70,7 +70,7 @@ int main(void) {
     // once per bank.
     for (int page = 0; page < l.pages; page++) {
         assert(l.banks[page] >= 1 && l.banks[page] <= DESK_MAX_BANKS);
-        int end = l.banks[page] > 1 ? DESK_CONTENT_END - 40 : DESK_CONTENT_END;
+        int end = l.banks[page] > 1 ? DESK_CONTENT_END - 56 : DESK_CONTENT_END;
         for (int bank = 0; bank < l.banks[page]; bank++) {
             int masters = 0, panics = 0;
             for (int i = 0; i < l.placements; i++) {

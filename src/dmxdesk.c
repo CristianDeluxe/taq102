@@ -176,15 +176,20 @@ static void send_speed(struct qlc_session *session, struct speed_action action, 
 
 // A hold's frame: 255 on contact, 0 on release, cap or cancel; logged with
 // its clock so a stuck output can be read off the log.
-static void send_hold(struct qlc_session *session, struct hold_action ha, int64_t now) {
+static void send_hold(struct desk_hold *hold, struct qlc_session *session, struct hold_action ha,
+                      int64_t now) {
     if (ha.widget_id < 0)
         return;
     char frame[64];
     int n = qlc_encode_flash(frame, sizeof frame, ha.widget_id, ha.on);
-    if (n > 0 && qlc_session_send(session, frame) == 0)
+    if (n > 0 && qlc_session_send(session, frame) == 0) {
         fprintf(stderr, "hold: sent %s at %lld\n", frame, (long long)now);
-    else
-        fprintf(stderr, "hold: could not send %s at %lld\n", frame, (long long)now);
+        return;
+    }
+    fprintf(stderr, "hold: could not send %s at %lld\n", frame, (long long)now);
+    // A release that did not go out is still owed: the output may be on.
+    if (!ha.on)
+        desk_hold_unsent(hold, ha.widget_id);
 }
 
 // Every hold released at once: a lock, a page change, the surface opening,
@@ -194,7 +199,7 @@ static void release_holds(struct desk_hold *hold, struct desk_model *model, stru
     struct hold_action out[16];
     int n = desk_hold_release_all(hold, now, out, 16);
     for (int k = 0; k < n; k++)
-        send_hold(session, out[k], now);
+        send_hold(hold, session, out[k], now);
     for (int s = 0; s < TOUCH_MAX_SLOTS; s++) {
         if (owner[s] >= 0)
             desk_set_hold_progress(model, owner[s], -1, 0);
@@ -211,8 +216,9 @@ static void build_holds(struct desk_hold *hold, struct desk_model *model, int *o
         c->hold_index = -1;
         if (c->kind != DESK_HOLD || !c->enabled)
             continue;
-        int cap = strncmp(c->label, "STROBO", 6) == 0 ? 1000 : 3000;
-        c->hold_index = desk_hold_add(hold, c->widget_id, HOLD_HIT, cap, 0);
+        // Three seconds for a light hit; strobes and fog never get here, the
+        // validator keeps them on the Mac.
+        c->hold_index = desk_hold_add(hold, c->widget_id, HOLD_HIT, 3000, 0);
         if (c->hold_index < 0)
             fprintf(stderr, "desk: %s: no room in the hold model\n", c->label);
     }
@@ -786,7 +792,7 @@ int main(int argc, char **argv) {
                     if (events[i].kind == TOUCH_UP || events[i].kind == TOUCH_CANCEL) {
                         struct desk_control *hc = &model.control[ci];
                         if (hc->kind == DESK_HOLD && hc->hold_index >= 0)
-                            send_hold(session, desk_hold_release(&hold, hc->hold_index, slot, now), now);
+                            send_hold(&hold, session, desk_hold_release(&hold, hc->hold_index, slot, now), now);
                         desk_set_hold_progress(&model, ci, -1, 0);
                         hold_owner[slot] = -1;
                     }
@@ -800,7 +806,7 @@ int main(int argc, char **argv) {
                         if (hc->enabled && hc->hold_index >= 0 && model.link == DESK_LINK_READY) {
                             struct hold_action ha = desk_hold_press(&hold, hc->hold_index, slot, now);
                             if (ha.widget_id >= 0) {
-                                send_hold(session, ha, now);
+                                send_hold(&hold, session, ha, now);
                                 hold_owner[slot] = ci;
                                 desk_set_hold_progress(&model, ci, 0, 1);
                             }
@@ -809,6 +815,8 @@ int main(int argc, char **argv) {
                     }
                     if (ci >= 0 && model.control[ci].kind == DESK_TEMPO && model.control[ci].enabled) {
                         const struct desk_placement *tp = desk_placement_of(&model, ci);
+                        if (!tp)
+                            continue;
                         int tx, ty, tw, th;
                         desk_speed_tempo_tap_rect(tp->x, tp->y, tp->w, tp->h, &tx, &ty, &tw, &th);
                         if (x >= tx && x < tx + tw && y >= ty && y < ty + th) {
@@ -982,6 +990,9 @@ int main(int argc, char **argv) {
             vc_free(&console);
             console = fresh;
             int page = model.page, bank = model.bank;
+            // A finger on a hit while the model is rebuilt: its release goes
+            // out now, from the model that knows it, or the output stays on.
+            release_holds(&hold, &model, session, hold_owner, now);
             enabled = showmap_build(&model, &map, &console);
             desk_set_layout(&model, &layout);
             desk_set_view(&model, page, bank);
@@ -1016,12 +1027,20 @@ int main(int argc, char **argv) {
             struct hold_action out[16];
             int n = desk_hold_tick(&hold, now, out, 16);
             for (int k = 0; k < n; k++)
-                send_hold(session, out[k], now);
+                send_hold(&hold, session, out[k], now);
             desk_hold_set_link(&hold, link == QLC_READY);
             if (link == QLC_READY) {
                 n = desk_hold_owed(&hold, out, 16);
                 for (int k = 0; k < n; k++)
-                    send_hold(session, out[k], now);
+                    send_hold(&hold, session, out[k], now);
+            }
+            // A hold whose release is still owed shows it: the output may be on.
+            for (int i = 0; i < model.count; i++) {
+                struct desk_control *c = &model.control[i];
+                if (c->kind != DESK_HOLD || c->hold_index < 0 || c->pressed)
+                    continue;
+                int unresolved = desk_hold_unresolved(&hold, c->hold_index);
+                desk_set_hold_progress(&model, i, unresolved ? -2 : -1, 0);
             }
             for (int s = 0; s < TOUCH_MAX_SLOTS; s++) {
                 if (hold_owner[s] < 0 || model.control[hold_owner[s]].kind != DESK_HOLD)

@@ -13,9 +13,9 @@
 // the right. Gear and lock are 48x48 targets around 24 px icons.
 #define DESK_BAR_H 48
 #define DESK_TAB_X 16
-#define DESK_TAB_Y 8
+#define DESK_TAB_Y 0
 #define DESK_TAB_W 76
-#define DESK_TAB_H 32
+#define DESK_TAB_H 48
 #define DESK_TAB_GAP 4
 #define DESK_GEAR_X 912
 #define DESK_LOCK_X 960
@@ -68,8 +68,8 @@
 // The pager for a tab with more than one page: small buttons at the bottom
 // right of the content.
 #define DESK_PAGER_W 48
-#define DESK_PAGER_H 32
-#define DESK_PAGER_Y 548
+#define DESK_PAGER_H 48
+#define DESK_PAGER_Y 536
 
 // The palette. Amber means the master says running and nothing else; the
 // stop is the one red; a hold-to-fire button has its own violet field.

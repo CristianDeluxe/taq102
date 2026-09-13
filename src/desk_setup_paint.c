@@ -124,9 +124,11 @@ static void wifi_card(struct canvas *c, const struct desk_setup *s, const struct
         int tw = fonts->small ? font_width(fonts->small, tag) : canvas_text_width(tag, 3);
         text_at(c, fonts->small, x + SETUP_CARD_W - 20 - tw, ry + (SETUP_ROW_H - text_h(fonts->small)) / 2, 120, tag, DESK_MUTED);
     }
-    if (s->scan.count == 0 && s->wifi_available)
-        text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
-                s->wifi_busy[0] ? "" : "Sin redes a\xc3\xban", DESK_MUTED);
+    if (s->scan.count == 0 && s->wifi_available) {
+        const char *empty = s->wifi_busy[0] ? "" : s->wifi_note[0] && strncmp(s->wifi_note, "Joined", 6) != 0
+                          ? es(s->wifi_note) : "Sin redes a\xc3\xban: busca";
+        text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32, empty, DESK_MUTED);
+    }
     // The note sits above the button: the last outcome; the button itself
     // says what it is doing while busy.
     char note_es[80];
@@ -170,7 +172,7 @@ static void master_card(struct canvas *c, const struct desk_setup *s, const stru
     }
     if (s->found_count == 0)
         text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
-                s->master_busy[0] ? "Barriendo la red" : "Nada encontrado a\xc3\xban", DESK_MUTED);
+                s->master_busy[0] ? "Barriendo la red" : "Sin resultados de b\xc3\xbasqueda", DESK_MUTED);
     char note[160];
     const char *discovery = s->master_busy[0] ? "" : es(s->master_note);
     snprintf(note, sizeof note, "%s%s%s%s%s", es(s->save_note),
@@ -225,7 +227,7 @@ static void confirm_sheet(struct canvas *c, const struct desk_setup *s, const st
     snprintf(line, sizeof line, "\xc2\xbfUnirse a %s?", s->pending_ssid);
     text_at(c, fonts->tile, SETUP_CONFIRM_X + 24, SETUP_CONFIRM_Y + 28, SETUP_CONFIRM_W - 48, line, DESK_INK);
     text_at(c, fonts->label, SETUP_CONFIRM_X + 24, SETUP_CONFIRM_Y + 72, SETUP_CONFIRM_W - 48,
-            "La tablet se desconecta un momento; el Mac sigue.", DESK_MUTED);
+            "La tablet perder\xc3\xa1 la conexi\xc3\xb3n al cambiar de red; el show sigue en el Mac.", DESK_MUTED);
     text_at(c, fonts->small, SETUP_CONFIRM_X + 24, SETUP_CONFIRM_Y + 104, SETUP_CONFIRM_W - 48,
             s->confirm_is_open_network ? "Red abierta: sin clave."
             : s->confirm_psk[0] ? "La clave que has escrito se queda en la tablet."
@@ -272,10 +274,13 @@ void desk_setup_paint(struct canvas *c, const struct desk_setup *s, const struct
         return;
     }
     canvas_fill_rect(c, SETUP_SHEET_X, SETUP_SHEET_Y, SETUP_SHEET_W, SETUP_SHEET_H, DESK_GLASS);
+    // The header: what this sheet is, and the way out where a hand expects it.
+    text_at(c, fonts->tile, SETUP_WIFI_X, SETUP_HEADER_Y + (SETUP_HEADER_H - text_h(fonts->tile)) / 2,
+            400, "Ajustes", DESK_INK);
+    button(c, fonts->label, SETUP_CLOSE_X, SETUP_CLOSE_Y, SETUP_CLOSE_W, SETUP_CLOSE_H, "Cerrar", BUTTON_SECONDARY);
     wifi_card(c, s, fonts);
     master_card(c, s, fonts);
     footer(c, s, fonts);
-    button(c, fonts->label, SETUP_CLOSE_X, SETUP_CLOSE_Y, SETUP_CLOSE_W, SETUP_CLOSE_H, "Cerrar", BUTTON_SECONDARY);
     // The outline says a release here will do something: not off the
     // target, not on a dead one.
     int live = 1;

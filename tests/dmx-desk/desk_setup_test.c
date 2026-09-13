@@ -94,14 +94,17 @@ int main(void) {
     a = tap(&s, yx, ny);
     assert(a.kind == SETUP_JOIN && strcmp(a.ssid, "Cafe") == 0 && a.psk[0] == '\0');
     s.wifi_busy[0] = '\0';
-    assert(tap(&s, SETUP_WIFI_X + 40, row0 + 3 * SETUP_ROW_H).kind == SETUP_NONE && s.confirm_open && !s.kb.open);
+    // The fourth network is on the card's second page: page, then row one.
+    int next_x = SETUP_WIFI_X + SETUP_CARD_W - SETUP_PAGE_W - 8 + 10, arrows_y = SETUP_CARD_Y + 10;
+    assert(tap(&s, next_x, arrows_y).kind == SETUP_NONE && s.scan_page == 1);
+    assert(tap(&s, SETUP_WIFI_X + 40, row0).kind == SETUP_NONE && s.confirm_open && !s.kb.open);
     // A known network's confirmation has three buttons: the last joins as is.
     int kx = SETUP_CONFIRM_X + SETUP_CONFIRM_W - 40;
     a = tap(&s, kx, ny);
     assert(a.kind == SETUP_JOIN && a.known && a.psk[0] == '\0' && strcmp(a.ssid, "TestNet") == 0);
     s.wifi_busy[0] = '\0';
     // The middle one asks for a new key, which then joins as a fresh block.
-    tap(&s, SETUP_WIFI_X + 40, row0 + 3 * SETUP_ROW_H);
+    tap(&s, SETUP_WIFI_X + 40, row0);
     assert(tap(&s, SETUP_CONFIRM_X + SETUP_CONFIRM_W / 2, ny).kind == SETUP_NONE && s.kb.open && s.kb_purpose == KB_FOR_PSK);
     type_on_keyboard(&s, "newkey12");
     press_key(&s, "done");

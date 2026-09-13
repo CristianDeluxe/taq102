@@ -76,6 +76,8 @@ void desk_paint_section(struct canvas *c, const struct desk_fonts *fonts, int x,
     upper(cap, sizeof cap, title);
     text_at(c, fonts->section, x, y + 4, w, cap, DESK_MUTED);
     int tw = text_w(fonts->section, cap);
+    if (tw > w)
+        tw = w;
     if (tw + 16 < w)
         canvas_fill_rect(c, x + tw + 12, y + 12, w - tw - 12, 1, DESK_LINE);
 }
@@ -172,7 +174,7 @@ static void paint_swatch(struct canvas *c, const struct desk_control *ctl,
         ink = DESK_MUTED;
     pending_mark(c, ctl, r);
     if (ctl->swatches == 0) {
-        caption(c, fonts->tile_s, r.x + 8, r.w - 16, r.y + r.h / 2, ctl->label, ink);
+        caption(c, fonts->tile, r.x + 8, r.w - 16, r.y + r.h / 2, ctl->label, ink);
         return;
     }
     int cx = r.x + r.w / 2, cy = r.y + 10;
@@ -205,8 +207,14 @@ static void paint_swatch(struct canvas *c, const struct desk_control *ctl,
     if (brightest < 0x20)
         canvas_round_rect(c, cx - DISC / 2 - 1, cy - 1, DISC + 2, DISC + 2, DISC / 2 + 1, DESK_MUTED),
         canvas_round_rect(c, cx - DISC / 2, cy, DISC, DISC, DISC / 2, first);
-    caption(c, fonts->tile_s, r.x + 8, r.w - 16, r.y + DISC + 12 + (r.h - DISC - 12) / 2, ctl->label,
-            ink);
+    if (ctl->detail[0]) {
+        // A paired look says what the rest of the rig does: "Resto Azul".
+        centred(c, fonts->tile_s, r.x + 8, r.y + DISC + 12, r.w - 16, 20, ctl->label, ink);
+        centred(c, fonts->small, r.x + 8, r.y + DISC + 32, r.w - 16, 18, ctl->detail, DESK_MUTED);
+    } else {
+        caption(c, fonts->tile_s, r.x + 8, r.w - 16, r.y + DISC + 12 + (r.h - DISC - 12) / 2, ctl->label,
+                ink);
+    }
 }
 
 // A hit: the hold look. Held on the Mac it is dead and says so; fired from
@@ -216,16 +224,21 @@ static void paint_hold(struct canvas *c, const struct desk_control *ctl,
                        enum desk_link link) {
     struct rect r = of(p);
     int live = ctl->enabled && link == DESK_LINK_READY;
-    canvas_round_rect(c, r.x, r.y, r.w, r.h, DESK_RADIUS, live ? DESK_HOLD_LINE : DESK_LINE);
+    int capped = ctl->hold_progress >= 1000;
+    int unresolved = ctl->hold_progress == -2;
+    uint32_t line = unresolved ? DESK_WARN : live && !capped ? DESK_HOLD_LINE : DESK_LINE;
+    canvas_round_rect(c, r.x, r.y, r.w, r.h, DESK_RADIUS, line);
     canvas_round_rect(c, r.x + 1, r.y + 1, r.w - 2, r.h - 2, DESK_RADIUS - 1,
-                      live ? DESK_HOLD_FILL : DESK_GLASS);
-    if (ctl->pressed)
+                      live && !capped ? DESK_HOLD_FILL : DESK_GLASS);
+    if (ctl->pressed && !capped)
         press_outline(c, r, DESK_RAISED);
-    icon_paint(c, ICON_BOLT, r.x + 8, r.y + 6, live ? DESK_HOLD_LINE : DESK_LINE);
+    icon_paint(c, ICON_BOLT, r.x + 8, r.y + 6, live && !capped ? DESK_HOLD_LINE : DESK_LINE);
     caption(c, fonts->tile_s, r.x + 8, r.w - 16, r.y + r.h / 2 - 2, ctl->label,
-            live ? DESK_INK : DESK_MUTED);
-    const char *foot = live ? "mientras pulses" : "solo en el Mac";
-    centred(c, fonts->small, r.x + 8, r.y + r.h - 24, r.w - 16, 18, foot, DESK_MUTED);
+            live && !capped ? DESK_INK : DESK_MUTED);
+    const char *foot = unresolved ? "apagado sin confirmar" : capped ? "suelta y vuelve"
+                     : live ? "mientras pulses" : "solo en el Mac";
+    centred(c, fonts->small, r.x + 8, r.y + r.h - 24, r.w - 16, 18, foot,
+            unresolved ? DESK_WARN : DESK_MUTED);
     // While the finger is down a thin bar counts the cap down.
     if (ctl->hold_progress >= 0) {
         int span = r.w - 16;
@@ -250,11 +263,13 @@ static void paint_state(struct canvas *c, const struct desk_control *ctl,
     if (!ctl->enabled || link != DESK_LINK_READY)
         ink = DESK_MUTED;
     const char *under = state_line(ctl, link);
-    int show_under = under[0] && text_w(fonts->small, under) <= r.w - 12;
+    int show_under = under[0] && text_w(fonts->label, under) <= r.w - 8;
     if (show_under) {
         caption(c, fonts->tile_s, r.x + 6, r.w - 12, r.y + r.h / 2 - 10, ctl->label, ink);
-        centred(c, fonts->small, r.x + 6, r.y + r.h - 24, r.w - 12, 18, under,
-                on ? DESK_AMBER_INK : DESK_MUTED);
+        // A qualification that keeps someone from a mistake reads as loud as the name.
+        int qualifies = ctl->enabled && ctl->state != DESK_UNKNOWN;
+        centred(c, fonts->label, r.x + 4, r.y + r.h - 26, r.w - 8, 20, under,
+                on ? DESK_AMBER_INK : qualifies ? DESK_INK : DESK_MUTED);
     } else {
         caption(c, fonts->tile_s, r.x + 6, r.w - 12, r.y + r.h / 2, ctl->label, ink);
     }
@@ -340,32 +355,36 @@ static void paint_master(struct canvas *c, const struct desk_control *ctl,
     canvas_round_rect(c, r.x, r.y, r.w, r.h, DESK_RADIUS, DESK_TILE);
     int live = link == DESK_LINK_READY;
     int known = ctl->state != DESK_UNKNOWN;
-    int track_y = r.y + 44, track_h = r.h - 44 - 16;
+    // The readout above the travel, never under the thumb; the thumb a grip
+    // of 24 px; the request marker ink, since amber is not a level.
+    char text[16];
+    if (live && known)
+        snprintf(text, sizeof text, "%d%%", ctl->level * 100 / 255);
+    else
+        snprintf(text, sizeof text, "--");
+    centred(c, fonts->section, r.x, r.y + 10, r.w, 20, "MASTER", DESK_MUTED);
+    int bh = text_h(fonts->value) + 8;
+    centred(c, fonts->value, r.x, r.y + 30, r.w, bh, text, DESK_INK);
+    int track_y = r.y + 30 + bh + 12, track_h = r.h - (30 + bh + 12) - 16;
     canvas_round_rect(c, r.x + 16, track_y, r.w - 32, track_h, 8, DESK_GLASS);
     if (known) {
         int fill_h = ctl->level * track_h / 255;
         if (fill_h > 0)
             canvas_round_rect(c, r.x + 16, track_y + track_h - fill_h, r.w - 32, fill_h, 8,
                               live ? DESK_RAISED : DESK_LINE);
-        int thumb_y = track_y + track_h - fill_h - 3;
+        int thumb_y = track_y + track_h - fill_h - 12;
         if (thumb_y < track_y)
             thumb_y = track_y;
-        canvas_round_rect(c, r.x + 12, thumb_y, r.w - 24, 6, 3, live ? DESK_INK : DESK_MUTED);
+        if (thumb_y > track_y + track_h - 24)
+            thumb_y = track_y + track_h - 24;
+        canvas_round_rect(c, r.x + 12, thumb_y, r.w - 24, 24, 8, live ? DESK_INK : DESK_MUTED);
+        canvas_fill_rect(c, r.x + r.w / 2 - 12, thumb_y + 11, 24, 2, DESK_GLASS);
     }
     if (ctl->pressed) {
         int span = track_h > 1 ? track_h - 1 : 1;
-        int thumb_y = track_y + track_h - 1 - ctl->requested_level * span / 255;
-        canvas_fill_rect(c, r.x + 8, thumb_y, r.w - 16, BORDER, DESK_AMBER);
+        int mark_y = track_y + track_h - 1 - ctl->requested_level * span / 255;
+        canvas_fill_rect(c, r.x + 8, mark_y - 1, r.w - 16, BORDER, DESK_INK);
     }
-    char text[16];
-    if (live && known)
-        snprintf(text, sizeof text, "%d%%", ctl->level * 100 / 255);
-    else
-        snprintf(text, sizeof text, "--");
-    int bh = text_h(fonts->value) + 12;
-    canvas_round_rect(c, r.x + 12, r.y + r.h / 2 - bh / 2, r.w - 24, bh, 10, 0xFF000000u);
-    centred(c, fonts->value, r.x, r.y + r.h / 2 - bh / 2, r.w, bh, text, DESK_INK);
-    centred(c, fonts->section, r.x, r.y + 12, r.w, 20, "MASTER", DESK_MUTED);
 }
 
 // The one red on the desk: the console's own StopAll, drawn as a warning
@@ -402,9 +421,9 @@ static void paint_bar(struct canvas *c, const struct desk_model *model,
     canvas_fill_rect(c, 0, 0, DESK_W, DESK_BAR_H, DESK_GLASS);
     for (int i = 0; i < model->layout.pages; i++) {
         struct desk_rect t = desk_view_tab(i);
-        int current = i == model->page;
+        int current = i == model->page && !model->setup_open;
         if (current)
-            canvas_round_rect(c, t.x, t.y, t.w, t.h, 8, DESK_RAISED);
+            canvas_round_rect(c, t.x, t.y + 8, t.w, t.h - 16, 8, DESK_RAISED);
         char cap[48];
         upper(cap, sizeof cap, model->layout.title[i]);
         centred(c, fonts->tab, t.x, t.y, t.w, t.h, cap, current ? DESK_INK : DESK_MUTED);

@@ -58,26 +58,28 @@ void keyboard_paint(struct canvas *c, const struct keyboard *kb, const struct de
         // Shift shows its state: amber when upper case is on, and it stays on
         // when locked; the layer key likewise names where it goes.
         // Ink, never amber: amber is the show's word and a key has none.
-        if (k->kind == KB_KEY_SHIFT && kb->layer == KB_UPPER)
-            fill = DESK_INK;
-        if (k->kind == KB_KEY_DONE && k->enabled)
-            fill = DESK_INK;
-        canvas_round_rect(c, k->x, k->y, k->w, k->h, KB_RADIUS, fill);
+        // The primary key is raised with an ink ring, never a white slab.
+        int primary = (k->kind == KB_KEY_DONE && k->enabled) || (k->kind == KB_KEY_SHIFT && kb->layer == KB_UPPER);
+        if (primary)
+            fill = DESK_RAISED;
+        canvas_round_rect(c, k->x, k->y, k->w, k->h, KB_RADIUS, primary ? DESK_INK : fill);
+        if (primary)
+            canvas_round_rect(c, k->x + 2, k->y + 2, k->w - 4, k->h - 4, KB_RADIUS - 2, fill);
         if (i == kb->pressed) {
             canvas_round_rect(c, k->x, k->y, k->w, k->h, KB_RADIUS, DESK_INK);
             canvas_round_rect(c, k->x + 3, k->y + 3, k->w - 6, k->h - 6, KB_RADIUS - 3, fill);
         }
-        uint32_t ink = fill == DESK_INK ? DESK_GLASS : k->enabled ? DESK_INK : DESK_MUTED;
+        uint32_t ink = k->enabled ? DESK_INK : DESK_MUTED;
         // The model's labels are the tests' names; the keys read in Spanish.
         const char *shown = k->label;
         static const char *const es[][2] = {
-            { "done", "listo" }, { "cancel", "atr\xc3\xa1s" }, { "show", "ver" }, { "space", "espacio" },
+            { "done", "listo" }, { "cancel", "cancelar" }, { "show", "ver" }, { "space", "espacio" },
             { "shift", "may\xc3\xbas" }, { "CAPS", "MAY\xc3\x9aS" }, { "del", "borrar" },
         };
         for (size_t t = 0; t < sizeof es / sizeof es[0]; t++)
             if (strcmp(shown, es[t][0]) == 0)
                 shown = es[t][1];
-        struct font *f = strlen(k->label) == 1 ? fonts->tile : fonts->small;
+        struct font *f = strlen(k->label) == 1 ? fonts->tile : fonts->label;
         centred(c, f, k->x, k->y, k->w, k->h, shown, ink);
     }
 }

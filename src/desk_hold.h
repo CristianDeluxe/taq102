@@ -40,5 +40,10 @@ void desk_hold_set_link(struct desk_hold *h, int ready);
 // NULL output or nonpositive capacity writes nothing and preserves pending offs.
 int desk_hold_owed(struct desk_hold *h, struct hold_action *out, int cap);
 int desk_hold_progress(const struct desk_hold *h, int i, int64_t now);
+// A release the caller could not send: owed again, drained on the next
+// desk_hold_owed once the link is back. Returns 0, or -1 for no such widget.
+int desk_hold_unsent(struct desk_hold *h, int widget_id);
+// Whether a release is still owed for control i (the output may be on).
+int desk_hold_unresolved(const struct desk_hold *h, int i);
 
 #endif

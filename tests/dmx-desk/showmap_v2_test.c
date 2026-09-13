@@ -170,7 +170,7 @@ int main(void) {
             on += model.control[i].enabled;
             holds_on += model.control[i].kind == DESK_HOLD && model.control[i].enabled;
         }
-        assert(holds_on == 15);            // the light hits of LIVE and COLOR; the fog stays on the Mac
+        assert(holds_on == 13);            // the light hits of LIVE and COLOR; fog and strobes stay on the Mac
         assert(enabled == on);
         assert(enabled == 115 + 2 + holds_on + 2);   // the cues, master and stop, the holds, OFF and tempo
     }
