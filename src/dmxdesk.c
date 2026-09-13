@@ -905,6 +905,7 @@ int main(int argc, char **argv) {
                 if (!join.running)
                     setup.wifi_busy[0] = '\0';
                 snprintf(setup.wifi_note, sizeof setup.wifi_note, "Scan refused");
+                fprintf(stderr, "wifi: SCAN answered %d: %.40s\n", wifi_request.result, reply);
                 setup.dirty = 1;
             } else if (done == DESK_WIFI_RESULTS) {
                 if (wifi_request.result > 0 && strncmp(reply, "FAIL", 4) != 0) {
