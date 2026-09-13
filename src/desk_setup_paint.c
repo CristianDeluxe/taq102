@@ -16,6 +16,29 @@ static void text_at(struct canvas *c, struct font *f, int x, int y, int max_w, c
         canvas_text(c, x, y, s, 3, col);
 }
 
+// The model keeps its words in English for the code and the tests; the
+// sheet says them in the operator's language.
+static const char *es(const char *word) {
+    static const char *const table[][2] = {
+        { "Scanning", "Buscando redes" }, { "Joining", "Uni\xc3\xa9ndose" }, { "Finding", "Buscando QLC+" },
+        { "Scan refused", "Escaneo rechazado" }, { "Scan timed out", "Escaneo sin respuesta" },
+        { "No network address", "Sin direcci\xc3\xb3n de red" }, { "Search failed", "B\xc3\xbasqueda fallida" },
+        { "Search stopped", "B\xc3\xbasqueda parada" }, { "Applied, not saved", "Aplicado, sin guardar" },
+        { "No QLC+ on this network", "Ning\xc3\xban QLC+ en esta red" }, { "Wrong key", "Clave incorrecta" },
+        { "No association", "Sin asociaci\xc3\xb3n" }, { "No address", "Sin direcci\xc3\xb3n" },
+        { "Associating", "Asociando" }, { "Getting an address", "Pidiendo direcci\xc3\xb3n" },
+        { "Configuring network", "Configurando" }, { "Restoring network", "Restaurando la red" },
+        { "Linked", "Enlazado" }, { "Connecting", "Conectando" }, { "No link", "Sin enlace" },
+        { "Not linked", "Sin enlace" }, { "Reading the show", "Leyendo el show" },
+        { "Network refused the tablet", "La red rechaz\xc3\xb3 la tablet" },
+        { "Cannot renew the lease", "Sin renovar la direcci\xc3\xb3n" },
+    };
+    for (size_t i = 0; i < sizeof table / sizeof table[0]; i++)
+        if (strcmp(word, table[i][0]) == 0)
+            return table[i][1];
+    return word;
+}
+
 static int text_h(struct font *f) {
     return f ? font_height(f) : 15;
 }
@@ -77,13 +100,13 @@ static void wifi_card(struct canvas *c, const struct desk_setup *s, const struct
     char line[128];
     int cy = SETUP_CARD_Y + SETUP_TITLE_H;
     if (!s->wifi_available)
-        snprintf(line, sizeof line, "No Wi-Fi control");
+        snprintf(line, sizeof line, "Sin control Wi-Fi");
     else if (s->ssid[0] && strcmp(s->wifi_state, "COMPLETED") == 0)
         snprintf(line, sizeof line, "%s  %s", s->ssid, s->address[0] ? s->address : "no address yet");
     else if (s->ssid[0])
         snprintf(line, sizeof line, "%s  %s", s->ssid, s->wifi_state);
     else
-        snprintf(line, sizeof line, "Not connected");
+        snprintf(line, sizeof line, "Sin conectar");
     text_at(c, fonts->tile, x + 16, cy + (SETUP_CURRENT_H - text_h(fonts->tile)) / 2, SETUP_CARD_W - 32, line, DESK_INK);
     int shown = s->scan.count - s->scan_page * SETUP_ROWS;
     if (shown > SETUP_ROWS)
@@ -103,27 +126,32 @@ static void wifi_card(struct canvas *c, const struct desk_setup *s, const struct
     }
     if (s->scan.count == 0 && s->wifi_available)
         text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
-                s->wifi_busy[0] ? "" : "No networks yet", DESK_MUTED);
+                s->wifi_busy[0] ? "" : "Sin redes a\xc3\xban", DESK_MUTED);
     // The note sits above the button: the last outcome; the button itself
     // says what it is doing while busy.
+    char note_es[80];
+    if (strncmp(s->wifi_note, "Joined ", 7) == 0)
+        snprintf(note_es, sizeof note_es, "Unido a %s", s->wifi_note + 7);
+    else
+        snprintf(note_es, sizeof note_es, "%s", es(s->wifi_note));
     if (!s->wifi_busy[0])
-        text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, s->wifi_note, DESK_MUTED);
-    char busy[SETUP_WORD_MAX + 4];
-    snprintf(busy, sizeof busy, "%s...", s->wifi_busy);
+        text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, note_es, DESK_MUTED);
+    char busy[SETUP_WORD_MAX + 40];
+    snprintf(busy, sizeof busy, "%s...", es(s->wifi_busy));
     button(c, fonts->label, x + 16, SETUP_BUTTONS_Y, SETUP_CARD_W - 32, SETUP_BUTTON_H,
-           s->wifi_busy[0] ? busy : "Scan",
+           s->wifi_busy[0] ? busy : "Buscar redes",
            s->wifi_available && !s->wifi_busy[0] ? BUTTON_PRIMARY : BUTTON_DEAD);
 }
 
 static void master_card(struct canvas *c, const struct desk_setup *s, const struct desk_fonts *fonts) {
     int x = SETUP_MASTER_X;
     int pages = (s->found_count + SETUP_ROWS - 1) / SETUP_ROWS;
-    card_frame(c, fonts, x, "QLC+ master", pages, s->found_page);
+    card_frame(c, fonts, x, "Master QLC+", pages, s->found_page);
     char line[SETUP_HOST_MAX + 48];
     if (s->master_configured)
-        snprintf(line, sizeof line, "%s:%d  %s", s->master, s->port, s->link_word);
+        snprintf(line, sizeof line, "%s:%d  %s", s->master, s->port, es(s->link_word));
     else
-        snprintf(line, sizeof line, "No master set");
+        snprintf(line, sizeof line, "Sin master");
     int cy = SETUP_CARD_Y + SETUP_TITLE_H;
     text_at(c, fonts->tile, x + 16, cy + (SETUP_CURRENT_H - text_h(fonts->tile)) / 2, SETUP_CARD_W - 32, line, DESK_INK);
     int shown = s->found_count - s->found_page * SETUP_ROWS;
@@ -142,22 +170,22 @@ static void master_card(struct canvas *c, const struct desk_setup *s, const stru
     }
     if (s->found_count == 0)
         text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
-                s->master_busy[0] ? "Sweeping the subnet" : "Nothing found yet", DESK_MUTED);
-    char note[128];
-    const char *discovery = s->master_busy[0] ? "" : s->master_note;
-    snprintf(note, sizeof note, "%s%s%s%s%s", s->save_note,
+                s->master_busy[0] ? "Barriendo la red" : "Nada encontrado a\xc3\xban", DESK_MUTED);
+    char note[160];
+    const char *discovery = s->master_busy[0] ? "" : es(s->master_note);
+    snprintf(note, sizeof note, "%s%s%s%s%s", es(s->save_note),
              s->save_note[0] && (discovery[0] || s->found_partial) ? "  " : "",
              discovery, discovery[0] && s->found_partial ? "  " : "",
-             s->found_partial && !s->master_busy[0] ? "First 256 hosts only" : "");
+             s->found_partial && !s->master_busy[0] ? "Solo los primeros 256" : "");
     text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, note, DESK_MUTED);
     int half = (SETUP_CARD_W - 48) / 2;
-    char busy[SETUP_WORD_MAX + 4];
-    snprintf(busy, sizeof busy, "%s...", s->master_busy);
-    button(c, fonts->label, x + 16, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, s->master_busy[0] ? "Stop" : "Find",
+    char busy[SETUP_WORD_MAX + 40];
+    snprintf(busy, sizeof busy, "%s...", es(s->master_busy));
+    button(c, fonts->label, x + 16, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, s->master_busy[0] ? "Parar" : "Buscar QLC+",
            s->master_busy[0] ? BUTTON_SECONDARY : BUTTON_PRIMARY);
     if (s->master_busy[0])
         text_at(c, fonts->small, x + 16, SETUP_BUTTONS_Y - 28, SETUP_CARD_W - 32, busy, DESK_MUTED);
-    button(c, fonts->label, x + 32 + half, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, "Type address", BUTTON_SECONDARY);
+    button(c, fonts->label, x + 32 + half, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H, "Escribir IP", BUTTON_SECONDARY);
 }
 
 static void footer(struct canvas *c, const struct desk_setup *s, const struct desk_fonts *fonts) {
@@ -177,7 +205,7 @@ static void footer(struct canvas *c, const struct desk_setup *s, const struct de
     (void)fill;
     char line[48];
     int pct = range > 0 ? 100 * level / range : 100;
-    snprintf(line, sizeof line, "Brightness %d%%%s", pct, s->brightness_unsaved ? "  Applied, not saved" : "");
+    snprintf(line, sizeof line, "Brillo %d%%%s", pct, s->brightness_unsaved ? "  \xc2\xb7 aplicado, sin guardar" : "");
     text_at(c, fonts->tile_s, SETUP_FADER_X + 16, SETUP_FADER_Y + 12, SETUP_FADER_W - 32, line, DESK_INK);
     // The toggle: a pill with a knob, the row its target.
     canvas_round_rect(c, SETUP_TOGGLE_X, SETUP_TOGGLE_Y, SETUP_TOGGLE_W, SETUP_TOGGLE_H, 12, DESK_TILE);
@@ -186,29 +214,29 @@ static void footer(struct canvas *c, const struct desk_setup *s, const struct de
     canvas_round_rect(c, s->power_aware ? px + 52 - 24 : px + 2, py + 2, 22, 22, 11,
                       s->power_aware ? DESK_GLASS : DESK_MUTED);
     uint32_t ink = DESK_INK;
-    text_at(c, fonts->small, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + 16, SETUP_TOGGLE_W - 40, "Dim on battery", ink);
+    text_at(c, fonts->small, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + 16, SETUP_TOGGLE_W - 40, "Atenuar con bater\xc3\xada", ink);
     text_at(c, fonts->tile, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + SETUP_TOGGLE_H - 16 - text_h(fonts->tile),
-            SETUP_TOGGLE_W - 40, s->power_aware ? "On" : "Off", ink);
+            SETUP_TOGGLE_W - 40, s->power_aware ? "S\xc3\xad" : "No", ink);
 }
 
 static void confirm_sheet(struct canvas *c, const struct desk_setup *s, const struct desk_fonts *fonts) {
     canvas_round_rect(c, SETUP_CONFIRM_X, SETUP_CONFIRM_Y, SETUP_CONFIRM_W, SETUP_CONFIRM_H, 20, DESK_TILE);
     char line[WIFI_SSID_MAX + 24];
-    snprintf(line, sizeof line, "Join %s?", s->pending_ssid);
+    snprintf(line, sizeof line, "\xc2\xbfUnirse a %s?", s->pending_ssid);
     text_at(c, fonts->tile, SETUP_CONFIRM_X + 24, SETUP_CONFIRM_Y + 28, SETUP_CONFIRM_W - 48, line, DESK_INK);
     text_at(c, fonts->label, SETUP_CONFIRM_X + 24, SETUP_CONFIRM_Y + 72, SETUP_CONFIRM_W - 48,
-            "Tablet controls disconnect; the Mac keeps running.", DESK_MUTED);
+            "La tablet se desconecta un momento; el Mac sigue.", DESK_MUTED);
     text_at(c, fonts->small, SETUP_CONFIRM_X + 24, SETUP_CONFIRM_Y + 104, SETUP_CONFIRM_W - 48,
-            s->confirm_is_open_network ? "An open network: no key."
-            : s->confirm_psk[0] ? "The key you typed stays on the tablet."
-            : "The key on file will be used.", DESK_MUTED);
+            s->confirm_is_open_network ? "Red abierta: sin clave."
+            : s->confirm_psk[0] ? "La clave que has escrito se queda en la tablet."
+            : "Se usa la clave guardada.", DESK_MUTED);
     int bx = SETUP_CONFIRM_X + 16, by = SETUP_CONFIRM_Y + SETUP_CONFIRM_H - 64;
     int buttons = s->confirm_known ? 3 : 2;
     int bw = (SETUP_CONFIRM_W - 32 - 16 * (buttons - 1)) / buttons;
-    button(c, fonts->label, bx, by, bw, 48, "Cancel", BUTTON_SECONDARY);
+    button(c, fonts->label, bx, by, bw, 48, "Cancelar", BUTTON_SECONDARY);
     if (buttons == 3)
-        button(c, fonts->label, bx + bw + 16, by, bw, 48, "New key", BUTTON_SECONDARY);
-    button(c, fonts->label, bx + (buttons - 1) * (bw + 16), by, bw, 48, "Join", BUTTON_PRIMARY);
+        button(c, fonts->label, bx + bw + 16, by, bw, 48, "Otra clave", BUTTON_SECONDARY);
+    button(c, fonts->label, bx + (buttons - 1) * (bw + 16), by, bw, 48, "Unirse", BUTTON_PRIMARY);
 }
 
 // A finger on a button: an ink outline where it is, as on the desk's tiles.
@@ -247,7 +275,7 @@ void desk_setup_paint(struct canvas *c, const struct desk_setup *s, const struct
     wifi_card(c, s, fonts);
     master_card(c, s, fonts);
     footer(c, s, fonts);
-    button(c, fonts->label, SETUP_CLOSE_X, SETUP_CLOSE_Y, SETUP_CLOSE_W, SETUP_CLOSE_H, "Close", BUTTON_SECONDARY);
+    button(c, fonts->label, SETUP_CLOSE_X, SETUP_CLOSE_Y, SETUP_CLOSE_W, SETUP_CLOSE_H, "Cerrar", BUTTON_SECONDARY);
     // The outline says a release here will do something: not off the
     // target, not on a dead one.
     int live = 1;

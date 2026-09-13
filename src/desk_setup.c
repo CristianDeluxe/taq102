@@ -207,7 +207,7 @@ static struct setup_action keyboard_done(struct desk_setup *s) {
             a.port = port;
         } else {
             // Not an address: the keyboard stays, and says why.
-            snprintf(s->kb.title, sizeof s->kb.title, "Not an address: 192.168.1.65:9999 is one");
+            snprintf(s->kb.title, sizeof s->kb.title, "No es una direcci\xc3\xb3n: 192.168.1.65:9999 lo es");
             s->dirty = 1;
             return a;
         }
@@ -269,7 +269,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
             return none();
         }
         char title[80];
-        snprintf(title, sizeof title, "Password for %s", w->ssid);
+        snprintf(title, sizeof title, "Clave de %s", w->ssid);
         keyboard_open(&s->kb, KB_TEXT, title, "", 1, 8, 63);
         s->kb_purpose = KB_FOR_PSK;
         return none();
@@ -292,7 +292,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
             snprintf(initial, sizeof initial, "%s:%d", s->master, s->port);
         else
             snprintf(initial, sizeof initial, "192.168.1.");
-        keyboard_open(&s->kb, KB_NUMERIC, "Master address and port", initial, 0, 7, 24);
+        keyboard_open(&s->kb, KB_NUMERIC, "Direcci\xc3\xb3n y puerto del master", initial, 0, 7, 24);
         s->kb_purpose = KB_FOR_HOST;
         return none();
     }
@@ -333,7 +333,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
         // The block on file is replaced once the new key is typed and confirmed.
         s->confirm_open = 0;
         char title[80];
-        snprintf(title, sizeof title, "New password for %s", s->pending_ssid);
+        snprintf(title, sizeof title, "Nueva clave de %s", s->pending_ssid);
         keyboard_open(&s->kb, KB_TEXT, title, "", 1, 8, 63);
         s->kb_purpose = KB_FOR_PSK;
         return none();

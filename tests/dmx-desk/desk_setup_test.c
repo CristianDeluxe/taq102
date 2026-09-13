@@ -131,7 +131,7 @@ int main(void) {
     tap(&s, tx, by);
     for (int i = 0; i < 12; i++) press_key(&s, "del");
     type_on_keyboard(&s, "1.2.3.4:0");
-    assert(press_key(&s, "done").kind == SETUP_NONE && s.kb.open && strstr(s.kb.title, "Not an address"));
+    assert(press_key(&s, "done").kind == SETUP_NONE && s.kb.open && strstr(s.kb.title, "No es una direcci"));
     for (int i = 0; i < 12; i++) press_key(&s, "del");
     type_on_keyboard(&s, "1.2.3.999");
     assert(press_key(&s, "done").kind == SETUP_NONE && s.kb.open);
@@ -155,7 +155,7 @@ int main(void) {
     assert(a.kind == SETUP_POWER_AWARE && a.value == 1 && s.power_aware);
 
     // A tap outside the cards closes the surface; so does the Close button.
-    assert(tap(&s, 60, 300).kind == SETUP_CLOSE);
+    assert(tap(&s, 100, 484).kind == SETUP_CLOSE);
     assert(tap(&s, SETUP_CLOSE_X + 10, SETUP_CLOSE_Y + 10).kind == SETUP_CLOSE);
     desk_setup_close(&s);
     assert(!s.open && !s.kb.open);
