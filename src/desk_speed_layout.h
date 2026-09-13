@@ -5,11 +5,11 @@
 #ifndef DESK_SPEED_LAYOUT_H
 #define DESK_SPEED_LAYOUT_H
 
-#define SPEED_CARD_X 156
-#define SPEED_CARD_W 688
+#define SPEED_CARD_X 16
+#define SPEED_CARD_W 828
 #define SPEED_CARD_H 160
-#define SPEED_CARD_Y(i) (136 + (i) * 176)     // 136, 312
-#define SPEED_BOTH_Y 488
+#define SPEED_CARD_Y(i) (56 + (i) * 176)      // 56, 232
+#define SPEED_BOTH_Y 408
 #define SPEED_BOTH_H 96
 #define SPEED_RADIUS 20
 

@@ -35,38 +35,28 @@ int main(void) {
     assert(desk_layout_resolve(&map, master, panic, &l) == 0);
     assert(l.pages == 8 && l.speed_page == 7 && strcmp(l.title[7], "SPEED") == 0);
 
-    // Every control has a placement on its own page; the states also on every
-    // other page, compact.
-    for (int i = 0; i < map.count; i++) {
-        const struct desk_placement *p = find(&l, i, map.control[i].page);
-        assert(p);
-        // On LIVE only the held hits take the compact form.
-        if (map.control[i].page == 0)
-            assert(p->tile != TILE_COMPACT || (map.control[i].role == MAP_ROLE_ACCENT && map.control[i].held));
-    }
-    int auto_ix = control_named(&map, "AUTO");
-    for (int page = 1; page < l.pages; page++) {
-        const struct desk_placement *p = find(&l, auto_ix, page);
-        assert(p && p->tile == TILE_COMPACT && p->bank == 0 && p->y == DESK_GRID_Y && p->w == 86);
-    }
-    // AUTO is the wide tile on LIVE, first row, with CHARLA beside it.
-    const struct desk_placement *a = find(&l, auto_ix, 0);
-    assert(a->tile == TILE_WIDE && a->w == 452 && a->x == DESK_GRID_X && a->y == DESK_GRID_Y + 32 && a->h == 88);
+    // Every control has a placement on its own page.
+    for (int i = 0; i < map.count; i++)
+        assert(find(&l, i, map.control[i].page));
+    // States and hooks are 200x64 four to a row; picks 128x88 six to a row;
+    // hits 128x104; haze rhythms 200x64.
+    const struct desk_placement *a = find(&l, control_named(&map, "AUTO"), 0);
+    assert(a->tile == TILE_CUE && a->w == 200 && a->h == 64 && a->x == DESK_CONTENT_X);
     const struct desk_placement *ch = find(&l, control_named(&map, "CHARLA"), 0);
-    assert(ch->y == a->y && ch->x == a->x + 452 + 16 && ch->w == 218);
-    // The haze tiles are four to a row.
+    assert(ch->y == a->y && ch->x == a->x + 200 + 8);
     const struct desk_placement *h1 = find(&l, control_named(&map, "cada 1 min"), 0);
     const struct desk_placement *h4 = find(&l, control_named(&map, "cada 8 min"), 0);
     assert(h1 && h4 && h1->tile == TILE_HAZE && h1->y == h4->y && h4->x + h4->w <= DESK_MASTER_X);
-    // Picks are swatch tiles, six to a row.
     const struct desk_placement *rojo = find(&l, control_named(&map, "Rig Rojo"), 1);
-    assert(rojo && rojo->tile == TILE_SWATCH && rojo->w == 100);
+    assert(rojo && rojo->tile == TILE_SWATCH && rojo->w == 128 && rojo->h == 88);
+    const struct desk_placement *flash = find(&l, control_named(&map, "FLASH"), 0);
+    assert(flash && flash->tile == TILE_HOLD && flash->h == 104);
 
     // Bounds and overlaps, per page and bank; the master and the panic button
     // once per bank.
     for (int page = 0; page < l.pages; page++) {
         assert(l.banks[page] >= 1 && l.banks[page] <= DESK_MAX_BANKS);
-        int end = l.banks[page] > 1 ? DESK_H - 56 : DESK_H;
+        int end = l.banks[page] > 1 ? DESK_CONTENT_END - 40 : DESK_CONTENT_END;
         for (int bank = 0; bank < l.banks[page]; bank++) {
             int masters = 0, panics = 0;
             for (int i = 0; i < l.placements; i++) {

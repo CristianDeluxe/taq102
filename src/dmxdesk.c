@@ -34,7 +34,6 @@
 #include "action_worker.h"
 #include "canvas.h"
 #include "desk_conf.h"
-#include "desk_gear_paint.h"
 #include "desk_input.h"
 #include "desk_lock.h"
 #include "desk_layout.h"
@@ -61,7 +60,6 @@
 #include "showmap.h"
 #include "showmap_validate.h"
 #include "status.h"
-#include "statusbar.h"
 #include "touch_flip.h"
 #include "touch_input.h"
 #include "vcjson.h"
@@ -284,8 +282,7 @@ static const char *link_word_of(enum qlc_link link) {
 }
 
 static int in_gear(int x, int y) {
-    return x >= SETUP_GEAR_X && x < SETUP_GEAR_X + SETUP_GEAR_W &&
-           y >= SETUP_GEAR_Y && y < SETUP_GEAR_Y + SETUP_GEAR_H;
+    return desk_rect_contains(desk_view_gear(), x, y);
 }
 
 // The bar's status is read once a second; only a change repaints.
@@ -360,16 +357,9 @@ int main(int argc, char **argv) {
         present_close(present);
         return 1;
     }
-    struct desk_fonts fonts = {
-        font_open("/usr/share/fonts/taq102/Inter-SemiBold.ttf", 22),
-        font_open("/usr/share/fonts/taq102/Inter-SemiBold.ttf", 56),
-        font_open("/usr/share/fonts/taq102/Inter-Regular.ttf", 20),
-        font_open("/usr/share/fonts/taq102/Inter-Regular.ttf", 16),
-    };
-    const struct statusbar_style bar_style = {
-        DESK_GLASS, DESK_GLASS, DESK_INK, DESK_MUTED, DESK_INK, DESK_AMBER, DESK_WARN,
-        "/usr/share/fonts/taq102/Inter-SemiBold.ttf",
-    };
+    struct desk_fonts fonts;
+    if (desk_fonts_open(&fonts, "/usr/share/fonts/taq102") != 0)
+        fprintf(stderr, "desk: fonts missing under /usr/share/fonts/taq102; 3x5 glyphs it is\n");
 
     struct vc_doc console;
     memset(&console, 0, sizeof console);
@@ -502,12 +492,7 @@ int main(int argc, char **argv) {
     int64_t last_status_ms = 0;
     struct status status;
     memset(&status, 0, sizeof status);
-    // The bar is painted supersampled, which is dear on this CPU, so it is
-    // painted into its own strip only when the status changes and copied
-    // into every frame.
-    int bar_h = statusbar_height(w);
-    struct canvas bar = { .px = calloc((size_t)w * bar_h, 4), .w = w, .h = bar_h };
-    int bar_ready = 0;
+    int bar_ready = 0;      // the bar's facts reach the model on the next status tick
     enum qlc_link last_link = QLC_DOWN;
     char last_reason[96] = "";
 
@@ -628,6 +613,7 @@ int main(int argc, char **argv) {
                                 }
                                 bar_ready = 0;
                                 last_status_ms = 0;
+                                desk_set_status(&model, model.battery, model.charging, model.wifi_bars, setup.open);
                             }
                         }
                         continue;
@@ -974,17 +960,11 @@ int main(int argc, char **argv) {
             }
             if (status_changed(&status, &next) || !bar_ready) {
                 status = next;
-                if (bar.px) {
-                    for (int i = 0; i < bar.w * bar.h; i++)
-                        bar.px[i] = DESK_GLASS;
-                    statusbar_paint(&bar, &status, &bar_style);
-                    desk_gear_paint(&bar, SETUP_GEAR_X, SETUP_GEAR_Y, SETUP_GEAR_W, SETUP_GEAR_H,
-                                    setup.open ? DESK_INK : DESK_MUTED, DESK_GLASS);
-                    bar_ready = 1;
-                }
-                desk_damage_rect(&model, 0, 0, bar.w, bar.h);
+                bar_ready = 1;
             }
             status = next;
+            desk_set_status(&model, status.have_batt ? status.cap : -1, status.have_batt && status.ma > 0,
+                            status.have_wifi ? status_wifi_bars(&status) : 0, setup.open);
         }
 
         // A blanked display is not painted: the CRTC is off and a flip would
@@ -1013,8 +993,6 @@ int main(int argc, char **argv) {
                 }
                 desk_setup_paint(&canvas, &setup, &fonts);
                 canvas_clear_clip(&canvas);
-                if (bar_ready && (dw < 0 || dy < bar.h))
-                    memcpy(canvas.px, bar.px, (size_t)bar.w * bar.h * 4);
                 if (log_perf)
                     perf_window_add(&paint_ms, (int)(now_ms() - t0));
             }
@@ -1065,11 +1043,7 @@ int main(int argc, char **argv) {
         wpa_ctrl_close(wpa);
     aw_free(finder);
     desk_power_free(&power);
-    font_close(fonts.tile);
-    font_close(fonts.value);
-    font_close(fonts.label);
-    font_close(fonts.small);
-    free(bar.px);
+    desk_fonts_close(&fonts);
     free(canvas.px);
     present_close(present);
     vc_free(&console);

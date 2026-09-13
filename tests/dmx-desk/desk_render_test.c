@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_paint.c desk_caption.c desk_view.c desk_layout_resolve.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c
+// SOURCES: desk_model.c desk_paint.c icon.c desk_caption.c desk_view.c desk_layout_resolve.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c desk_fonts.c
 // The desk, built from the generated Vibra map against the real console
 // document, pressed once, and painted. Writes $TEST_OUT/desk.ppm so the screen can be
 // looked at on a laptop before it reaches the tablet.
@@ -74,7 +74,7 @@ int main(void) {
     // Every placement lands inside the chrome, and cues never under the master.
     for (int i = 0; i < layout.placements; i++) {
         const struct desk_placement *p = &layout.placement[i];
-        assert(p->x >= DESK_RAIL_W && p->y >= DESK_BAR_H);
+        assert(p->x >= DESK_CONTENT_X && p->y >= DESK_BAR_H);
         assert(p->x + p->w <= DESK_W && p->y + p->h <= DESK_H);
         if (p->tile != TILE_MASTER && p->tile != TILE_PANIC)
             assert(p->x + p->w <= DESK_MASTER_X);
@@ -123,12 +123,8 @@ int main(void) {
     desk_apply_function(&model, 720, 1);
     desk_apply_master(&model, 200);
 
-    struct desk_fonts fonts = {
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf", 22),
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf", 56),
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 20),
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 16),
-    };
+    struct desk_fonts fonts;
+    assert(desk_fonts_open(&fonts, "br2-external/package/taq102-fonts/fonts") == 0);
     struct canvas canvas = { .px = calloc(DESK_W * DESK_H, 4), .w = DESK_W, .h = DESK_H };
     assert(canvas.px);
     desk_paint(&canvas, &model, &fonts);

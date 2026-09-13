@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_paint.c desk_caption.c desk_view.c canvas.c canvas_blend.c font.c
+// SOURCES: desk_model.c desk_paint.c icon.c desk_caption.c desk_view.c canvas.c canvas_blend.c font.c desk_fonts.c
 // The master is unknown until the master speaks, a drag moves only what the
 // desk asked for, and a finger on a tile never repaints what the show said.
 #include <assert.h>
@@ -46,9 +46,11 @@ int main(void) {
     assert(m.control[im].state == DESK_UNKNOWN);
 
     struct canvas c = { .px = calloc(DESK_W * DESK_H, 4), .w = DESK_W, .h = DESK_H };
-    struct desk_fonts fonts = { NULL, NULL, NULL, NULL };
+    struct desk_fonts fonts;
+    memset(&fonts, 0, sizeof fonts);
     desk_paint(&c, &m, &fonts);
-    // Unknown: not one amber pixel in the master tile.
+    // Unknown: no fill and no thumb in the master tile; amber is never a level.
+    assert(count(&c, mp->x, mp->y, mp->w, mp->h, DESK_RAISED) == 0);
     assert(count(&c, mp->x, mp->y, mp->w, mp->h, DESK_AMBER) == 0);
 
     // The first push, whatever its value, makes the level known.
@@ -57,8 +59,8 @@ int main(void) {
     desk_apply_master(&m, 128);
     assert(m.control[im].level == 128 && m.control[im].requested_level == 128);
     desk_paint(&c, &m, &fonts);
-    int half = count(&c, mp->x, mp->y, mp->w, mp->h, DESK_AMBER);
-    assert(half > mp->w * mp->h / 4 && half < mp->w * mp->h * 3 / 4);
+    int half = count(&c, mp->x, mp->y, mp->w, mp->h, DESK_RAISED);
+    assert(half > mp->w * mp->h / 8 && half < mp->w * mp->h * 3 / 4);
 
     // A drag moves the requested level and the action, never the confirmed one.
     struct desk_action a = desk_touch_down(&m, 0, mp->x + 10, mp->y + mp->h - 1);
@@ -67,7 +69,7 @@ int main(void) {
     a = desk_touch_move(&m, 0, mp->x + 10, mp->y);
     assert(a.kind == DESK_ACT_MASTER && a.value == 255 && m.control[im].level == 128);
     desk_paint(&c, &m, &fonts);
-    int during = count(&c, mp->x, mp->y, mp->w, mp->h, DESK_AMBER);
+    int during = count(&c, mp->x, mp->y, mp->w, mp->h, DESK_RAISED);
     assert(during <= half && during > half * 9 / 10);    // the fill did not move
     // A push while the finger is down does not yank the request.
     desk_apply_master(&m, 140);
@@ -77,7 +79,7 @@ int main(void) {
     desk_apply_master(&m, 255);
     assert(m.control[im].requested_level == 255);
     desk_paint(&c, &m, &fonts);
-    assert(count(&c, mp->x, mp->y, mp->w, mp->h, DESK_AMBER) > half);
+    assert(count(&c, mp->x, mp->y, mp->w, mp->h, DESK_RAISED) > half);
 
     // A pressed cue keeps its fill: a running cue stays amber under the
     // finger, and the outline is ink.
