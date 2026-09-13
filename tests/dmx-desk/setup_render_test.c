@@ -1,4 +1,4 @@
-// SOURCES: desk_setup.c desk_setup_paint.c keyboard.c keyboard_paint.c wifi_scan.c desk_conf.c canvas.c canvas_blend.c font.c desk_fonts.c
+// SOURCES: desk_setup.c desk_setup_paint.c keyboard.c keyboard_paint.c wifi_scan.c desk_conf.c canvas.c canvas_blend.c font.c desk_fonts.c icon.c
 // The settings surface painted: cards with a scan and found masters, the
 // footer, the confirmation, and the keyboard for a key. Writes PPMs to look
 // at; asserts only that painting touches the sheet and leaves the master

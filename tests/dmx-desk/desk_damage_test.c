@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_layout_resolve.c showmap.c showmap_validate.c vcjson.c
+// SOURCES: desk_model.c desk_layout_resolve.c desk_show_layout.c showmap.c showmap_validate.c vcjson.c
 // What changed is what gets painted: a push lights one tile's rectangle, a
 // view change everything, and a clip keeps a primitive inside its damage.
 #include <assert.h>
@@ -37,7 +37,7 @@ int main(void) {
     struct desk_model m;
     showmap_build(&m, &map, &doc);
     struct desk_layout layout;
-    assert(desk_layout_resolve(&map, map.count, map.count + 1, &layout) == 0);
+    assert(desk_layout_resolve(&map, map.count, map.count + 1, map.count + 2, map.count + 3, &layout) == 0);
     desk_set_layout(&m, &layout);
     desk_set_link(&m, DESK_LINK_READY);
 
@@ -57,7 +57,12 @@ int main(void) {
     assert(ap && x == ap->x && y == ap->y && w == ap->w && h == ap->h);
 
     // A push for a control on another page damages nothing on this view.
-    desk_apply_function(&m, 727, 1);
+    int gobo_fn = -1;
+    for (int i = 0; i < m.count; i++)
+        if (strcmp(m.control[i].label, "Gobo 1") == 0)
+            gobo_fn = m.control[i].function_id;
+    assert(gobo_fn >= 0);
+    desk_apply_function(&m, gobo_fn, 1);
     assert(desk_take_damage(&m, &x, &y, &w, &h) == 0);
 
     // Two changes: the union.

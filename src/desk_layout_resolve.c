@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "desk_layout.h"
+#include "desk_show_layout.h"
 
 // The content: 16..844 across, 56..584 down. A section is a titled rule
 // (24 px) with 8 px under it, then rows of tiles with 8 px gaps and 16 px
@@ -25,7 +26,7 @@ static struct tile_size size_of(enum desk_tile tile) {
     switch (tile) {
     case TILE_WIDE:    return (struct tile_size){ DESK_HOOK_W, DESK_HOOK_H };
     case TILE_SWATCH:  return (struct tile_size){ DESK_PICK_W, DESK_PICK_H };
-    case TILE_HOLD:    return (struct tile_size){ DESK_PICK_W, DESK_HOLD_H };
+    case TILE_HOLD:    return (struct tile_size){ DESK_PICK_W, DESK_HOLD_TILE_H };
     case TILE_HAZE:    return (struct tile_size){ DESK_HOOK_W, DESK_HOOK_H };
     case TILE_COMPACT: return (struct tile_size){ DESK_PICK_W, DESK_HOOK_H };
     default:           return (struct tile_size){ DESK_HOOK_W, DESK_HOOK_H };
@@ -207,15 +208,25 @@ static void lay_page(struct cursor *cur, const struct show_map *map, int page,
     cur->out->banks[page] = cur->bank + 1;
 }
 
-int desk_layout_resolve(const struct show_map *map, int master, int panic,
-                        struct desk_layout *out) {
+int desk_layout_resolve(const struct show_map *map, int master, int panic, int haze_off,
+                        int tempo, struct desk_layout *out) {
     memset(out, 0, sizeof *out);
     out->pages = map->pages;
     out->speed_page = -1;
+    int live = desk_show_live_page(map);
     for (int page = 0; page < map->pages; page++)
-        snprintf(out->title[page], sizeof out->title[page], "%s", map->page[page].title);
+        snprintf(out->title[page], sizeof out->title[page], "%s",
+                 page == live ? "SHOW" : map->page[page].title);
 
     for (int page = 0; page < map->pages; page++) {
+        if (page == live) {
+            struct cursor cur = { out, page, 0, CONTENT_Y, CONTENT_END, 0 };
+            chrome(&cur, master, panic);
+            if (cur.failed || desk_show_compose(map, page, haze_off, tempo, out) != 0)
+                return -1;
+            out->banks[page] = 1;
+            continue;
+        }
         // Lay the page once against the full height; if it needs more than
         // one bank, the pager takes the bottom and it is laid again.
         struct cursor cur = { out, page, 0, CONTENT_Y, CONTENT_END, 0 };

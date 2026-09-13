@@ -28,6 +28,39 @@ static int under_frame(const struct vc_doc *doc, const struct vc_widget *w, int 
 // is a button, it really toggles, it really drives the function the map
 // claims, and it sits in the solo frame the map says it does. Anything else
 // and the tile is drawn but dead.
+// A hit fired while the finger is down: its widget must be a Flash button
+// of this show. Fog stays on the Mac until a finite burst is proven there:
+// a tablet's cap cannot bound an output after the link is lost.
+static const struct vc_widget *check_hold(struct desk_control *c,
+                                          const struct map_control *m,
+                                          const struct vc_doc *doc) {
+    const struct vc_widget *w = vc_find(doc, m->widget_id);
+    if (!w) {
+        disable(c, "not in this show");
+        return NULL;
+    }
+    if (w->type_id != VC_BUTTON || w->action_type != VC_FLASH) {
+        disable(c, "not a flash button");
+        return NULL;
+    }
+    if (m->function_id >= 0 && w->function_id != m->function_id) {
+        disable(c, "drives another cue");
+        return NULL;
+    }
+    if (w->disabled) {
+        disable(c, "disabled on the master");
+        return NULL;
+    }
+    c->function_id = w->function_id;
+    c->enabled = 1;
+    c->reason[0] = '\0';
+    return w;
+}
+
+static int is_fog(const struct map_control *m) {
+    return strncmp(m->key, "humo", 4) == 0;
+}
+
 static const struct vc_widget *check_cue(struct desk_control *c,
                                          const struct map_control *m,
                                          const struct vc_doc *doc) {
@@ -103,10 +136,14 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
         const struct vc_widget *widget = NULL;
         if (wrong_show)
             disable(&c, "show mismatch");
-        else if (!m->enabled)
+        else if (m->held && !is_fog(m)) {
+            c.kind = DESK_HOLD;
+            widget = check_hold(&c, m, doc);
+        } else if (!m->enabled)
             disable(&c, m->reason[0] ? m->reason : "held on the Mac");
         else
             widget = check_cue(&c, m, doc);
+        c.hold_index = -1;
 
         int index = desk_add(model, &c);
         if (index < 0) {
@@ -149,6 +186,31 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
             model->control[master_index].state = DESK_ON;
     }
 
+    // SHOW's two pseudo controls, always present after the panic button so
+    // their indices are known: ambient OFF, and the tempo card for the first
+    // dial. Each is disabled when the show has nothing for it.
+    struct desk_control off;
+    memset(&off, 0, sizeof off);
+    off.kind = DESK_HAZE_OFF;
+    snprintf(off.label, sizeof off.label, "OFF");
+    off.widget_id = -1;
+    off.function_id = -1;
+    off.page = -1;
+    off.role = MAP_ROLE_HAZE;
+    off.enabled = !wrong_show;
+    if (wrong_show)
+        disable(&off, "show mismatch");
+    struct desk_control tempo;
+    memset(&tempo, 0, sizeof tempo);
+    tempo.kind = DESK_TEMPO;
+    snprintf(tempo.label, sizeof tempo.label, "%s", map->dials > 0 ? map->dial[0].caption : "Tempo");
+    tempo.widget_id = map->dials > 0 ? map->dial[0].widget_id : -1;
+    tempo.function_id = -1;
+    tempo.page = -1;
+    tempo.enabled = !wrong_show && map->dials > 0;
+    if (!tempo.enabled)
+        disable(&tempo, wrong_show ? "show mismatch" : "no dial in this show");
+
     // The panic button: the console's own StopAll, which stops every function
     // whatever started it and never lies about a state of its own.
     struct desk_control stop;
@@ -172,5 +234,9 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
         stop.enabled = 1;
     if (desk_add(model, &stop) >= 0)
         enabled += stop.enabled;
+    if (desk_add(model, &off) < 0 || desk_add(model, &tempo) < 0)
+        fprintf(stderr, "desk: no room for SHOW's own controls\n");
+    else
+        enabled += off.enabled + tempo.enabled;
     return enabled;
 }

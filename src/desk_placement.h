@@ -11,6 +11,11 @@ enum desk_tile {
     TILE_COMPACT,   // 128x64, a small button
     TILE_HAZE,      // 200x64, an ambient rhythm
     TILE_HOLD,      // 128x104, a hit: held on the Mac, or fired while held here
+    TILE_STATE,     // 111x88, one of the room's states on SHOW
+    TILE_FOG,       // 160x88, a fog hold on SHOW (on the Mac until proven finite)
+    TILE_SEGMENT,   // 95x68, one option of the ambient selector
+    TILE_MINI,      // 52x80, a rig colour on SHOW: disc over a short name
+    TILE_TEMPO,     // 224x104, the show dial's BPM and a tap target
     TILE_MASTER,    // the fader in the right column
     TILE_PANIC,     // the stop-all under it
 };

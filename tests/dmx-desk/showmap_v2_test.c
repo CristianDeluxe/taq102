@@ -1,4 +1,4 @@
-// SOURCES: showmap.c showmap_validate.c desk_model.c desk_layout_resolve.c vcjson.c
+// SOURCES: showmap.c showmap_validate.c desk_model.c desk_layout_resolve.c desk_show_layout.c vcjson.c
 // The generated map (schema 2) parsed with its bounds, and built against the
 // console the master really serves: the room's states pressable, the held
 // hits carried disabled, the panic button live, and a console that is not
@@ -136,21 +136,24 @@ int main(void) {
     assert(vc_parse(vc_text, vc_len, &console) == 0);
     struct desk_model model;
     int enabled = showmap_build(&model, &map, &console);
-    assert(model.count == 134);
+    assert(model.count == 136);
     struct desk_layout layout;
-    assert(desk_layout_resolve(&map, map.count, map.count + 1, &layout) == 0);
+    assert(desk_layout_resolve(&map, map.count, map.count + 1, map.count + 2, map.count + 3, &layout) == 0);
     desk_set_layout(&model, &layout);
     const struct desk_control *a = by_label(&model, "AUTO");
     assert(a && a->enabled && a->widget_id == 4 && a->function_id == 720);
     int auto_ix = (int)(a - model.control);
     const struct desk_placement *ap = desk_placement_of(&model, auto_ix);
-    assert(ap && ap->w == 200 && ap->x == DESK_CONTENT_X && ap->y == DESK_CONTENT_Y + 32);
+    assert(ap && ap->w == 111 && ap->x == DESK_CONTENT_X && ap->y == 76);
+    // A light hit fires from here while held; fog stays on the Mac.
     const struct desk_control *flash = by_label(&model, "FLASH");
-    assert(flash && !flash->enabled && strstr(flash->reason, "held"));
-    (void)flash;
+    assert(flash && flash->enabled && flash->kind == DESK_HOLD);
+    const struct desk_control *fog = by_label(&model, "HUMO YA");
+    assert(fog && !fog->enabled && strstr(fog->reason, "held"));
     const struct desk_control *rojo = by_label(&model, "Rig Rojo");
     assert(rojo && rojo->enabled && rojo->swatches == 1);
-    assert(desk_placement_of(&model, (int)(rojo - model.control)) == NULL);    // on another page
+    const struct desk_placement *rmini = desk_placement_of(&model, (int)(rojo - model.control));
+    assert(rmini && rmini->tile == TILE_MINI);    // on SHOW as a rig colour
     const struct desk_control *stop = by_kind(&model, DESK_STOP_ALL);
     assert(stop && stop->enabled && stop->widget_id == 21);
     const struct desk_placement *sp = desk_placement_of(&model, (int)(stop - model.control));
@@ -161,7 +164,16 @@ int main(void) {
     assert(master && master->enabled && master->state == DESK_ON && master->level == 255);
     // Everything but the seventeen held hits (seven on LIVE, ten colour
     // golpes) is enabled: 115, plus the master and the panic button.
-    assert(enabled == 115 + 2);
+    {
+        int holds_on = 0, on = 0;
+        for (int i = 0; i < model.count; i++) {
+            on += model.control[i].enabled;
+            holds_on += model.control[i].kind == DESK_HOLD && model.control[i].enabled;
+        }
+        assert(holds_on == 15);            // the light hits of LIVE and COLOR; the fog stays on the Mac
+        assert(enabled == on);
+        assert(enabled == 115 + 2 + holds_on + 2);   // the cues, master and stop, the holds, OFF and tempo
+    }
 
     // The panic button is a completed tap when READY, and nothing otherwise.
     int sx = sp->x + 10, sy = sp->y + 10;
@@ -182,7 +194,7 @@ int main(void) {
     assert(rojo_bank >= 0);
     desk_set_view(&model, 0, 0);
     const struct desk_placement *cap = desk_placement_of(&model, auto_ix);
-    assert(cap && cap->tile == TILE_CUE);
+    assert(cap && cap->tile == TILE_STATE);
     assert(desk_touch_down(&model, 0, cap->x + 5, cap->y + 5).kind == DESK_ACT_NONE);
     struct desk_action fired = desk_touch_up(&model, 0, cap->x + 5, cap->y + 5);
     assert(fired.kind == DESK_ACT_TOGGLE && fired.widget_id == 4);

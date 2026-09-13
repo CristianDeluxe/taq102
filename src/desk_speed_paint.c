@@ -89,6 +89,43 @@ static void card(struct canvas *c, const struct desk_speed *s, int i, const stru
                DESK_GLASS, DESK_TILE);
 }
 
+void desk_speed_tempo_tap_rect(int x, int y, int w, int h, int *tx, int *ty, int *tw, int *th) {
+    *tw = 96;
+    *th = h - 16;
+    *tx = x + w - 8 - *tw;
+    *ty = y + 8;
+}
+
+void desk_speed_paint_tempo(struct canvas *c, const struct desk_speed *s, int i,
+                            const struct desk_fonts *fonts, int x, int y, int w, int h, int pressed) {
+    if (i < 0 || i >= s->dials)
+        return;
+    const struct desk_dial *d = &s->dial[i];
+    char big[16], line[48];
+    if (!d->enabled || !d->known)
+        snprintf(big, sizeof big, "--");
+    else if (d->base_ms == 0)
+        snprintf(big, sizeof big, "--");
+    else
+        snprintf(big, sizeof big, "%d", desk_speed_bpm(d));
+    // The number, then one line under it: base BPM, the time and factor,
+    // or the note that matters more.
+    text_at(c, fonts->big, x + 16, y + 26, w - 128, big, d->known ? DESK_INK : DESK_MUTED);
+    if (d->note[0])
+        snprintf(line, sizeof line, "%s", d->note);
+    else if (d->pending)
+        snprintf(line, sizeof line, "enviado");
+    else if (d->known && d->base_ms > 0)
+        snprintf(line, sizeof line, "base BPM \xc2\xb7 %d ms x%s", d->base_ms, speed_factor_name(d->factor));
+    else
+        snprintf(line, sizeof line, "%s", d->reason);
+    text_at(c, fonts->small, x + 16, y + h - 22, w - 128, line, DESK_MUTED);
+    int tx, ty, tw, th;
+    desk_speed_tempo_tap_rect(x, y, w, h, &tx, &ty, &tw, &th);
+    int live = desk_speed_target_enabled(s, i, SPEED_T_TAP);
+    target(c, fonts->tile, tx, ty, tw, th, "TAP", live, pressed, DESK_GLASS, DESK_TILE);
+}
+
 void desk_speed_paint(struct canvas *c, const struct desk_speed *s, const struct desk_fonts *fonts) {
     for (int i = 0; i < s->dials && i < 2; i++)
         card(c, s, i, fonts);

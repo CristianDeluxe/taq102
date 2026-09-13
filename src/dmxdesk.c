@@ -34,6 +34,7 @@
 #include "action_worker.h"
 #include "canvas.h"
 #include "desk_conf.h"
+#include "desk_hold.h"
 #include "desk_input.h"
 #include "desk_lock.h"
 #include "desk_layout.h"
@@ -171,6 +172,52 @@ static void send_speed(struct qlc_session *session, struct speed_action action, 
         if (n > 0 && qlc_session_send(session, frame) == 0)
             fprintf(stderr, "speed: sent %s at %lld\n", frame, (long long)now);
     }
+}
+
+// A hold's frame: 255 on contact, 0 on release, cap or cancel; logged with
+// its clock so a stuck output can be read off the log.
+static void send_hold(struct qlc_session *session, struct hold_action ha, int64_t now) {
+    if (ha.widget_id < 0)
+        return;
+    char frame[64];
+    int n = qlc_encode_flash(frame, sizeof frame, ha.widget_id, ha.on);
+    if (n > 0 && qlc_session_send(session, frame) == 0)
+        fprintf(stderr, "hold: sent %s at %lld\n", frame, (long long)now);
+    else
+        fprintf(stderr, "hold: could not send %s at %lld\n", frame, (long long)now);
+}
+
+// Every hold released at once: a lock, a page change, the surface opening,
+// a blank. Is are forgotten and the tiles repainted idle.
+static void release_holds(struct desk_hold *hold, struct desk_model *model, struct qlc_session *session,
+                          int *owner, int64_t now) {
+    struct hold_action out[16];
+    int n = desk_hold_release_all(hold, now, out, 16);
+    for (int k = 0; k < n; k++)
+        send_hold(session, out[k], now);
+    for (int s = 0; s < TOUCH_MAX_SLOTS; s++) {
+        if (owner[s] >= 0)
+            desk_set_hold_progress(model, owner[s], -1, 0);
+        owner[s] = -1;
+    }
+}
+
+// The hold model rebuilt from the controls the validator enabled as holds:
+// light hits 3 s, strobes 1 s, nothing for fog.
+static void build_holds(struct desk_hold *hold, struct desk_model *model, int *owner) {
+    desk_hold_init(hold);
+    for (int i = 0; i < model->count; i++) {
+        struct desk_control *c = &model->control[i];
+        c->hold_index = -1;
+        if (c->kind != DESK_HOLD || !c->enabled)
+            continue;
+        int cap = strncmp(c->label, "STROBO", 6) == 0 ? 1000 : 3000;
+        c->hold_index = desk_hold_add(hold, c->widget_id, HOLD_HIT, cap, 0);
+        if (c->hold_index < 0)
+            fprintf(stderr, "desk: %s: no room in the hold model\n", c->label);
+    }
+    for (int s = 0; s < TOUCH_MAX_SLOTS; s++)
+        owner[s] = -1;
 }
 
 // One gesture, one frame. A frame refused because the link went down between
@@ -370,7 +417,7 @@ int main(int argc, char **argv) {
     // The map's controls come first in the model, then the master and the
     // panic button, which is what the resolver is told.
     struct desk_layout layout;
-    if (desk_layout_resolve(&map, map.count, map.count + 1, &layout) != 0) {
+    if (desk_layout_resolve(&map, map.count, map.count + 1, map.count + 2, map.count + 3, &layout) != 0) {
         fprintf(stderr, "desk: the map does not fit the screen\n");
         return 1;
     }
@@ -382,6 +429,9 @@ int main(int argc, char **argv) {
     desk_speed_init(&speed, &map);
     int speed_slot = -1;        // the finger the speed cards own, if any
     int last_page = model.page;
+    struct desk_hold hold;
+    int hold_owner[TOUCH_MAX_SLOTS];    // the control each finger holds, or -1
+    build_holds(&hold, &model, hold_owner);
 
     // The controller reports in its own units on the mainline driver and in
     // screen pixels on the vendor one, so its declared maxima decide the
@@ -547,6 +597,7 @@ int main(int argc, char **argv) {
             desk_speed_touch_cancel(&speed);
             desk_setup_touch_cancel(&setup);
             desk_input_cancel_all(&input);
+            release_holds(&hold, &model, session, hold_owner, now);
             gear_slot = setup_slot = speed_slot = -1;
             if (setup.open) {
                 desk_setup_close(&setup);
@@ -598,6 +649,7 @@ int main(int argc, char **argv) {
                                 // A modal transition: every gesture under it ends.
                                 desk_cancel_all(&model);
                                 desk_input_cancel_all(&input);
+                                release_holds(&hold, &model, session, hold_owner, now);
                                 desk_speed_touch_cancel(&speed);
                                 desk_speed_reset_taps(&speed);
                                 speed_slot = -1;
@@ -727,6 +779,47 @@ int main(int argc, char **argv) {
                     }
                     continue;
                 }
+                // A hold or the tempo card: pressed on contact, owned per finger,
+                // never a model capture. A hold fires only unlocked and linked.
+                if (slot >= 0 && slot < TOUCH_MAX_SLOTS && hold_owner[slot] >= 0) {
+                    int ci = hold_owner[slot];
+                    if (events[i].kind == TOUCH_UP || events[i].kind == TOUCH_CANCEL) {
+                        struct desk_control *hc = &model.control[ci];
+                        if (hc->kind == DESK_HOLD && hc->hold_index >= 0)
+                            send_hold(session, desk_hold_release(&hold, hc->hold_index, slot, now), now);
+                        desk_set_hold_progress(&model, ci, -1, 0);
+                        hold_owner[slot] = -1;
+                    }
+                    continue;
+                }
+                if (events[i].kind == TOUCH_DOWN && slot >= 0 && slot < TOUCH_MAX_SLOTS &&
+                    desk_lock_allows(&lock)) {
+                    int ci = desk_control_at(&model, x, y);
+                    if (ci >= 0 && model.control[ci].kind == DESK_HOLD) {
+                        struct desk_control *hc = &model.control[ci];
+                        if (hc->enabled && hc->hold_index >= 0 && model.link == DESK_LINK_READY) {
+                            struct hold_action ha = desk_hold_press(&hold, hc->hold_index, slot, now);
+                            if (ha.widget_id >= 0) {
+                                send_hold(session, ha, now);
+                                hold_owner[slot] = ci;
+                                desk_set_hold_progress(&model, ci, 0, 1);
+                            }
+                        }
+                        continue;
+                    }
+                    if (ci >= 0 && model.control[ci].kind == DESK_TEMPO && model.control[ci].enabled) {
+                        const struct desk_placement *tp = desk_placement_of(&model, ci);
+                        int tx, ty, tw, th;
+                        desk_speed_tempo_tap_rect(tp->x, tp->y, tp->w, tp->h, &tx, &ty, &tw, &th);
+                        if (x >= tx && x < tx + tw && y >= ty && y < ty + th) {
+                            int64_t at = events[i].t > 0 ? (int64_t)(events[i].t * 1000.0) : now;
+                            send_speed(session, desk_speed_tap(&speed, 0, now_ms(), at), now);
+                            hold_owner[slot] = ci;      // the release is consumed, the target reads pressed
+                            desk_set_hold_progress(&model, ci, -1, 1);
+                        }
+                        continue;
+                    }
+                }
                 enum desk_target target = desk_input_feed(&input, &model, &events[i], &index);
                 if (target == TARGET_LOCK) {
                     int changed = events[i].kind == TOUCH_DOWN ? desk_lock_target_down(&lock, now)
@@ -734,6 +827,7 @@ int main(int argc, char **argv) {
                     if (changed) {
                         desk_cancel_all(&model);
                         desk_input_cancel_all(&input);
+                        release_holds(&hold, &model, session, hold_owner, now);
                         desk_speed_touch_cancel(&speed);
                         desk_speed_reset_taps(&speed);
                         speed_slot = -1;
@@ -890,6 +984,7 @@ int main(int argc, char **argv) {
             enabled = showmap_build(&model, &map, &console);
             desk_set_layout(&model, &layout);
             desk_set_view(&model, page, bank);
+            build_holds(&hold, &model, hold_owner);
             if (showmap_mismatch(&map, &console))
                 desk_speed_disable(&speed, "show mismatch");
             else
@@ -913,6 +1008,29 @@ int main(int argc, char **argv) {
             desk_speed_reset_taps(&speed);
             desk_speed_touch_cancel(&speed);
             speed_slot = -1;
+            release_holds(&hold, &model, session, hold_owner, now);
+        }
+        // Holds: the cap, the link, the owed releases, the tiles' countdown.
+        {
+            struct hold_action out[16];
+            int n = desk_hold_tick(&hold, now, out, 16);
+            for (int k = 0; k < n; k++)
+                send_hold(session, out[k], now);
+            desk_hold_set_link(&hold, link == QLC_READY);
+            if (link == QLC_READY) {
+                n = desk_hold_owed(&hold, out, 16);
+                for (int k = 0; k < n; k++)
+                    send_hold(session, out[k], now);
+            }
+            for (int s = 0; s < TOUCH_MAX_SLOTS; s++) {
+                if (hold_owner[s] < 0 || model.control[hold_owner[s]].kind != DESK_HOLD)
+                    continue;
+                int hi = model.control[hold_owner[s]].hold_index;
+                int progress = hi >= 0 ? desk_hold_progress(&hold, hi, now) : -1;
+                if (progress >= 0)
+                    progress = (progress / 50) * 50;    // twenty steps, not a repaint per millisecond
+                desk_set_hold_progress(&model, hold_owner[s], progress, 1);
+            }
         }
         if (speed.dirty && layout.speed_page >= 0 && model.page == layout.speed_page) {
             desk_damage_rect(&model, SPEED_CARD_X, SPEED_CARD_Y(0), SPEED_CARD_W,
@@ -987,6 +1105,14 @@ int main(int argc, char **argv) {
                 if (dw > 0)
                     canvas_set_clip(&canvas, dx, dy, dw, dh);
                 desk_paint(&canvas, &model, &fonts);
+                {
+                    // SHOW's tempo card: the numbers and the TAP target are the speed model's.
+                    int ti = DESK_TEMPO_INDEX(&map);
+                    const struct desk_placement *tp = ti < model.count ? desk_placement_of(&model, ti) : NULL;
+                    if (tp && model.control[ti].enabled)
+                        desk_speed_paint_tempo(&canvas, &speed, 0, &fonts, tp->x, tp->y, tp->w, tp->h,
+                                               model.control[ti].pressed);
+                }
                 if (layout.speed_page >= 0 && model.page == layout.speed_page) {
                     desk_speed_paint(&canvas, &speed, &fonts);
                     desk_paint_overlays(&canvas, &model, &fonts);
