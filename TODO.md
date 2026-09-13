@@ -26,6 +26,29 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 ## Security
 
 ## Bugs
+- [ ] Reconcile the desk's inert touch-flip configuration and misleading log.
+  `src/dmxdesk.c` configures `DMXDESK_TOUCH_FLIP` and prints
+  `touch: declared 1663x895, mapping 1024x600, xy`, but never calls
+  `touch_input_set_flipped`; the decoder starts with `flipped == 0`, so
+  `touch_flip_value` returns after scaling without applying either flip.
+  The real mapping is x = round(raw_x * 1024/1664),
+  y = round(raw_y * 600/896). `src/glcube.c` does apply its orientation:
+  its accelerometer path calls `control_input_reset`, which calls
+  `touch_input_set_flipped` in `src/control_input.c`. The inconsistency is
+  in dmxdesk, not glcube. Next: decide whether the desk lacks an intended
+  setter call or its mode and log are vestigial, then make configuration and
+  reporting agree. Leave the working desk unchanged for my show;
+  resolve the endpoint bug below before enabling any flip.
+- [ ] Correct the flipped-coordinate endpoints in `src/touch_flip.c` before
+  enabling the desk's flip. `touch_flip_value` returns `config->height - value`
+  and `config->width - value`; these should be `height - 1 - value` and
+  `width - 1 - value`. Raw 0 currently becomes y 600 on a 600-tall screen
+  (or x 1024 at width 1024), outside the valid pixel range; for valid scaled
+  input columns 0..1023, output column 0 is unreachable. This is latent in
+  dmxdesk because it never enables flipping, but glcube can reach the shared
+  flip path through `control_input_reset`. Next: cover both axes and both
+  endpoints with regression assertions, fix the subtraction, and qualify
+  orientation before enabling it in the desk. No behaviour change now.
 - [ ] `usb2phy` charger detection reports all cable states zero with VBUS
   present and the gadget enumerated (2026-09-10). This does not diagnose wiring
   or bvalid: `EXTCON_USB` is only published for SDP, and peripheral mode does
@@ -238,15 +261,6 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   into charger mode instead of switching off (measured 2026-09-03).
   Blocked: needs the tablet unplugged and the power button held by hand; RK816 shutdown path in the kernel to read first.
 ## Infrastructure and tooling
-
-- [!] Complete the DMX host verification gate in an environment that permits
-  local sockets. On 2026-09-13, the baseline had 27 PASS / 6 FAIL; TCP and
-  Unix bind probes both returned EPERM. The affected tests are http_fetch,
-  master_find, qlc_session, wifi_join, wpa_ctrl and ws_client. Unblock: rerun
-  `tools/test-dmx-desk-host.sh` with local socket binding allowed, retaining
-  sanitizer coverage. The ARM build also remains unverified: OrbStack timed
-  out waiting for the taq102 VM to start. Restore that VM, then rerun
-  `tools/build-dmxdesk.sh`. Logs: `output/desk-fixes/` (local artifacts).
 
 - [ ] Mac side: Pioneer DJ's `FwUpdateManagerd` (LaunchDaemon
   `com.pioneerdj.FwUpdateManagerd`) can wedge `IOServiceOpen` for every

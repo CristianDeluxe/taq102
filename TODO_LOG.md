@@ -6,7 +6,43 @@
 
 ### 2026-09
 
-- [x] 2026-09-13 - **Desk: descriptive bank segments and forgiving releases.**
+- [x] 2026-09-13 - **Desk: the bank pager catches lower-edge presses.**
+  `146dd73` fixes the remaining complaint after the earlier 8 px release
+  margin: presses near the bezel never became bank presses in the first
+  place. Non-grabbing `evtest` on `/dev/input/event0` captures my
+  real gig-style taps. With the desk's actual scale-only transform,
+  x = round(raw_x * 1024/1664), y = round(raw_y * 600/896), the eight
+  lower-edge presses land at y 587..596. The drawing ends at 583 and the
+  glass at 599: that 16 px margin returns TARGET_CONTENT, so release slop
+  cannot rescue the contact. Normal taps at y 541..553 and upper-half taps
+  at y 533..538 already work. The configured "xy" in the touch log is inert;
+  dmxdesk never calls `touch_input_set_flipped` (tracked in TODO.md).
+  `src/desk_pager_hit.[ch]` extends each segment's hit rectangle to DESK_H;
+  `desk_input.c` uses it for both press targeting and the cached release
+  rectangle. Painting stays with `desk_view_pager`, unchanged.
+  Completed verification supplied for this write-up: the unsandboxed host
+  suite records **38 passed, 0 failed**, against 37 before. The new
+  `tests/dmx-desk/desk_pager_edge_test.c` replays 16 captured taps, including
+  all 8 formerly lost lower-edge presses, and asserts each reaches its bank;
+  the segment gap and a single-bank page do not become pager targets.
+  `desk_view_test.c` and the new test include `desk_pager_hit.c` in SOURCES
+  to resolve a link error. The VM cross-build is clean with GCC 14.3.0 and
+  `-Wall -Wextra -Werror`. Deployed at 192.168.1.71, sha256
+  `d195bfe7b0ed8c34441a834350cca516288e579694894b4460f69c223bbc2534`
+  matches the Mac, `/tmp/dmxdesk` and the running process's `/proc/<pid>/exe`.
+  The build script includes the new source; its first edit failed with
+  `SRC: unbound variable` because `$SRC` was unescaped in the heredoc.
+  The corrected `\$SRC` passes the supplied `sh -n` check. These checks
+  are already completed and are not rerun for this documentation commit.
+- [x] 2026-09-13 - **Desk: host and VM verification gate unblocked.**
+  The earlier 27 PASS / 6 FAIL socket-restricted run and VM startup timeout
+  remain historical evidence in `output/desk-fixes/`; they no longer block
+  this gate. The completed pager-edge verification above records the
+  unrestricted host suite at 38 passed / 0 failed, a clean GCC 14.3.0 ARM
+  cross-build with `-Wall -Wextra -Werror`, and matching deployment hashes.
+  Persistent appliance packaging and physical DMX qualification remain open.
+
+- [x] 2026-09-13 - **Desk: descriptive bank segments and forgiving releases (partial remedy).**
   Owner: "los botones de la pantalla de color para cambiar (1/2) funcionan
   fatal, es muy dificil pulsar, quizas seria mejor hacerlos mas grandes y
   descriptivos, tenemos mucho espacio ahi." The earlier "bien pequeños"
@@ -21,7 +57,11 @@
   running/current styling are unchanged.
   Tabs and pager taps accept 8 px of release slop (about 1.7 mm), but never
   complete on a neighbouring entry or after moving far away. A bank contact
-  also stays tied to the page on which it began. Evidence:
+  also stays tied to the page on which it began. This closes the segment and
+  release work only: it does not resolve my edge complaint. The
+  later capture finds eight presses below the drawn strip which never enter
+  TARGET_BANK, so 8 px of release slop cannot help. The completed lower-edge
+  fix is recorded above in `146dd73`. Evidence for this earlier stage:
   `tests/dmx-desk/desk_pager_test.c` (2..6 banks, UTF-8 demand, first-heading
   selection, missing headings and ellipsis), `desk_view_test.c` (slop,
   neighbour/far-away/cancel cases), and `desk_render_test.c` (six-bank text
@@ -30,7 +70,9 @@
   restrictions, against my unrestricted baseline of 36 PASS / 0 FAIL
   before this new test. Rendered COLOR and synthetic six-bank frames inspected
   under `output/pager-refinement/`. No tablet acceptance or unrestricted rerun
-  is claimed; no independent control-tile sizing issue is inferred.
+  is claimed for that earlier stage; the later unrestricted verification and
+  deployment are recorded above. No independent control-tile sizing issue
+  is inferred.
 - [x] 2026-09-13 - **Desk: hold capacity covers the map.** The seventeenth
   burst formerly had no slot. `desk_hold.[ch]` now uses MAP_MAX_CONTROLS
   (256) throughout; `desk_build_holds.[ch]` disables failed registrations
@@ -40,7 +82,8 @@
   `desk_hold_test.c` now tests the map bound instead of the obsolete 16.
   Evidence: `tests/dmx-desk/desk_build_holds_test.c`; post-task host gate
   28 PASS / 6 FAIL, the six socket-bind failures already present at baseline.
-  Full unrestricted-suite acceptance remains open in TODO.md.
+  The later unrestricted-suite acceptance is recorded in the host and VM
+  verification closure above.
 - [x] 2026-09-13 - **Desk: remember the bank on each page.** Owner report:
   "on the colours page he switches to page 2, changes tab, comes back, and
   has to press page 2 again." `desk_set_view` remembers each clamped bank;
