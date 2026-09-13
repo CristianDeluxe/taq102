@@ -68,7 +68,16 @@ void keyboard_paint(struct canvas *c, const struct keyboard *kb, const struct de
             canvas_round_rect(c, k->x + 3, k->y + 3, k->w - 6, k->h - 6, KB_RADIUS - 3, fill);
         }
         uint32_t ink = fill == DESK_INK ? DESK_GLASS : k->enabled ? DESK_INK : DESK_MUTED;
+        // The model's labels are the tests' names; the keys read in Spanish.
+        const char *shown = k->label;
+        static const char *const es[][2] = {
+            { "done", "listo" }, { "cancel", "atr\xc3\xa1s" }, { "show", "ver" }, { "space", "espacio" },
+            { "shift", "may\xc3\xbas" }, { "CAPS", "MAY\xc3\x9aS" }, { "del", "borrar" },
+        };
+        for (size_t t = 0; t < sizeof es / sizeof es[0]; t++)
+            if (strcmp(shown, es[t][0]) == 0)
+                shown = es[t][1];
         struct font *f = strlen(k->label) == 1 ? fonts->tile : fonts->small;
-        centred(c, f, k->x, k->y, k->w, k->h, k->label, ink);
+        centred(c, f, k->x, k->y, k->w, k->h, shown, ink);
     }
 }
