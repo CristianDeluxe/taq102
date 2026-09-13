@@ -312,6 +312,8 @@ static void paint_mini(struct canvas *c, const struct desk_control *ctl,
     if (ctl->swatches)
         canvas_round_rect(c, cx - d / 2, cy, d, d, d / 2, ctl->swatch[0]);
     const char *name = strncmp(ctl->label, "Rig ", 4) == 0 ? ctl->label + 4 : ctl->label;
+    if (strcmp(name, "UltraVioleta") == 0)
+        name = "UV";
     uint32_t ink = ctl->enabled && link == DESK_LINK_READY ? DESK_INK : DESK_MUTED;
     centred(c, fonts->small, r.x + 2, r.y + d + 16, r.w - 4, 18, name, ink);
     pending_mark(c, ctl, r);
