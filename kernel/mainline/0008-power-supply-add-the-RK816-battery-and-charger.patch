@@ -93,11 +93,11 @@ Signed-off-by: Cristian Deluxe <info@busirocket.com>
  MAINTAINERS                          |    6 +
  arch/arm/boot/dts/rockchip/Makefile  |    1 +
  drivers/mfd/rk8xx-core.c             |   10 +
- drivers/mfd/rk8xx-i2c.c              |   11 +-
+ drivers/mfd/rk8xx-i2c.c              |   17 +-
  drivers/power/supply/Kconfig         |    9 +
  drivers/power/supply/Makefile        |    1 +
- drivers/power/supply/rk816_charger.c | 1290 ++++++++++++++++++++++++++
- 7 files changed, 1246 insertions(+), 1 deletion(-)
+ drivers/power/supply/rk816_charger.c | 1320 ++++++++++++++++++++++++++
+ 7 files changed, 1363 insertions(+), 1 deletion(-)
  create mode 100644 drivers/power/supply/rk816_charger.c
 
 diff --git a/MAINTAINERS b/MAINTAINERS
@@ -158,10 +158,16 @@ index 3dcf6abfd..b3d060bf1 100644
  
  static const struct mfd_cell rk817s[] = {
 diff --git a/drivers/mfd/rk8xx-i2c.c b/drivers/mfd/rk8xx-i2c.c
-index 2951b2911..28d3b43c7 100644
+index 2951b2911..239337267 100644
 --- a/drivers/mfd/rk8xx-i2c.c
 +++ b/drivers/mfd/rk8xx-i2c.c
-@@ -99,7 +99,16 @@ static bool rk816_is_volatile_reg(struct device *dev, unsigned int reg)
+@@ -99,7 +99,22 @@ static bool rk816_is_volatile_reg(struct device *dev, unsigned int reg)
++	/*
++	 * USB_CTRL can differ from the last software write after VBUS loss.
++	 * Read the hardware for both limit reporting and masked updates:
++	 * a cached limit can hide a reset and suppress its reapplication.
++	 */
++	case RK816_USB_CTRL_REG:
  	case RK816_GGSTS_REG:
  	case RK816_ZERO_CUR_ADC_REGH:
  	case RK816_ZERO_CUR_ADC_REGL:
@@ -213,10 +219,10 @@ index f3c0d1006..b6daf48fc 100644
  obj-$(CONFIG_CHARGER_SGM41542)	+= sgm41542_charger.o
 diff --git a/drivers/power/supply/rk816_charger.c b/drivers/power/supply/rk816_charger.c
 new file mode 100644
-index 000000000..c5a258ccd
+index 000000000..648a8c30f
 --- /dev/null
 +++ b/drivers/power/supply/rk816_charger.c
-@@ -0,0 +1,1290 @@
+@@ -0,0 +1,1320 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Battery and charger driver for the Rockchip RK816 PMIC.
@@ -769,9 +775,10 @@ index 000000000..c5a258ccd
 +		}
 +	}
 +
-+	return regmap_update_bits(cg->regmap, RK816_USB_CTRL_REG,
-+				  RK816_USB_INPUT_CUR_MSK,
-+				  FIELD_PREP(RK816_USB_INPUT_CUR_MSK, sel));
++	/* USB_CTRL is volatile; preserve live VLIM and always issue the write. */
++	return regmap_write_bits(cg->regmap, RK816_USB_CTRL_REG,
++				 RK816_USB_INPUT_CUR_MSK,
++				 FIELD_PREP(RK816_USB_INPUT_CUR_MSK, sel));
 +}
 +
 +static int rk816_bat_get_input_current(struct rk816_charger *cg, u32 *limit_ua)
@@ -820,6 +827,7 @@ index 000000000..c5a258ccd
 +			      const union power_supply_propval *val)
 +{
 +	struct rk816_charger *cg = power_supply_get_drvdata(ps);
++	unsigned int reg;
 +	int ret;
 +
 +	if (prop != POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT)
@@ -829,9 +837,20 @@ index 000000000..c5a258ccd
 +		return -EINVAL;
 +
 +	mutex_lock(&cg->lock);
++	/* Presence comes from the PMIC, even when extcon cannot classify it. */
++	ret = regmap_read(cg->regmap, RK808_VB_MON_REG, &reg);
++	if (ret)
++		goto out_unlock;
++	if (!(reg & RK816_PLUG_IN_STS)) {
++		cg->input_current_override_ua = 0;
++		ret = -ENODEV;
++		goto out_unlock;
++	}
++	cg->plugged_in = true;
 +	ret = rk816_bat_set_input_current(cg, val->intval);
 +	if (!ret)
 +		cg->input_current_override_ua = val->intval;
++out_unlock:
 +	mutex_unlock(&cg->lock);
 +
 +	return ret;
@@ -925,6 +944,23 @@ index 000000000..c5a258ccd
 +	mod_delayed_work(system_percpu_wq, &cg->work, 0);
 +
 +	return IRQ_HANDLED;
++}
++
++/* Expire the override even if VBUS returns before the monitor runs. */
++static irqreturn_t rk816_plug_out_isr(int irq, void *data)
++{
++	struct rk816_charger *cg = data;
++	int ret;
++
++	mutex_lock(&cg->lock);
++	cg->input_current_override_ua = 0;
++	ret = rk816_bat_set_input_current(cg, 450000);
++	mutex_unlock(&cg->lock);
++	if (ret)
++		dev_warn(cg->dev, "failed to reset the input current limit: %d\n",
++			 ret);
++
++	return rk816_plug_isr(irq, data);
 +}
 +
 +static void rk816_bat_update_cables(struct rk816_charger *cg)
@@ -1430,7 +1466,7 @@ index 000000000..c5a258ccd
 +	irq = platform_get_irq(pdev, 1);
 +	if (irq < 0)
 +		return irq;
-+	ret = devm_request_threaded_irq(dev, irq, NULL, rk816_plug_isr,
++	ret = devm_request_threaded_irq(dev, irq, NULL, rk816_plug_out_isr,
 +					IRQF_ONESHOT, "rk816-plug-out", cg);
 +	if (ret)
 +		return dev_err_probe(dev, ret,
