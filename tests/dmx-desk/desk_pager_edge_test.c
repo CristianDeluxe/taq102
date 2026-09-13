@@ -1,4 +1,4 @@
-// SOURCES: desk_pager_hit.c desk_view.c desk_view_pager.c desk_pager_label.c desk_input.c desk_model.c desk_layout_resolve.c desk_show_layout.c showmap.c
+// SOURCES: desk_pager_hit.c desk_view.c desk_view_pager.c desk_pager_label.c desk_input.c desk_model.c desk_master_level_at.c desk_layout_resolve.c desk_show_layout.c showmap.c
 // The pager must catch a finger aimed at its lower edge. These are real
 // coordinates, captured from the tablet's own digitizer on 2026-09-13 while
 // I pressed the bank bars the way he would at a gig, and converted

@@ -13,6 +13,7 @@
 
 #include "desk_layout_resolve.h"
 #include "showmap.h"
+#include "desk_view.h"
 
 #define DESK_MAX_CONTROLS (MAP_MAX_CONTROLS + 4)
 #define DESK_LABEL_MAX 48
@@ -125,8 +126,12 @@ void desk_set_hold_progress(struct desk_model *m, int control, int progress, int
 // operator's mind, and a release that never arrives must not leave the show
 // changed. `slot` identifies the finger; a second finger is ignored while one
 // is captured.
-struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y);
-struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y);
+// master_track is resolved by desk_master_track with the paint font. It must
+// describe the touched/captured master placement; NULL is valid for other tiles.
+struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y,
+                                   const struct desk_rect *master_track);
+struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y,
+                                   const struct desk_rect *master_track);
 struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y);
 void desk_touch_cancel(struct desk_model *m, int slot);
 // Drops any capture, whatever finger holds it: a display or lock transition

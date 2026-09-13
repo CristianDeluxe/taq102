@@ -36,7 +36,7 @@ cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
 \$CC -std=gnu99 -Wall -Wextra -Werror -O2 \
     -I\$SRC -I\$BUILD/include -I\$SYSROOT/usr/include -I\$SYSROOT/usr/include/libdrm \
     -o \$BUILD/dmxdesk \
-    \$SRC/dmxdesk.c \$SRC/desk_model.c \$SRC/desk_rebuild_model.c \$SRC/desk_paint.c \$SRC/desk_present_drm.c \
+    \$SRC/dmxdesk.c \$SRC/desk_model.c \$SRC/desk_master_level_at.c \$SRC/desk_master_track.c \$SRC/desk_rebuild_model.c \$SRC/desk_paint.c \$SRC/desk_present_drm.c \
     \$SRC/desk_layout_resolve.c \$SRC/desk_show_layout.c \$SRC/desk_hold.c \$SRC/desk_build_holds.c \$SRC/desk_caption.c \$SRC/desk_view.c \$SRC/desk_view_pager.c \$SRC/desk_pager_hit.c \$SRC/desk_pager_label.c \$SRC/desk_pager_caption.c \$SRC/desk_pager_bank_caption.c \$SRC/desk_input.c \
     \$SRC/desk_lock.c \$SRC/display_power.c \$SRC/power_key.c \$SRC/perf_window.c \
     \$SRC/showmap.c \$SRC/showmap_validate.c \$SRC/vcjson.c \$SRC/qlc_codec.c \

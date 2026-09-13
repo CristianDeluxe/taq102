@@ -1,4 +1,4 @@
-// SOURCES: desk_build_holds.c desk_hold.c desk_model.c
+// SOURCES: desk_build_holds.c desk_hold.c desk_model.c desk_master_level_at.c
 // Every enabled hit needs a slot; an over-capacity model must say unavailable.
 #include <assert.h>
 #include <stdio.h>

@@ -43,6 +43,7 @@
 #include "desk_layout_resolve.h"
 #include "desk_model.h"
 #include "desk_rebuild_model.h"
+#include "desk_master_track.h"
 #include "desk_paint.h"
 #include "desk_power.h"
 #include "desk_present_drm.h"
@@ -846,11 +847,18 @@ int main(int argc, char **argv) {
                 }
                 if (target != TARGET_CONTENT)
                     continue;
+                // Resolve against the captured placement while dragging, even
+                // when the finger has left the tile. Fonts stay at this boundary.
+                int placement = model.capture_placement;
+                const struct desk_placement *mp = placement >= 0
+                    ? &model.layout.placement[placement]
+                    : desk_placement_of(&model, desk_control_at(&model, x, y));
+                struct desk_rect master_track = desk_master_track(mp, fonts.value);
                 struct desk_action action = { DESK_ACT_NONE, -1, 0 };
                 switch (events[i].kind) {
                 case TOUCH_DOWN:
                     action = desk_touch_down(&model, events[i].slot,
-                                             (int)events[i].x, (int)events[i].y);
+                                             (int)events[i].x, (int)events[i].y, &master_track);
                     if (layout.speed_page >= 0 && model.page == layout.speed_page &&
                         model.capture_slot != slot && speed_slot < 0) {
                         // Tempo is measured from the contact's own clock, not
@@ -867,7 +875,7 @@ int main(int argc, char **argv) {
                     break;
                 case TOUCH_MOVE:
                     action = desk_touch_move(&model, events[i].slot,
-                                             (int)events[i].x, (int)events[i].y);
+                                             (int)events[i].x, (int)events[i].y, &master_track);
                     break;
                 case TOUCH_UP:
                     action = desk_touch_up(&model, events[i].slot,

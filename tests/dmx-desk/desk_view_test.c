@@ -1,4 +1,4 @@
-// SOURCES: desk_view.c desk_view_pager.c desk_pager_label.c desk_input.c desk_pager_hit.c desk_model.c desk_layout_resolve.c desk_show_layout.c showmap.c
+// SOURCES: desk_view.c desk_view_pager.c desk_pager_label.c desk_input.c desk_pager_hit.c desk_model.c desk_master_level_at.c desk_layout_resolve.c desk_show_layout.c showmap.c
 // The rail, the bank pills and the lock target: where they are, and which one
 // a finger lands on. A tap completes only on the entry it started on.
 #include <assert.h>

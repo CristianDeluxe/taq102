@@ -1,4 +1,4 @@
-// SOURCES: desk_rebuild_model.c desk_model.c showmap_validate.c showmap.c vcjson.c
+// SOURCES: desk_rebuild_model.c desk_model.c desk_master_level_at.c showmap_validate.c showmap.c vcjson.c
 // Tabs and console refreshes keep every page's bank, including hidden pages.
 #include <assert.h>
 #include <stdio.h>

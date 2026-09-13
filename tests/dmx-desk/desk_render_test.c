@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_paint.c desk_pager_caption.c desk_pager_bank_caption.c icon.c desk_caption.c desk_view.c desk_view_pager.c desk_pager_label.c desk_layout_resolve.c desk_show_layout.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c desk_fonts.c
+// SOURCES: desk_model.c desk_master_level_at.c desk_paint.c desk_master_track.c desk_pager_caption.c desk_pager_bank_caption.c icon.c desk_caption.c desk_view.c desk_view_pager.c desk_pager_label.c desk_layout_resolve.c desk_show_layout.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c desk_fonts.c
 // The desk, built from the generated Vibra map against the real console
 // document, pressed once, and painted. Writes $TEST_OUT/desk.ppm so the screen can be
 // looked at on a laptop before it reaches the tablet.
@@ -89,16 +89,16 @@ int main(void) {
     const struct desk_control *auto_ctl = by_label(&model, "AUTO");
     const struct desk_placement *ap = desk_placement_of(&model, (int)(auto_ctl - model.control));
     int cx = ap->x + ap->w / 2, cy = ap->y + ap->h / 2;
-    assert(desk_touch_down(&model, 0, cx, cy).kind == DESK_ACT_NONE);
+    assert(desk_touch_down(&model, 0, cx, cy, NULL).kind == DESK_ACT_NONE);
     assert(desk_touch_up(&model, 0, cx, cy).kind == DESK_ACT_NONE);
 
     desk_set_link(&model, DESK_LINK_READY);
-    assert(desk_touch_down(&model, 0, cx, cy).kind == DESK_ACT_NONE);
+    assert(desk_touch_down(&model, 0, cx, cy, NULL).kind == DESK_ACT_NONE);
     assert(by_label(&model, "AUTO")->pressed == 1);
     // A second finger cannot fire another tile while the first is captured.
     const struct desk_control *charla = by_label(&model, "CHARLA");
     const struct desk_placement *chp = desk_placement_of(&model, (int)(charla - model.control));
-    assert(desk_touch_down(&model, 1, chp->x + 10, chp->y + 10).kind == DESK_ACT_NONE);
+    assert(desk_touch_down(&model, 1, chp->x + 10, chp->y + 10, NULL).kind == DESK_ACT_NONE);
     assert(by_label(&model, "CHARLA")->pressed == 0);
     // One gesture, one message, on release, and the tile does not light itself.
     struct desk_action fired = desk_touch_up(&model, 0, cx, cy);
@@ -106,8 +106,8 @@ int main(void) {
     assert(by_label(&model, "AUTO")->state == DESK_OFF);
 
     // Sliding off a cue before letting go sends nothing.
-    assert(desk_touch_down(&model, 0, cx, cy).kind == DESK_ACT_NONE);
-    desk_touch_move(&model, 0, 5, 5);
+    assert(desk_touch_down(&model, 0, cx, cy, NULL).kind == DESK_ACT_NONE);
+    desk_touch_move(&model, 0, 5, 5, NULL);
     assert(desk_touch_up(&model, 0, 5, 5).kind == DESK_ACT_NONE);
 
     // The show's word, not the finger's: only this lights a tile.
