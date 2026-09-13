@@ -7,6 +7,8 @@
 #include "desk_layout.h"
 #include "icon.h"
 #include "desk_setup_layout.h"
+#include "desk_brightness_track.h"
+#include "desk_setup_page_hit.h"
 #include "keyboard_paint.h"
 
 static void text_at(struct canvas *c, struct font *f, int x, int y, int max_w, const char *s, uint32_t col) {
@@ -77,10 +79,12 @@ static void card_frame(struct canvas *c, const struct desk_fonts *fonts, int x, 
     text_at(c, fonts->label, x + 16, SETUP_CARD_Y + (SETUP_TITLE_H - text_h(fonts->label)) / 2 + 4,
             SETUP_CARD_W - 32 - 2 * SETUP_PAGE_W, title, DESK_MUTED);
     if (pages > 1) {
-        int ax = x + SETUP_CARD_W - 2 * SETUP_PAGE_W - 8;
-        centred(c, fonts->label, ax, SETUP_CARD_Y + 4, SETUP_PAGE_W, SETUP_TITLE_H, "<", page > 0 ? DESK_INK : DESK_MUTED);
-        centred(c, fonts->label, ax + SETUP_PAGE_W, SETUP_CARD_Y + 4, SETUP_PAGE_W, SETUP_TITLE_H, ">",
-                page + 1 < pages ? DESK_INK : DESK_MUTED);
+        for (int next = 0; next < 2; next++) {
+            struct desk_rect arrow = desk_setup_page_hit(x, next);
+            int enabled = next ? page + 1 < pages : page > 0;
+            centred(c, fonts->label, arrow.x, arrow.y, arrow.w, arrow.h,
+                    next ? ">" : "<", enabled ? DESK_INK : DESK_MUTED);
+        }
     }
 }
 
@@ -199,17 +203,13 @@ static void footer(struct canvas *c, const struct desk_setup *s, const struct de
     // The brightness: a slim track inside a generous touch region, the
     // label above it, no backing needed.
     canvas_round_rect(c, SETUP_FADER_X, SETUP_FADER_Y, SETUP_FADER_W, SETUP_FADER_H, 12, DESK_TILE);
-    int track_y = SETUP_FADER_Y + SETUP_FADER_H - 36, track_h = 20;
-    canvas_round_rect(c, SETUP_FADER_X + 16, track_y, SETUP_FADER_W - 32, track_h, 10, DESK_GLASS);
+    struct desk_rect track = desk_brightness_track();
+    canvas_round_rect(c, track.x, track.y, track.w, track.h, 10, DESK_GLASS);
     int range = s->brightness_max - 8;
     int level = s->brightness - 8;
-    int fill = range > 0 ? (SETUP_FADER_W - 1) * level / range : 0;
-    // The fill is muted grey, so the label reads over both halves; the
-    // number is the fact.
-    int track_fill = (SETUP_FADER_W - 32) * level / (range > 0 ? range : 1);
+    int track_fill = range > 0 ? track.w * level / range : 0;
     if (track_fill > 0)
-        canvas_round_rect(c, SETUP_FADER_X + 16, track_y, track_fill, track_h, 10, DESK_MUTED);
-    (void)fill;
+        canvas_round_rect(c, track.x, track.y, track_fill, track.h, 10, DESK_MUTED);
     char line[48];
     int pct = range > 0 ? 100 * level / range : 100;
     snprintf(line, sizeof line, "Brillo %d%%%s", pct, s->brightness_unsaved ? "  \xc2\xb7 aplicado, sin guardar" : "");

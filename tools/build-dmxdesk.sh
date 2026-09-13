@@ -43,7 +43,7 @@ cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
     \$SRC/qlc_session.c \$SRC/ws_client.c \$SRC/send_queue.c \$SRC/http_fetch.c \
     \$SRC/status.c \$SRC/icon.c \$SRC/desk_fonts.c \$SRC/canvas.c \$SRC/canvas_blend.c \
     \$SRC/font.c \$SRC/touch_input.c \$SRC/touch_flip.c \$SRC/oneeuro.c \
-    \$SRC/desk_setup.c \$SRC/desk_setup_paint.c \$SRC/keyboard.c \$SRC/keyboard_paint.c \
+    \$SRC/desk_inert_mask.c \$SRC/desk_region_mark.c \$SRC/desk_setup_inert_mask.c \$SRC/desk_speed_inert_mask.c \$SRC/desk_setup.c \$SRC/desk_brightness_track.c \$SRC/desk_brightness_level_at.c \$SRC/desk_setup_row_hit.c \$SRC/desk_setup_page_hit.c \$SRC/desk_setup_paint.c \$SRC/keyboard.c \$SRC/keyboard_paint.c \
     \$SRC/desk_power.c \$SRC/backlight.c \$SRC/settings.c \
     \$SRC/settings_store.c \$SRC/power_policy.c \$SRC/wpa_ctrl_dial.c \$SRC/wpa_ctrl_transact.c \$SRC/wpa_ctrl.c \
     \$SRC/wpa_ctrl_begin.c \$SRC/wpa_ctrl_request_fd.c \$SRC/wpa_ctrl_reply.c \$SRC/wpa_ctrl_abandon.c \

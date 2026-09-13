@@ -1,4 +1,4 @@
-// SOURCES: desk_setup_read_found.c desk_setup.c keyboard.c wifi_scan.c desk_conf.c
+// SOURCES: desk_setup_read_found.c desk_setup.c desk_brightness_track.c desk_brightness_level_at.c desk_setup_row_hit.c desk_setup_page_hit.c keyboard.c wifi_scan.c desk_conf.c desk_view.c
 // The settings surface as a model: a tap on a network asks for its key, the
 // key goes to a confirmation and out as one join action; a found master is
 // one tap; the fader moves brightness; nothing fires while a job runs.
@@ -11,6 +11,8 @@
 #include "desk_setup_layout.h"
 #include "keyboard.h"
 #include "keyboard_layout.h"
+#include "desk_brightness_track.h"
+#include "desk_layout.h"
 
 static struct setup_action tap(struct desk_setup *s, int x, int y) {
     desk_setup_touch_down(s, x, y);
@@ -46,6 +48,28 @@ int main(void) {
     desk_setup_init(&s);
     desk_setup_open(&s);
     assert(s.open);
+    struct desk_rect track=desk_brightness_track();
+    int last=8;
+    for(int x=track.x;x<track.x+track.w;x++) {
+        struct setup_action level=desk_setup_touch_down(&s,x,track.y+track.h/2);
+        assert(level.kind==SETUP_BRIGHTNESS && level.value>=last && level.value<=255);
+        if(x<=track.x+8)assert(level.value==8);
+        if(x>=track.x+track.w-1-8)assert(level.value==255);
+        last=level.value;
+        desk_setup_touch_up(&s,x,track.y+track.h/2);
+    }
+    assert(last==255);
+    const int outside[][2]={{-1,-1},{-1,100},{100,-1},{DESK_W,100},{100,DESK_H},{-10000,10000}};
+    for(unsigned i=0;i<sizeof outside/sizeof outside[0];i++) {
+        assert(tap(&s,outside[i][0],outside[i][1]).kind==SETUP_NONE);
+        assert(s.capture==T_NONE && s.open);
+        desk_setup_touch_down(&s,4,60); // Valid outside-card dismissal press.
+        assert(desk_setup_touch_up(&s,outside[i][0],outside[i][1]).kind==SETUP_NONE);
+        desk_setup_touch_down(&s,track.x+track.w/2,track.y);
+        int level=s.brightness;
+        assert(desk_setup_touch_move(&s,outside[i][0],outside[i][1]).kind==SETUP_NONE);
+        assert(s.brightness==level && s.capture==T_NONE);
+    }
     // Without a supplicant the scan button is dead to touch as it is to the eye.
     assert(tap(&s, SETUP_WIFI_X + 20, SETUP_BUTTONS_Y + 10).kind == SETUP_NONE);
     s.wifi_available = 1;

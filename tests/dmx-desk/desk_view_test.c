@@ -41,6 +41,17 @@ int main(void) {
     assert(desk_input_target(&m, lock.x + 5, lock.y + 5, &index) == TARGET_LOCK);
     assert(desk_input_target(&m, gear.x + 5, gear.y + 5, &index) == TARGET_NONE);  // the gear is the caller's
     assert(desk_input_target(&m, 400, 300, &index) == TARGET_CONTENT);
+    // Setup is modal over all painted tabs; lock remains available.
+    m.setup_open=1;
+    for(int i=0;i<layout.pages;i++) {
+        struct desk_rect tab=desk_view_tab(i);
+        assert(desk_input_target(&m,tab.x+20,20,&index)==TARGET_NONE && index==-1);
+    }
+    assert(desk_input_target(&m,lock.x+5,5,&index)==TARGET_LOCK);
+    m.setup_open=0;
+    for(int y=-1;y<=DESK_H;y++)for(int x=-1;x<=DESK_W;x++)
+        if(x==-1||x==DESK_W||y==-1||y==DESK_H)
+            assert(desk_input_target(&m,x,y,&index)==TARGET_NONE && index==-1);
     // A page with more than one bank has a pager at the bottom right.
     int paged = -1;
     for (int i = 0; i < layout.pages; i++)
@@ -109,6 +120,18 @@ int main(void) {
     desk_set_view(&m, 0, 0);
     u = ev(TOUCH_UP, 0, p1.x + 20, p1.y + 20);
     assert(desk_input_feed(&in, &m, &u, &index) == TARGET_BANK && index == -1);
+    // Release slop ends at the physical glass; the next contact still works.
+    desk_set_view(&m,paged,0);
+    d=ev(TOUCH_DOWN,0,p1.x+20,DESK_H-1);
+    assert(desk_input_feed(&in,&m,&d,&index)==TARGET_BANK);
+    u=ev(TOUCH_UP,0,p1.x+20,DESK_H);
+    assert(desk_input_feed(&in,&m,&u,&index)==TARGET_BANK && index==-1);
+    d=ev(TOUCH_DOWN,0,e0.x+20,0);d.y=-0.5f;
+    assert(desk_input_feed(&in,&m,&d,&index)==TARGET_NONE);
+    d.y=0;
+    assert(desk_input_feed(&in,&m,&d,&index)==TARGET_RAIL);
+    u=ev(TOUCH_UP,0,e0.x+20,0);u.y=-0.5f;
+    assert(desk_input_feed(&in,&m,&u,&index)==TARGET_RAIL && index==-1);
     printf("desk_view ok\n");
     return 0;
 }

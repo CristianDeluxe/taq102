@@ -26,6 +26,40 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 ## Security
 
 ## Bugs
+- [x] Fix false desk staleness when QLC+ sends WebSocket Ping/Pong without
+  text (2026-09-13). Instrumentation reproduced three drops in ten minutes
+  with no preceding loop iteration over 200 ms. The packet-correlated drop
+  closed only 605 ms after the desk answered a master Ping; that activity
+  was discarded by the text-only silence clock. Count valid control frames,
+  preserve one outstanding probe's RTT clock, and keep the 750 ms threshold.
+  Replay fails before the fix and passes after it, including a real-silence
+  drop at 751 ms. Host gate: 41 PASS, 0 FAIL. Control-frame fix alone: one transport-loss
+  drop in ten minutes; the final 100 ms probe cadence had zero drops in
+  its completed ten-minute window.
+  Evidence: `docs/evidence/2026-09-13-link-regression/README.md`.
+- [x] Qualify the desk's 100 ms heartbeat cadence with its unchanged 750 ms
+  silence deadline. After fixing control-frame activity, a second captured
+  drop had no loop stall: the Mac replied in 7 ms, but that reply and its
+  retransmission were not acknowledged before the tablet closed. The desk
+  had spent 400 ms waiting to probe and gave transport only 405 ms before
+  closing. Probe at 100 ms to reserve about 550 ms including an idle poll;
+  do not extend the stale deadline. The 514 ms reply replay fails with the
+  old cadence and passes with the new one; real silence still drops at 751 ms.
+  Radio/AP/driver attribution is not established; Wi-Fi power save is unchanged.
+  Final live window [184972682, 185572682) ms: zero drops, versus three
+  before the fix in ten minutes. At 20:15:52 UTC, PID 8050 remained linked
+  to 192.168.1.76:9998. This short live window is not long-show qualification.
+  Evidence:
+  `docs/evidence/2026-09-13-link-regression/README.md`.
+- [ ] Locate the Mac-side API response delay captured on 2026-09-13:
+  513 ms from heartbeat arrival on en0 to QLC+ response, with an early TCP
+  acknowledgement and no retransmission. The desk loop was not stalled.
+  The previous RTT metric overwrote pending send times and censored replies
+  after disconnect, so its small maximum did not exclude this delay.
+  Next: correlate QLC+ request dispatch and host scheduling with the retained
+  packet timeline without restarting my running show. Two other
+  diagnostic drops preceded packet capture and lack packet-level attribution.
+  Evidence: `docs/evidence/2026-09-13-link-regression/README.md`.
 - [!] The Mac and the tablet must land on the SAME layer-2 segment or the desk
   cannot link, and the house has two access points. Measured 2026-09-13: the
   Mac's Wi-Fi held `192.168.1.62` while associated to my booster AP,
@@ -51,14 +85,40 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   Next: inspect the two interfaces' LAN reachability before expecting the
   tablet to connect through `.62`. No network configuration or running desk
   was changed. Evidence: `output/finder-live-results.json` and `TODO_LOG.md`.
-- [!] Owner triage of the host geometry audit's findings is pending. The new
-  `desk_geometry_test` sweeps the real show, every page/bank and reachable setup
-  surfaces; it intentionally fails on application findings and strict policy
-  findings. Evidence and all observations:
-  `docs/evidence/2026-09-13-desk-geometry-audit.md` and its raw report. Next: decide
-  which visual/range defects to fix and which modal, inert-region and hit-slop
-  contracts to declare. No application fixes, deployment or commit were made
-  in the detector task.
+- [x] Triage the desk geometry audit (2026-09-13). Brightness now reaches
+  8..255 on its painted track, the room/link word is bounded after the tabs,
+  exterior coordinates cannot commit touches, and setup arrows are 48x48.
+  The detector retains its original thresholds and exhaustive probes; its
+  injected 16 px pager strip still fails. Evidence and verification:
+  `docs/evidence/2026-09-13-desk-geometry-triage.md`.
+- [x] Retain modal setup navigation intentionally. The 80 zero-reach tab
+  observations described interception, not missing controls. Tabs are now
+  explicitly disabled while setup is open in router and audit metadata.
+  Regression obligation: keep the all-tabs modal assertion when routing changes;
+  gear, lock and the master column remain available.
+- [x] Retain expanded setup list-row hits intentionally. Each of eight audited
+  rows accepted 4,000 px beyond its paint (8 px sides, 4 px vertically).
+  `desk_setup_row_hit` declares that envelope; the audit verifies it without
+  deriving allowance from successful hits. Regression obligation: update the
+  declaration with any row-layout change. The old arrow offset was corrected.
+- [x] Retain deliberately inert backgrounds and gutters. The original 37 dead
+  components mixed empty layout with potential defects. Production inert-mask
+  declarations now distinguish them, with hard failures if an exemption covers
+  enabled paint or actions. Regression obligation: retain the injected bottom
+  16 px pager-strip failure when changing layout or dead-component policy.
+- [ ] Hands-on tablet check of geometry fixes: brightness's 8..255 end bands,
+  ellipsized long room/link captions and setup's 48x48 paging arrows. Host
+  probes and ARM compilation cannot establish physical tap comfort. Evidence:
+  `docs/evidence/2026-09-13-desk-geometry-triage.md`. Next: deploy and check only
+  when I authorizes an idle window; the linked port-9998 show was not
+  disturbed by this task.
+- [ ] Extend geometry-audit state/routing coverage. The full-pixel detector
+  mirrors the runtime's fresh-contact dispatch in `audit/reach.c`; arbitrary
+  network text, every disabled/busy combination, lock transitions and partial
+  redraws are not exhausted. Evidence: the original audit's Limits section
+  and the triage report. Next: add a busy/disabled setup fixture and a shared
+  pure routing seam before changing runtime dispatch, preserving model probes.
+
 - [ ] Reconcile the desk's inert touch-flip configuration and misleading log.
   `src/dmxdesk.c` configures `DMXDESK_TOUCH_FLIP` and prints
   `touch: declared 1663x895, mapping 1024x600, xy`, but never calls
@@ -457,8 +517,9 @@ MacBook as master. Design and evidence:
   request marker and the level's word still want a look on the tablet under
   a finger; segmented discs have stepped edges (no anti-aliasing in the
   round-rect primitive); accents in the show's own captions ("AUTO rapido",
-  "Circulo") are the show's to fix; the bar's running-room word is untested
-  with a state running; CABEZAS heading "AUTO" covers "Centro" too.
+  "Circulo") are the show's to fix; CABEZAS heading "AUTO" covers "Centro" too.
+  The running-room word overlap is fixed and covered by the geometry audit
+  (2026-09-13), including a maximum-length room caption.
 - [ ] `wpa_ctrl_abandon` that fails to redial leaves the request channel dead
   for the rest of the run (pre-existing: no reconnect on a dial failure;
   the reviewer of the asynchronous work noted the exposure grew since
