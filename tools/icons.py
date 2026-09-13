@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""The desk's icons, drawn as vectors at 4x and rasterised into 8-bit alpha
+bitmaps the painter blends in any colour. Regenerate `src/icon_data.h`:
+
+    python3 tools/icons.py > src/icon_data.h
+
+Nothing on screen is a rectangle pretending to be a glyph any more.
+"""
+import math
+
+from PIL import Image, ImageDraw
+
+S = 4  # supersample
+
+
+def canvas(w, h):
+    im = Image.new("L", (w * S, h * S), 0)
+    return im, ImageDraw.Draw(im)
+
+
+def gear(size=24):
+    im, d = canvas(size, size)
+    cx = cy = size / 2
+    r = size * 0.46
+    pts = []
+    n = 8
+    for i in range(n * 2):
+        a = math.pi * 2 * i / (n * 2) - math.pi / 2
+        rr = r if i % 2 == 0 else r * 0.74
+        pts.append(((cx + math.cos(a) * rr) * S, (cy + math.sin(a) * rr) * S))
+    d.polygon(pts, fill=255)
+    hole = r * 0.36
+    d.ellipse([(cx - hole) * S, (cy - hole) * S, (cx + hole) * S, (cy + hole) * S], fill=0)
+    return im
+
+
+def lock(size=24, open_=False):
+    im, d = canvas(size, size)
+    cx = size / 2
+    b = size * 0.62
+    body_y = size * 0.42
+    d.rounded_rectangle([(cx - b / 2) * S, body_y * S, (cx + b / 2) * S, (size * 0.96) * S],
+                        radius=int(size * 0.12 * S), fill=255)
+    sh = size * 0.34
+    x0, x1 = cx - sh / 2, cx + sh / 2
+    width = int(size * 0.13 * S)
+    if open_:
+        d.arc([(x0 - sh * 0.9) * S, (size * 0.06) * S, (x0 + sh * 0.1) * S, (size * 0.5) * S],
+              180, 360, fill=255, width=width)
+        d.line([((x0 - sh * 0.9) * S), (size * 0.28) * S, (x0 - sh * 0.9) * S, (size * 0.44) * S],
+               fill=255, width=width)
+        d.line([((x0 + sh * 0.1) * S), (size * 0.28) * S, (x0 + sh * 0.1) * S, (body_y + 1) * S],
+               fill=255, width=width)
+    else:
+        d.arc([x0 * S, (size * 0.06) * S, x1 * S, (size * 0.5) * S], 180, 360, fill=255, width=width)
+        d.line([x0 * S, (size * 0.28) * S, x0 * S, (body_y + 1) * S], fill=255, width=width)
+        d.line([x1 * S, (size * 0.28) * S, x1 * S, (body_y + 1) * S], fill=255, width=width)
+    return im
+
+
+def wifi_arc(size=24, index=0):
+    """One arc of the fan, so the painter lights 0..3 of them by level."""
+    im, d = canvas(size, size)
+    cx, cy = size / 2, size * 0.86
+    if index == 0:
+        r = size * 0.1
+        d.ellipse([(cx - r) * S, (cy - r) * S, (cx + r) * S, (cy + r) * S], fill=255)
+        return im
+    rr = size * (0.18 + index * 0.22)
+    d.arc([(cx - rr) * S, (cy - rr) * S, (cx + rr) * S, (cy + rr) * S], 225, 315, fill=255,
+          width=int(size * 0.11 * S))
+    return im
+
+
+def battery_shell(size=24):
+    im, d = canvas(size, size)
+    w, h = size * 0.82, size * 0.44
+    x0, y0 = (size - w) / 2 - size * 0.04, (size - h) / 2
+    d.rounded_rectangle([x0 * S, y0 * S, (x0 + w) * S, (y0 + h) * S], radius=int(size * 0.1 * S),
+                        outline=255, width=int(size * 0.08 * S))
+    d.rounded_rectangle([(x0 + w + size * 0.03) * S, (y0 + h * 0.3) * S, (x0 + w + size * 0.1) * S,
+                         (y0 + h * 0.7) * S], radius=int(size * 0.04 * S), fill=255)
+    return im
+
+
+def battery_cell(size=24):
+    """The inside of the shell, a full cell; the painter clips it by level."""
+    im, d = canvas(size, size)
+    w, h = size * 0.82, size * 0.44
+    x0, y0 = (size - w) / 2 - size * 0.04, (size - h) / 2
+    inset = size * 0.14
+    d.rounded_rectangle([(x0 + inset) * S, (y0 + inset) * S, (x0 + w - inset) * S, (y0 + h - inset) * S],
+                        radius=int(size * 0.05 * S), fill=255)
+    return im
+
+
+def bolt(size=24):
+    im, d = canvas(size, size)
+    cx, cy, s = size / 2, size / 2, size * 0.46
+    pts = [(cx + s * 0.15, cy - s), (cx - s * 0.55, cy + s * 0.12), (cx - s * 0.05, cy + s * 0.12),
+           (cx - s * 0.15, cy + s), (cx + s * 0.55, cy - s * 0.12), (cx + s * 0.05, cy - s * 0.12)]
+    d.polygon([(px * S, py * S) for px, py in pts], fill=255)
+    return im
+
+
+def check(size=24):
+    im, d = canvas(size, size)
+    d.line([(size * 0.2) * S, (size * 0.52) * S, (size * 0.42) * S, (size * 0.74) * S,
+            (size * 0.8) * S, (size * 0.3) * S], fill=255, width=int(size * 0.12 * S), joint="curve")
+    return im
+
+
+def chevron(size=24):
+    im, d = canvas(size, size)
+    d.line([(size * 0.38) * S, (size * 0.24) * S, (size * 0.64) * S, (size * 0.5) * S,
+            (size * 0.38) * S, (size * 0.76) * S], fill=255, width=int(size * 0.12 * S), joint="curve")
+    return im
+
+
+ICONS = [
+    ("ICON_GEAR", gear()),
+    ("ICON_LOCK", lock()),
+    ("ICON_LOCK_OPEN", lock(open_=True)),
+    ("ICON_WIFI_0", wifi_arc(index=0)),
+    ("ICON_WIFI_1", wifi_arc(index=1)),
+    ("ICON_WIFI_2", wifi_arc(index=2)),
+    ("ICON_WIFI_3", wifi_arc(index=3)),
+    ("ICON_BATTERY", battery_shell()),
+    ("ICON_BATTERY_CELL", battery_cell()),
+    ("ICON_BOLT", bolt()),
+    ("ICON_CHECK", check()),
+    ("ICON_CHEVRON", chevron()),
+]
+
+
+def emit():
+    print("// Generated by tools/icons.py: 24 px icons as 8-bit alpha, row-major.")
+    print("// Do not edit; change the vectors and regenerate.")
+    print("#ifndef ICON_DATA_H\n#define ICON_DATA_H\n#include <stdint.h>\n")
+    print("#define ICON_SIZE 24")
+    print("enum icon_id {")
+    for name, _ in ICONS:
+        print(f"    {name},")
+    print("    ICON_COUNT\n};\n")
+    print("static const uint8_t ICON_ALPHA[ICON_COUNT][ICON_SIZE * ICON_SIZE] = {")
+    for name, im in ICONS:
+        small = im.resize((im.width // S, im.height // S), Image.LANCZOS)
+        data = list(small.getdata())
+        print(f"    [{name}] = {{")
+        for row in range(24):
+            vals = ", ".join(f"{v:3d}" for v in data[row * 24:(row + 1) * 24])
+            print(f"        {vals},")
+        print("    },")
+    print("};\n\n#endif")
+
+
+if __name__ == "__main__":
+    emit()
