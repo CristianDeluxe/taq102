@@ -21,7 +21,7 @@ void icon_paint_battery(struct canvas *c, int x, int y, int level, int charging,
         level = 0;
     if (level > 100)
         level = 100;
-    // The cell's bitmap spans columns 4..16 of the shell; the level clips it.
+    // Clip the cell's actual bitmap extent so regenerated geometry keeps its level.
     const uint8_t *a = ICON_ALPHA[ICON_BATTERY_CELL];
     int first = ICON_SIZE, last = -1;
     for (int i = 0; i < ICON_SIZE; i++)
