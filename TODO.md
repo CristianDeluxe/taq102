@@ -386,6 +386,23 @@ MacBook as master. Design and evidence:
   `TODO_LOG.md` 2026-09-12. What remains is gated on I: Phase 5
   finite accents (the fog and bump decisions below) and Phase 6 position (the
   XY pad's range experiment below). The desk is usable for a show as it is.
+- [!] The second design's checks that need a finger on the tablet (the desk
+  runs there with SHOW first): hold FLASH and see the light while held, lift
+  and see it off, hold past three seconds and see it go off with "suelta y
+  vuelve"; two fingers on two hits; tap a state, a colour, an ambient
+  rhythm and OFF; TAP on the tempo card; the tab strip and the pager; the
+  gear, Cerrar, the keyboard; the lock target in the bar (tap locks, a held
+  second unlocks). Smallest action: I at the tablet, ten minutes.
+- [ ] Second design leftovers, from the reviewer's critique of the built frames
+  (`docs/evidence/2026-09-13-desk-v2-frames-findings.md`): the ambient rhythms
+  fire fog from the tablet (the show's own toggles, enabled as before) while
+  manual fog and strobes stay on the Mac, a policy I should confirm
+  or reverse; the master's readout is above the travel now but the pressed
+  request marker and the level's word still want a look on the tablet under
+  a finger; segmented discs have stepped edges (no anti-aliasing in the
+  round-rect primitive); accents in the show's own captions ("AUTO rapido",
+  "Circulo") are the show's to fix; the bar's running-room word is untested
+  with a state running; CABEZAS heading "AUTO" covers "Centro" too.
 - [ ] `wpa_ctrl_abandon` that fails to redial leaves the request channel dead
   for the rest of the run (pre-existing: no reconnect on a dial failure;
   the reviewer of the asynchronous work noted the exposure grew since

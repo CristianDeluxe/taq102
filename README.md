@@ -1941,3 +1941,52 @@ On the tablet the surface's scan lists the room's networks with the link
 untouched; the heartbeat's worst round trip is 40 ms plain and 219 ms with
 the sheet open and a scan running, which is a full-sheet paint, not a wait.
 Backlog: the lifecycle waits and a dead channel after a failed redial.
+
+## The desk's second design, drawn first and built with the reviewer (2026-09-13)
+
+I looked at the desk and said what it was: a student's project.
+Icons made of rectangles, buttons that did not line up, space taken for no
+reason, and the things a show is run with, the flashes and the smoke, on a
+second page and dead. He was right, and the answer was not another round of
+fixes but a second design, drawn before it was coded.
+
+Four professional surfaces were looked at for what they get right (ChamSys
+QuickQ and MagicQ for their stable playback positions, Photon for touch
+targets that read as targets, grandMA3 for state inside consistent
+boundaries), three mockups were drawn at 1024x600 with the bundled Inter
+(`tools/mockup.py`) and sent to the reviewer with those references. Its critique
+changed the plan in ways worth keeping: a master fader with a track and a
+thumb rather than an amber slab, since amber means running and a level is
+not; no subtitles on state tiles unless they fit; whole-tile colour targets;
+CONTROL kept as a tab; and, on safety, that a cap on the tablet is a local
+release deadline and not a bound on the output, because QLC+ has no lease
+and a Flash left on by a lost link stays on until the Mac releases it. The
+line was drawn there: the light flashes fire from the tablet while held,
+with a three-second cap and every release owed until it goes out; the
+strobes and the fog stay on the Mac until a finite burst is proven there.
+
+Then it was built in three stages, each dumped from the tablet and looked
+at. One bar of tabs and status replaced the rail, with icons rasterised from
+vectors at four times the size and blended as alpha (`tools/icons.py`), so
+the gear is a gear. SHOW became a fixed composition rather than a flow: the
+room's seven states, the hits as holds, COLOR BEAM as the one toggle under
+its own word, the fog holds greyed and honest, the ambient rhythms as a
+selector with OFF, the rig's ten colours as small tiles, a tempo card with
+TAP; nothing on it moves when a section grows, and nothing on it needs a
+page. The hold-to-fire model was the reviewer's, written in a worktree against a
+briefing that named every rule (one release per press, caps, cooldowns,
+link loss, owed releases) and proven by seventy-nine assertions before it
+was wired here, per finger and outside the model's single capture; a
+reviewer agent then found the one path that could leave a light on, a
+snapshot rebuilding the model under a held finger, and it releases first
+now. The settings sheet moved onto the content's grid with a header and a
+way out where a hand expects it, lost its white slabs, and speaks Spanish,
+as does the keyboard and everything the operator reads.
+
+the reviewer looked at the built frames as well and returned another list, most
+of it taken the same night: the ambient's own words, the master's readout
+above its travel, paired looks saying what the rest of the rig does, the
+strobes back on the Mac, a release that could not be sent kept as owed and
+painted "apagado sin confirmar". What remains is in `TODO.md`, and what
+needs a finger is there too: the desk on the tablet shows SHOW first, and
+the flashes wait for my hand.
