@@ -37,7 +37,9 @@ struct desk_layout {
 // the speed cards on it are another model's.
 // Returns 0, or -1 when a page needs more banks or placements than the
 // layout holds, which no map this size can cause.
-int desk_layout_resolve(const struct show_map *map, int master, int panic,
-                        struct desk_layout *out);
+// `haze_off` and `tempo` are SHOW's pseudo controls (-1 when absent): the
+// map's LIVE page becomes SHOW, composed rather than flowed.
+int desk_layout_resolve(const struct show_map *map, int master, int panic, int haze_off,
+                        int tempo, struct desk_layout *out);
 
 #endif

@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_paint.c icon.c desk_caption.c desk_view.c desk_layout_resolve.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c desk_fonts.c
+// SOURCES: desk_model.c desk_paint.c icon.c desk_caption.c desk_view.c desk_layout_resolve.c desk_show_layout.c showmap.c showmap_validate.c vcjson.c canvas.c canvas_blend.c font.c desk_fonts.c
 // The desk, built from the generated Vibra map against the real console
 // document, pressed once, and painted. Writes $TEST_OUT/desk.ppm so the screen can be
 // looked at on a laptop before it reaches the tablet.
@@ -68,7 +68,7 @@ int main(void) {
     int enabled = showmap_build(&model, &map, &console);
     assert(enabled > 100);
     struct desk_layout layout;
-    assert(desk_layout_resolve(&map, map.count, map.count + 1, &layout) == 0);
+    assert(desk_layout_resolve(&map, map.count, map.count + 1, map.count + 2, map.count + 3, &layout) == 0);
     desk_set_layout(&model, &layout);
 
     // Every placement lands inside the chrome, and cues never under the master.

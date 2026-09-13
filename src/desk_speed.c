@@ -222,6 +222,14 @@ static struct speed_action fire(struct desk_speed *s, enum speed_target t, int d
     }
 }
 
+struct speed_action desk_speed_tap(struct desk_speed *s, int i, int64_t now_ms, int64_t contact_ms) {
+    if (i < 0 || i >= s->dials)
+        return none();
+    s->submit_ms = now_ms;
+    s->dirty = 1;
+    return fire(s, SPEED_T_TAP, i, contact_ms > 0 ? contact_ms : now_ms);
+}
+
 struct speed_action desk_speed_touch_down(struct desk_speed *s, int x, int y, int64_t now_ms,
                                           int64_t contact_ms) {
     if (s->capture != SPEED_T_NONE)

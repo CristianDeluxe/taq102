@@ -19,4 +19,11 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
 // the speed cards included, is gated on it.
 int showmap_mismatch(const struct show_map *map, const struct vc_doc *doc);
 
+// Where the chrome controls land in the model after the map's: the master,
+// the panic button, SHOW's ambient OFF and its tempo card.
+#define DESK_MASTER_INDEX(map) ((map)->count)
+#define DESK_PANIC_INDEX(map) ((map)->count + 1)
+#define DESK_HAZE_OFF_INDEX(map) ((map)->count + 2)
+#define DESK_TEMPO_INDEX(map) ((map)->count + 3)
+
 #endif

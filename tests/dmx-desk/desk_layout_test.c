@@ -1,4 +1,4 @@
-// SOURCES: desk_layout_resolve.c showmap.c
+// SOURCES: desk_layout_resolve.c desk_show_layout.c showmap.c
 // The resolver over the real map: every control placed, nothing overlapping,
 // nothing outside the content area, the banks as the arithmetic yields them.
 #include <assert.h>
@@ -32,25 +32,39 @@ int main(void) {
     assert(showmap_load("show/vibra.desk.json", &map) == 0);
     int master = map.count, panic = map.count + 1;
     struct desk_layout l;
-    assert(desk_layout_resolve(&map, master, panic, &l) == 0);
+    assert(desk_layout_resolve(&map, master, panic, map.count + 2, map.count + 3, &l) == 0);
     assert(l.pages == 8 && l.speed_page == 7 && strcmp(l.title[7], "SPEED") == 0);
 
     // Every control has a placement on its own page.
     for (int i = 0; i < map.count; i++)
         assert(find(&l, i, map.control[i].page));
-    // States and hooks are 200x64 four to a row; picks 128x88 six to a row;
-    // hits 128x104; haze rhythms 200x64.
+    // SHOW: the states 111x88 seven across, the hits 128x104 holds, the fog
+    // 160x88, the rhythms as segments, the rig colours as minis, the tempo.
     const struct desk_placement *a = find(&l, control_named(&map, "AUTO"), 0);
-    assert(a->tile == TILE_CUE && a->w == 200 && a->h == 64 && a->x == DESK_CONTENT_X);
+    assert(a->tile == TILE_STATE && a->w == 111 && a->h == 88 && a->x == DESK_CONTENT_X);
     const struct desk_placement *ch = find(&l, control_named(&map, "CHARLA"), 0);
-    assert(ch->y == a->y && ch->x == a->x + 200 + 8);
+    assert(ch->y == a->y && ch->x == a->x + 111 + 8);
     const struct desk_placement *h1 = find(&l, control_named(&map, "cada 1 min"), 0);
     const struct desk_placement *h4 = find(&l, control_named(&map, "cada 8 min"), 0);
-    assert(h1 && h4 && h1->tile == TILE_HAZE && h1->y == h4->y && h4->x + h4->w <= DESK_MASTER_X);
+    assert(h1 && h4 && h1->tile == TILE_SEGMENT && h1->y == h4->y && h4->x + h4->w <= DESK_MASTER_X);
+    const struct desk_placement *off = find(&l, map.count + 2, 0);
+    assert(off && off->tile == TILE_SEGMENT && off->x < h1->x);
+    const struct desk_placement *flash = find(&l, control_named(&map, "FLASH"), 0);
+    assert(flash && flash->tile == TILE_HOLD && flash->h == 104 && flash->w == 128);
+    const struct desk_placement *fog = find(&l, control_named(&map, "HUMO YA"), 0);
+    assert(fog && fog->tile == TILE_FOG && fog->w == 160);
+    const struct desk_placement *beam = find(&l, control_named(&map, "COLOR BEAM"), 0);
+    assert(beam && beam->tile == TILE_CUE && beam->y == flash->y);
+    const struct desk_placement *mini = find(&l, control_named(&map, "Rig Rojo"), 0);
+    assert(mini && mini->tile == TILE_MINI && mini->w == 52);
+    const struct desk_placement *tempo = find(&l, map.count + 3, 0);
+    assert(tempo && tempo->tile == TILE_TEMPO && tempo->x + tempo->w == DESK_CONTENT_X + DESK_CONTENT_W);
+    assert(strcmp(l.title[0], "SHOW") == 0 && l.banks[0] == 1);
+    // COLOR keeps its picks 128x88 six to a row and its colour hits as holds.
     const struct desk_placement *rojo = find(&l, control_named(&map, "Rig Rojo"), 1);
     assert(rojo && rojo->tile == TILE_SWATCH && rojo->w == 128 && rojo->h == 88);
-    const struct desk_placement *flash = find(&l, control_named(&map, "FLASH"), 0);
-    assert(flash && flash->tile == TILE_HOLD && flash->h == 104);
+    const struct desk_placement *hit = find(&l, control_named(&map, "ROJO"), 1);
+    assert(hit && hit->tile == TILE_HOLD && hit->h == 104);
 
     // Bounds and overlaps, per page and bank; the master and the panic button
     // once per bank.

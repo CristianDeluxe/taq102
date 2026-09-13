@@ -14,7 +14,7 @@
 #define DESK_BAR_H 48
 #define DESK_TAB_X 16
 #define DESK_TAB_Y 8
-#define DESK_TAB_W 96
+#define DESK_TAB_W 76
 #define DESK_TAB_H 32
 #define DESK_TAB_GAP 4
 #define DESK_GEAR_X 912
@@ -44,8 +44,22 @@
 #define DESK_HOOK_H 64
 #define DESK_PICK_W 128
 #define DESK_PICK_H 88
-#define DESK_HOLD_H 104
+#define DESK_HOLD_TILE_H 104
 #define DESK_COLS 6
+// SHOW's own sizes: seven states across, five hits and a toggle, two fog
+// holds and five ambient segments, ten rig colours and the tempo card.
+#define DESK_STATE_W 111
+#define DESK_STATE_H 88
+#define DESK_SHOW_HOLD_W 128
+#define DESK_FOG_W 160
+#define DESK_FOG_H 88
+#define DESK_SEGMENT_W 95
+#define DESK_SEGMENT_H 68
+#define DESK_SEGMENT_GAP 4
+#define DESK_MINI_W 52
+#define DESK_MINI_H 80
+#define DESK_TEMPO_W 224
+#define DESK_TEMPO_H 104
 #define DESK_GRID_X DESK_CONTENT_X
 #define DESK_GRID_Y DESK_CONTENT_Y
 #define DESK_TILE_W DESK_HOOK_W
@@ -68,7 +82,7 @@
 #define DESK_AMBER      0xFFE08A00u
 #define DESK_AMBER_INK  0xFF141414u
 #define DESK_WARN       0xFFC03020u
-#define DESK_HOLD       0xFF24202Cu
+#define DESK_HOLD_FILL  0xFF24202Cu
 #define DESK_HOLD_LINE  0xFF7860C8u
 
 #endif

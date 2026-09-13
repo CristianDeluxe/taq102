@@ -218,7 +218,7 @@ static void paint_hold(struct canvas *c, const struct desk_control *ctl,
     int live = ctl->enabled && link == DESK_LINK_READY;
     canvas_round_rect(c, r.x, r.y, r.w, r.h, DESK_RADIUS, live ? DESK_HOLD_LINE : DESK_LINE);
     canvas_round_rect(c, r.x + 1, r.y + 1, r.w - 2, r.h - 2, DESK_RADIUS - 1,
-                      live ? DESK_HOLD : DESK_GLASS);
+                      live ? DESK_HOLD_FILL : DESK_GLASS);
     if (ctl->pressed)
         press_outline(c, r, DESK_RAISED);
     icon_paint(c, ICON_BOLT, r.x + 8, r.y + 6, live ? DESK_HOLD_LINE : DESK_LINE);
@@ -226,6 +226,93 @@ static void paint_hold(struct canvas *c, const struct desk_control *ctl,
             live ? DESK_INK : DESK_MUTED);
     const char *foot = live ? "mientras pulses" : "solo en el Mac";
     centred(c, fonts->small, r.x + 8, r.y + r.h - 24, r.w - 16, 18, foot, DESK_MUTED);
+    // While the finger is down a thin bar counts the cap down.
+    if (ctl->hold_progress >= 0) {
+        int span = r.w - 16;
+        int used = span * (ctl->hold_progress > 1000 ? 1000 : ctl->hold_progress) / 1000;
+        canvas_fill_rect(c, r.x + 8, r.y + r.h - 6, span, 3, DESK_LINE);
+        canvas_fill_rect(c, r.x + 8, r.y + r.h - 6, span - used, 3, DESK_INK);
+    }
+}
+
+// A state on SHOW: the name on up to two lines; the detail only when it
+// fits, since a state's name is what the operator reads in the dark.
+static void paint_state(struct canvas *c, const struct desk_control *ctl,
+                        const struct desk_placement *p, const struct desk_fonts *fonts,
+                        enum desk_link link) {
+    struct rect r = of(p);
+    int on = ctl->state == DESK_ON && ctl->enabled;
+    uint32_t fill = tile_fill(ctl);
+    canvas_round_rect(c, r.x, r.y, r.w, r.h, DESK_RADIUS, fill);
+    if (ctl->pressed)
+        press_outline(c, r, fill);
+    uint32_t ink = on ? DESK_AMBER_INK : DESK_INK;
+    if (!ctl->enabled || link != DESK_LINK_READY)
+        ink = DESK_MUTED;
+    const char *under = state_line(ctl, link);
+    int show_under = under[0] && text_w(fonts->small, under) <= r.w - 12;
+    if (show_under) {
+        caption(c, fonts->tile_s, r.x + 6, r.w - 12, r.y + r.h / 2 - 10, ctl->label, ink);
+        centred(c, fonts->small, r.x + 6, r.y + r.h - 24, r.w - 12, 18, under,
+                on ? DESK_AMBER_INK : DESK_MUTED);
+    } else {
+        caption(c, fonts->tile_s, r.x + 6, r.w - 12, r.y + r.h / 2, ctl->label, ink);
+    }
+    pending_mark(c, ctl, r);
+}
+
+// One option of the ambient selector: the running rhythm is amber; OFF
+// reads as chosen when no rhythm runs.
+static void paint_segment(struct canvas *c, const struct desk_control *ctl,
+                          const struct desk_placement *p, const struct desk_fonts *fonts,
+                          enum desk_link link, int none_running) {
+    struct rect r = of(p);
+    int on = ctl->kind == DESK_HAZE_OFF ? none_running : ctl->state == DESK_ON && ctl->enabled;
+    uint32_t fill = !ctl->enabled ? DESK_GLASS : on ? (ctl->kind == DESK_HAZE_OFF ? DESK_RAISED : DESK_AMBER) : DESK_TILE;
+    canvas_round_rect(c, r.x, r.y, r.w, r.h, 10, fill);
+    if (ctl->pressed)
+        press_outline(c, r, fill);
+    uint32_t ink = fill == DESK_AMBER ? DESK_AMBER_INK : DESK_INK;
+    if (!ctl->enabled || link != DESK_LINK_READY)
+        ink = DESK_MUTED;
+    caption(c, fonts->tile_s, r.x + 4, r.w - 8, r.y + r.h / 2, ctl->label, ink);
+    pending_mark(c, ctl, r);
+}
+
+// A rig colour on SHOW: the disc over a short name, the tile the target.
+static void paint_mini(struct canvas *c, const struct desk_control *ctl,
+                       const struct desk_placement *p, const struct desk_fonts *fonts,
+                       enum desk_link link) {
+    struct rect r = of(p);
+    int on = ctl->state == DESK_ON && ctl->enabled;
+    canvas_round_rect(c, r.x, r.y, r.w, r.h, 10, ctl->enabled ? DESK_TILE : DESK_GLASS);
+    if (on) {
+        canvas_round_rect(c, r.x, r.y, r.w, r.h, 10, DESK_AMBER);
+        canvas_round_rect(c, r.x + BORDER, r.y + BORDER, r.w - 2 * BORDER, r.h - 2 * BORDER,
+                          10 - BORDER, DESK_RAISED);
+    }
+    if (ctl->pressed)
+        press_outline(c, r, on ? DESK_RAISED : DESK_TILE);
+    int d = 24, cx = r.x + r.w / 2, cy = r.y + 10;
+    if (ctl->swatches)
+        canvas_round_rect(c, cx - d / 2, cy, d, d, d / 2, ctl->swatch[0]);
+    const char *name = strncmp(ctl->label, "Rig ", 4) == 0 ? ctl->label + 4 : ctl->label;
+    uint32_t ink = ctl->enabled && link == DESK_LINK_READY ? DESK_INK : DESK_MUTED;
+    centred(c, fonts->small, r.x + 2, r.y + d + 16, r.w - 4, 18, name, ink);
+    pending_mark(c, ctl, r);
+}
+
+// The tempo card's frame and title; the numbers and the tap target are the
+// speed model's, painted by the caller over this.
+static void paint_tempo_frame(struct canvas *c, const struct desk_control *ctl,
+                              const struct desk_placement *p, const struct desk_fonts *fonts) {
+    struct rect r = of(p);
+    canvas_round_rect(c, r.x, r.y, r.w, r.h, DESK_RADIUS, ctl->enabled ? DESK_TILE : DESK_GLASS);
+    char cap[64];
+    upper(cap, sizeof cap, ctl->label);
+    text_at(c, fonts->section, r.x + 16, r.y + 12, r.w - 32, cap, DESK_MUTED);
+    if (!ctl->enabled)
+        centred(c, fonts->small, r.x, r.y + r.h / 2, r.w, 18, state_line(ctl, DESK_LINK_READY), DESK_MUTED);
 }
 
 static void paint_compact(struct canvas *c, const struct desk_control *ctl,
@@ -325,9 +412,16 @@ static void paint_bar(struct canvas *c, const struct desk_model *model,
     // The status cluster: the master's word, the fan, the battery, then the
     // two targets. The word is what matters at a glance; the address is the
     // settings' business.
+    // The word: the room's state the master says runs, then the link, so
+    // a family tab still says where the show is.
     char word[96];
-    if (model->link == DESK_LINK_READY)
-        snprintf(word, sizeof word, "%s \xc2\xb7 %s", model->master_name, link_words(model->link));
+    const char *room = NULL;
+    for (int i = 0; i < model->count && !room; i++)
+        if (model->control[i].kind == DESK_CUE && model->control[i].role == MAP_ROLE_STATE &&
+            model->control[i].state == DESK_ON)
+            room = model->control[i].label;
+    if (model->link == DESK_LINK_READY && room)
+        snprintf(word, sizeof word, "%s \xc2\xb7 %s", room, link_words(model->link));
     else
         snprintf(word, sizeof word, "%s", link_words(model->link));
     right(c, fonts->small, 760, (DESK_BAR_H - text_h(fonts->small)) / 2, word,
@@ -447,6 +541,11 @@ void desk_paint(struct canvas *canvas, const struct desk_model *model,
     canvas_fill_rect(canvas, 0, 0, DESK_W, DESK_H, DESK_GLASS);
     paint_bar(canvas, model, fonts);
     paint_headings(canvas, model, fonts);
+    int none_running = 1;
+    for (int i = 0; i < model->count; i++)
+        if (model->control[i].kind == DESK_CUE && model->control[i].role == MAP_ROLE_HAZE &&
+            model->control[i].state == DESK_ON)
+            none_running = 0;
     for (int i = 0; i < model->layout.placements; i++) {
         const struct desk_placement *p = &model->layout.placement[i];
         if (p->page != model->page || p->bank != model->bank)
@@ -458,7 +557,12 @@ void desk_paint(struct canvas *canvas, const struct desk_model *model,
         case TILE_MASTER:  paint_master(canvas, ctl, p, fonts, model->link); break;
         case TILE_PANIC:   paint_stop_all(canvas, ctl, p, fonts, model->link); break;
         case TILE_SWATCH:  paint_swatch(canvas, ctl, p, fonts, model->link); break;
-        case TILE_HOLD:    paint_hold(canvas, ctl, p, fonts, model->link); break;
+        case TILE_HOLD:
+        case TILE_FOG:     paint_hold(canvas, ctl, p, fonts, model->link); break;
+        case TILE_STATE:   paint_state(canvas, ctl, p, fonts, model->link); break;
+        case TILE_SEGMENT: paint_segment(canvas, ctl, p, fonts, model->link, none_running); break;
+        case TILE_MINI:    paint_mini(canvas, ctl, p, fonts, model->link); break;
+        case TILE_TEMPO:   paint_tempo_frame(canvas, ctl, p, fonts); break;
         case TILE_COMPACT: paint_compact(canvas, ctl, p, fonts, model->link); break;
         default:           paint_cue(canvas, ctl, p, fonts, model->link); break;
         }

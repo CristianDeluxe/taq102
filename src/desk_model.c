@@ -125,6 +125,7 @@ int desk_add(struct desk_model *m, const struct desk_control *control) {
         return -1;
     m->control[m->count] = *control;
     m->control[m->count].state = DESK_UNKNOWN;
+    m->control[m->count].hold_progress = -1;
     m->control[m->count].pressed = 0;
     damage_all(m);
     return m->count++;
@@ -169,12 +170,31 @@ static int usable(const struct desk_model *m, const struct desk_control *c) {
     return c->enabled && m->link == DESK_LINK_READY;
 }
 
+int desk_control_at(const struct desk_model *m, int x, int y) {
+    int index = hit(m, x, y);
+    return index < 0 ? -1 : m->layout.placement[index].control;
+}
+
+void desk_set_hold_progress(struct desk_model *m, int control, int progress, int pressed) {
+    if (control < 0 || control >= m->count)
+        return;
+    struct desk_control *c = &m->control[control];
+    if (c->hold_progress == progress && c->pressed == pressed)
+        return;
+    c->hold_progress = progress;
+    c->pressed = pressed;
+    damage_control(m, control);
+}
+
 struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y) {
     int index = hit(m, x, y);
     if (index < 0)
         return none();
     const struct desk_placement *p = &m->layout.placement[index];
     struct desk_control *c = &m->control[p->control];
+    // Holds and the tempo card are the caller's: pressed on contact, per finger.
+    if (c->kind == DESK_HOLD || c->kind == DESK_TEMPO)
+        return none();
     if (!usable(m, c))
         return none();
     // A cue whose frame is out waits for the master's word: a second tap
@@ -260,11 +280,22 @@ struct desk_action desk_touch_up(struct desk_model *m, int slot, int x, int y) {
         return none();
     struct desk_control *c = &m->control[m->capture_index];
     const struct desk_placement *p = &m->layout.placement[m->capture_placement];
-    int fired = (c->kind == DESK_CUE || c->kind == DESK_STOP_ALL) && inside(p, x, y) &&
-                usable(m, c);
+    int fired = (c->kind == DESK_CUE || c->kind == DESK_STOP_ALL || c->kind == DESK_HAZE_OFF) &&
+                inside(p, x, y) && usable(m, c);
     release(m);
     if (!fired)
         return none();
+    // Ambient OFF: one toggle to whichever rhythm the master says runs.
+    if (c->kind == DESK_HAZE_OFF) {
+        for (int i = 0; i < m->count; i++) {
+            const struct desk_control *h = &m->control[i];
+            if (h->kind == DESK_CUE && h->role == MAP_ROLE_HAZE && h->state == DESK_ON && h->enabled) {
+                struct desk_action off = { DESK_ACT_TOGGLE, h->widget_id, 255 };
+                return off;
+            }
+        }
+        return none();
+    }
     // One gesture, one message. The tile does not change colour here: the
     // master's own push is what lights it. The panic button is the same
     // shape of gesture, a completed tap, with nothing to light afterwards.

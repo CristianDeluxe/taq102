@@ -5,6 +5,7 @@
 
 #include "canvas_blend.h"
 #include "desk_layout.h"
+#include "icon.h"
 #include "desk_setup_layout.h"
 #include "keyboard_paint.h"
 
@@ -34,8 +35,11 @@ enum button_style { BUTTON_PRIMARY, BUTTON_SECONDARY, BUTTON_DEAD };
 static void button(struct canvas *c, struct font *f, int x, int y, int w, int h, const char *s,
                    enum button_style style) {
     if (style == BUTTON_PRIMARY) {
+        // Raised with an ink ring, not a white slab: settings must not light
+        // the operator's face in the dark.
         canvas_round_rect(c, x, y, w, h, 12, DESK_INK);
-        centred(c, f, x, y, w, h, s, DESK_GLASS);
+        canvas_round_rect(c, x + 2, y + 2, w - 4, h - 4, 10, DESK_RAISED);
+        centred(c, f, x, y, w, h, s, DESK_INK);
     } else if (style == BUTTON_SECONDARY) {
         canvas_round_rect(c, x, y, w, h, 12, DESK_MUTED);
         canvas_round_rect(c, x + 2, y + 2, w - 4, h - 4, 10, DESK_GLASS);
@@ -129,9 +133,12 @@ static void master_card(struct canvas *c, const struct desk_setup *s, const stru
         const char *host = s->found[s->found_page * SETUP_ROWS + r];
         int ry = SETUP_ROWS_Y + r * SETUP_ROW_H;
         int current = s->master_configured && strcmp(host, s->master) == 0;
-        canvas_round_rect(c, x + 8, ry + 4, SETUP_CARD_W - 16, SETUP_ROW_H - 8, 12, current ? DESK_INK : DESK_GLASS);
-        text_at(c, fonts->tile, x + 24, ry + (SETUP_ROW_H - text_h(fonts->tile)) / 2, SETUP_CARD_W - 48, host,
-                current ? DESK_GLASS : DESK_INK);
+        // The connected master carries a check, not a white row.
+        canvas_round_rect(c, x + 8, ry + 4, SETUP_CARD_W - 16, SETUP_ROW_H - 8, 12, current ? DESK_RAISED : DESK_GLASS);
+        text_at(c, fonts->tile, x + 24, ry + (SETUP_ROW_H - text_h(fonts->tile)) / 2, SETUP_CARD_W - 88, host,
+                DESK_INK);
+        if (current)
+            icon_paint(c, ICON_CHECK, x + SETUP_CARD_W - 44, ry + (SETUP_ROW_H - 24) / 2, DESK_INK);
     }
     if (s->found_count == 0)
         text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
@@ -154,26 +161,31 @@ static void master_card(struct canvas *c, const struct desk_setup *s, const stru
 }
 
 static void footer(struct canvas *c, const struct desk_setup *s, const struct desk_fonts *fonts) {
-    canvas_round_rect(c, SETUP_FADER_X, SETUP_FADER_Y, SETUP_FADER_W, SETUP_FADER_H, 20, DESK_TILE);
+    // The brightness: a slim track inside a generous touch region, the
+    // label above it, no backing needed.
+    canvas_round_rect(c, SETUP_FADER_X, SETUP_FADER_Y, SETUP_FADER_W, SETUP_FADER_H, 12, DESK_TILE);
+    int track_y = SETUP_FADER_Y + SETUP_FADER_H - 36, track_h = 20;
+    canvas_round_rect(c, SETUP_FADER_X + 16, track_y, SETUP_FADER_W - 32, track_h, 10, DESK_GLASS);
     int range = s->brightness_max - 8;
     int level = s->brightness - 8;
     int fill = range > 0 ? (SETUP_FADER_W - 1) * level / range : 0;
     // The fill is muted grey, so the label reads over both halves; the
     // number is the fact.
-    if (fill > 0)
-        canvas_round_rect(c, SETUP_FADER_X, SETUP_FADER_Y, fill + 1, SETUP_FADER_H, 20, DESK_MUTED);
+    int track_fill = (SETUP_FADER_W - 32) * level / (range > 0 ? range : 1);
+    if (track_fill > 0)
+        canvas_round_rect(c, SETUP_FADER_X + 16, track_y, track_fill, track_h, 10, DESK_MUTED);
+    (void)fill;
     char line[48];
     int pct = range > 0 ? 100 * level / range : 100;
     snprintf(line, sizeof line, "Brightness %d%%%s", pct, s->brightness_unsaved ? "  Applied, not saved" : "");
-    // On its own backing, so it reads over the filled and the empty part alike.
-    int lw = fonts->tile ? font_width(fonts->tile, line) + 24 : 200;
-    canvas_round_rect(c, SETUP_FADER_X + 16, SETUP_FADER_Y + (SETUP_FADER_H - text_h(fonts->tile)) / 2 - 8,
-                      lw, text_h(fonts->tile) + 16, 12, DESK_GLASS);
-    text_at(c, fonts->tile, SETUP_FADER_X + 28, SETUP_FADER_Y + (SETUP_FADER_H - text_h(fonts->tile)) / 2,
-            SETUP_FADER_W - 48, line, DESK_INK);
-    canvas_round_rect(c, SETUP_TOGGLE_X, SETUP_TOGGLE_Y, SETUP_TOGGLE_W, SETUP_TOGGLE_H, 20,
-                      s->power_aware ? DESK_INK : DESK_TILE);
-    uint32_t ink = s->power_aware ? DESK_GLASS : DESK_INK;
+    text_at(c, fonts->tile_s, SETUP_FADER_X + 16, SETUP_FADER_Y + 12, SETUP_FADER_W - 32, line, DESK_INK);
+    // The toggle: a pill with a knob, the row its target.
+    canvas_round_rect(c, SETUP_TOGGLE_X, SETUP_TOGGLE_Y, SETUP_TOGGLE_W, SETUP_TOGGLE_H, 12, DESK_TILE);
+    int px = SETUP_TOGGLE_X + SETUP_TOGGLE_W - 24 - 52, py = SETUP_TOGGLE_Y + SETUP_TOGGLE_H - 40;
+    canvas_round_rect(c, px, py, 52, 26, 13, s->power_aware ? DESK_INK : DESK_RAISED);
+    canvas_round_rect(c, s->power_aware ? px + 52 - 24 : px + 2, py + 2, 22, 22, 11,
+                      s->power_aware ? DESK_GLASS : DESK_MUTED);
+    uint32_t ink = DESK_INK;
     text_at(c, fonts->small, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + 16, SETUP_TOGGLE_W - 40, "Dim on battery", ink);
     text_at(c, fonts->tile, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + SETUP_TOGGLE_H - 16 - text_h(fonts->tile),
             SETUP_TOGGLE_W - 40, s->power_aware ? "On" : "Off", ink);

@@ -75,6 +75,8 @@ struct speed_action desk_speed_touch_down(struct desk_speed *s, int x, int y, in
                                           int64_t contact_ms);
 struct speed_action desk_speed_touch_up(struct desk_speed *s, int x, int y, int64_t now_ms);
 void desk_speed_touch_cancel(struct desk_speed *s);
+// A tap on dial `i` from elsewhere (SHOW's tempo card): the same estimator.
+struct speed_action desk_speed_tap(struct desk_speed *s, int i, int64_t now_ms, int64_t contact_ms);
 
 // A SPEED_STATE push, or the snapshot's values through validate.
 void desk_speed_apply(struct desk_speed *s, int widget_id, int ms, int factor, int64_t now_ms);

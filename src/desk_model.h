@@ -14,7 +14,7 @@
 #include "desk_layout_resolve.h"
 #include "showmap.h"
 
-#define DESK_MAX_CONTROLS (MAP_MAX_CONTROLS + 2)
+#define DESK_MAX_CONTROLS (MAP_MAX_CONTROLS + 4)
 #define DESK_LABEL_MAX 48
 #define DESK_REASON_MAX 48
 #define DESK_MAX_SWATCHES MAP_MAX_SWATCHES
@@ -23,6 +23,9 @@ enum desk_kind {
     DESK_CUE,        // a Toggle button in the console
     DESK_MASTER,     // the grand master
     DESK_STOP_ALL,   // the console's own StopAll: the panic button
+    DESK_HOLD,       // a Flash button fired while the finger is down (the hold model's)
+    DESK_HAZE_OFF,   // SHOW's ambient OFF: stops whichever haze rhythm runs
+    DESK_TEMPO,      // SHOW's tempo card: the show dial's BPM and a tap (the speed model's)
 };
 
 // A control's state is three-valued on purpose. Until the desk has been told,
@@ -50,6 +53,8 @@ struct desk_control {
     int pressed;        // a finger is on it now: local feedback only
     int pending;        // its frame went out; the master has not answered yet
     int64_t pending_since;
+    int hold_progress;  // DESK_HOLD: 0..1000 of the cap used while down, -1 idle
+    int hold_index;     // DESK_HOLD: the hold model's index, -1 when it has none
 };
 
 #define DESK_PENDING_MS 1500
@@ -104,6 +109,11 @@ void desk_set_view(struct desk_model *m, int page, int bank);
 
 // The placement a control has on the current view, or NULL.
 const struct desk_placement *desk_placement_of(const struct desk_model *m, int control);
+// The control under a point on the current view, or -1: for the caller's
+// own routing of holds and the tempo card, which the model does not capture.
+int desk_control_at(const struct desk_model *m, int x, int y);
+// A hold's progress for the painter; damages its tile when it moved.
+void desk_set_hold_progress(struct desk_model *m, int control, int progress, int pressed);
 
 // A contact going down, moving and coming up. Coordinates are panel pixels.
 // At most one action comes out of one gesture, and it comes out on release:
