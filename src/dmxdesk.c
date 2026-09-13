@@ -176,12 +176,18 @@ static void send_speed(struct qlc_session *session, struct speed_action action, 
 
 // A hold's frame: 255 on contact, 0 on release, cap or cancel; logged with
 // its clock so a stuck output can be read off the log.
+// Bursts sit in the hold model under a namespace of their own, so a
+// function id never collides with a Flash button's widget id.
+#define BURST_BASE 1000000
+
 static void send_hold(struct desk_hold *hold, struct qlc_session *session, struct hold_action ha,
                       int64_t now) {
     if (ha.widget_id < 0)
         return;
     char frame[64];
-    int n = qlc_encode_flash(frame, sizeof frame, ha.widget_id, ha.on);
+    int n = ha.widget_id >= BURST_BASE
+          ? qlc_encode_function_status(frame, sizeof frame, ha.widget_id - BURST_BASE, ha.on)
+          : qlc_encode_flash(frame, sizeof frame, ha.widget_id, ha.on);
     if (n > 0 && qlc_session_send(session, frame) == 0) {
         fprintf(stderr, "hold: sent %s at %lld\n", frame, (long long)now);
         return;
@@ -214,6 +220,14 @@ static void build_holds(struct desk_hold *hold, struct desk_model *model, int *o
     for (int i = 0; i < model->count; i++) {
         struct desk_control *c = &model->control[i];
         c->hold_index = -1;
+        if (c->kind == DESK_BURST && c->enabled) {
+            // The master ends the burst at its length; the desk's own stop on
+            // release or at the same cap is a belt over that brace.
+            c->hold_index = desk_hold_add(hold, BURST_BASE + c->function_id, HOLD_HIT, c->burst_ms, 0);
+            if (c->hold_index < 0)
+                fprintf(stderr, "desk: %s: no room in the hold model\n", c->label);
+            continue;
+        }
         if (c->kind != DESK_HOLD || !c->enabled)
             continue;
         // Three seconds for a light hit; strobes and fog never get here, the
@@ -791,7 +805,7 @@ int main(int argc, char **argv) {
                     int ci = hold_owner[slot];
                     if (events[i].kind == TOUCH_UP || events[i].kind == TOUCH_CANCEL) {
                         struct desk_control *hc = &model.control[ci];
-                        if (hc->kind == DESK_HOLD && hc->hold_index >= 0)
+                        if ((hc->kind == DESK_HOLD || hc->kind == DESK_BURST) && hc->hold_index >= 0)
                             send_hold(&hold, session, desk_hold_release(&hold, hc->hold_index, slot, now), now);
                         desk_set_hold_progress(&model, ci, -1, 0);
                         hold_owner[slot] = -1;
@@ -801,7 +815,7 @@ int main(int argc, char **argv) {
                 if (events[i].kind == TOUCH_DOWN && slot >= 0 && slot < TOUCH_MAX_SLOTS &&
                     desk_lock_allows(&lock)) {
                     int ci = desk_control_at(&model, x, y);
-                    if (ci >= 0 && model.control[ci].kind == DESK_HOLD) {
+                    if (ci >= 0 && (model.control[ci].kind == DESK_HOLD || model.control[ci].kind == DESK_BURST)) {
                         struct desk_control *hc = &model.control[ci];
                         if (hc->enabled && hc->hold_index >= 0 && model.link == DESK_LINK_READY) {
                             struct hold_action ha = desk_hold_press(&hold, hc->hold_index, slot, now);
@@ -1037,13 +1051,14 @@ int main(int argc, char **argv) {
             // A hold whose release is still owed shows it: the output may be on.
             for (int i = 0; i < model.count; i++) {
                 struct desk_control *c = &model.control[i];
-                if (c->kind != DESK_HOLD || c->hold_index < 0 || c->pressed)
+                if ((c->kind != DESK_HOLD && c->kind != DESK_BURST) || c->hold_index < 0 || c->pressed)
                     continue;
                 int unresolved = desk_hold_unresolved(&hold, c->hold_index);
                 desk_set_hold_progress(&model, i, unresolved ? -2 : -1, 0);
             }
             for (int s = 0; s < TOUCH_MAX_SLOTS; s++) {
-                if (hold_owner[s] < 0 || model.control[hold_owner[s]].kind != DESK_HOLD)
+                if (hold_owner[s] < 0 || (model.control[hold_owner[s]].kind != DESK_HOLD &&
+                                          model.control[hold_owner[s]].kind != DESK_BURST))
                     continue;
                 int hi = model.control[hold_owner[s]].hold_index;
                 int progress = hi >= 0 ? desk_hold_progress(&hold, hi, now) : -1;

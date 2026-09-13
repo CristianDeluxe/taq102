@@ -28,6 +28,7 @@ enum map_role {
     MAP_ROLE_PICK,      // a latched manual choice within a family
     MAP_ROLE_CHASE,     // a dimmer chase
     MAP_ROLE_TOGGLE,    // any other toggle
+    MAP_ROLE_BURST,     // a hit as a bounded burst: a SingleShot chaser the master ends itself
 };
 
 struct map_control {
@@ -44,6 +45,8 @@ struct map_control {
     char reason[MAP_CAPTION_MAX];
     uint32_t swatch[MAP_MAX_SWATCHES];   // 0xRRGGBB
     int swatches;
+    int burst_ms;       // MAP_ROLE_BURST: how long the master runs it, then stops it
+    char source[MAP_KEY_MAX];   // MAP_ROLE_BURST: the hit it stands for
 };
 
 struct map_section {

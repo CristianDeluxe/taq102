@@ -56,8 +56,13 @@ static int section_index(const struct show_map *map, int page, const struct map_
     return (int)(sec - map->page[page].section);
 }
 
+static int is_hit(const struct map_control *c) {
+    return c->role == MAP_ROLE_ACCENT || c->role == MAP_ROLE_BURST;
+}
+
 static int is_fog(const struct map_control *c) {
-    return strncmp(c->key, "humo", 4) == 0;
+    const char *key = c->role == MAP_ROLE_BURST && c->source[0] ? c->source : c->key;
+    return strncmp(key, "humo", 4) == 0;
 }
 
 int desk_show_compose(const struct show_map *map, int page, int haze_off, int tempo,
@@ -96,13 +101,13 @@ int desk_show_compose(const struct show_map *map, int page, int haze_off, int te
         out->heading[out->headings - 1].w = DESK_CONTENT_W - 5 * (DESK_SHOW_HOLD_W + DESK_GAP);
         for (int i = accents->first; i < accents->first + accents->count; i++) {
             const struct map_control *c = &map->control[i];
-            if (c->role == MAP_ROLE_ACCENT && is_fog(c)) {
+            if (is_hit(c) && is_fog(c)) {
                 if (fog_x + DESK_FOG_W > DESK_CONTENT_X + 336)
                     continue;
                 if (add(out, i, page, fog_x, ROW_FOG_Y, DESK_FOG_W, DESK_FOG_H, TILE_FOG) != 0)
                     return -1;
                 fog_x += DESK_FOG_W + DESK_GAP;
-            } else if (c->role == MAP_ROLE_ACCENT) {
+            } else if (is_hit(c)) {
                 if (hits_x + DESK_SHOW_HOLD_W > DESK_CONTENT_X + 5 * (DESK_SHOW_HOLD_W + DESK_GAP))
                     continue;
                 if (add(out, i, page, hits_x, ROW_HITS_Y, DESK_SHOW_HOLD_W, DESK_HOLD_TILE_H, TILE_HOLD) != 0)
@@ -113,7 +118,7 @@ int desk_show_compose(const struct show_map *map, int page, int haze_off, int te
         toggles_x = DESK_CONTENT_X + 5 * (DESK_SHOW_HOLD_W + DESK_GAP);
         for (int i = accents->first; i < accents->first + accents->count; i++) {
             const struct map_control *c = &map->control[i];
-            if (c->role != MAP_ROLE_ACCENT) {
+            if (!is_hit(c)) {
                 if (toggles_x + DESK_SHOW_HOLD_W > DESK_CONTENT_X + DESK_CONTENT_W)
                     break;
                 if (add(out, i, page, toggles_x, ROW_HITS_Y, DESK_SHOW_HOLD_W, DESK_HOLD_TILE_H, TILE_CUE) != 0)

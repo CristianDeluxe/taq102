@@ -235,10 +235,26 @@ static void paint_hold(struct canvas *c, const struct desk_control *ctl,
     icon_paint(c, ICON_BOLT, r.x + 8, r.y + 6, live && !capped ? DESK_HOLD_LINE : DESK_LINE);
     caption(c, fonts->tile_s, r.x + 8, r.w - 16, r.y + r.h / 2 - 2, ctl->label,
             live && !capped ? DESK_INK : DESK_MUTED);
+    char burst_foot[40];
     const char *foot = unresolved ? "apagado sin confirmar" : capped ? "suelta y vuelve"
                      : live ? "mientras pulses" : "solo en el Mac";
+    if (ctl->kind == DESK_BURST && live && !capped && !unresolved) {
+        // The master ends a burst by itself: the length is a promise it keeps.
+        snprintf(burst_foot, sizeof burst_foot, "mientras pulses \xc2\xb7 m\xc3\xa1x %d s",
+                 (ctl->burst_ms + 500) / 1000);
+        foot = burst_foot;
+    }
     centred(c, fonts->small, r.x + 8, r.y + r.h - 24, r.w - 16, 18, foot,
             unresolved ? DESK_WARN : DESK_MUTED);
+    // Running, on the master's word: an amber ring, the one meaning amber has.
+    if (ctl->kind == DESK_BURST && ctl->state == DESK_ON && ctl->enabled) {
+        canvas_round_rect(c, r.x, r.y, r.w, r.h, DESK_RADIUS, DESK_AMBER);
+        canvas_round_rect(c, r.x + BORDER, r.y + BORDER, r.w - 2 * BORDER, r.h - 2 * BORDER,
+                          DESK_RADIUS - BORDER, DESK_HOLD_FILL);
+        icon_paint(c, ICON_BOLT, r.x + 8, r.y + 6, DESK_AMBER);
+        caption(c, fonts->tile_s, r.x + 8, r.w - 16, r.y + r.h / 2 - 2, ctl->label, DESK_INK);
+        centred(c, fonts->small, r.x + 8, r.y + r.h - 24, r.w - 16, 18, foot, DESK_MUTED);
+    }
     // While the finger is down a thin bar counts the cap down.
     if (ctl->hold_progress >= 0) {
         int span = r.w - 16;

@@ -179,6 +179,12 @@ int qlc_encode_speed_ms(char *buf, size_t cap, int widget_id, int ms) {
     return emit(buf, cap, "%d|SPEED_TIME|%d", widget_id, ms);
 }
 
+int qlc_encode_function_status(char *buf, size_t cap, int function_id, int on) {
+    if (function_id < 0)
+        return -1;
+    return emit(buf, cap, "QLC+API|setFunctionStatus|%d|%d", function_id, on ? 1 : 0);
+}
+
 int qlc_encode_speed_factor(char *buf, size_t cap, int widget_id, int factor) {
     if (!widget_ok(widget_id) || factor < 2 || factor > 10)
         return -1;

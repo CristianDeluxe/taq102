@@ -193,7 +193,7 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
     const struct desk_placement *p = &m->layout.placement[index];
     struct desk_control *c = &m->control[p->control];
     // Holds and the tempo card are the caller's: pressed on contact, per finger.
-    if (c->kind == DESK_HOLD || c->kind == DESK_TEMPO)
+    if (c->kind == DESK_HOLD || c->kind == DESK_BURST || c->kind == DESK_TEMPO)
         return none();
     if (!usable(m, c))
         return none();
@@ -370,7 +370,7 @@ void desk_tick(struct desk_model *m, int64_t now_ms) {
 void desk_apply_function(struct desk_model *m, int function_id, int running) {
     for (int i = 0; i < m->count; i++) {
         struct desk_control *c = &m->control[i];
-        if (c->kind == DESK_CUE && c->function_id == function_id) {
+        if ((c->kind == DESK_CUE || c->kind == DESK_BURST) && c->function_id == function_id) {
             enum desk_state state = running ? DESK_ON : DESK_OFF;
             if (c->state != state || c->pending) {
                 c->state = state;

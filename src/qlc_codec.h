@@ -56,6 +56,10 @@ int qlc_encode_grand_master(char *buf, size_t cap, int value);
 // A speed dial, in milliseconds, before the dial applies its per-function
 // factors. Negative durations are refused; QLC+ reads 0 as "infinite".
 int qlc_encode_speed_ms(char *buf, size_t cap, int widget_id, int ms);
+// The API's own start and stop of a function by id, idempotent both ways:
+// a burst is started on contact and stopped on release, and the master
+// ends it by itself at its length whatever the tablet does.
+int qlc_encode_function_status(char *buf, size_t cap, int function_id, int on);
 // A speed dial's time multiplier, by the engine's enum: 2..10 = 1/16 .. 16.
 // None (0) and Zero (1) are refused: the desk never asks for either.
 int qlc_encode_speed_factor(char *buf, size_t cap, int widget_id, int factor);

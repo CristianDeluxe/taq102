@@ -24,6 +24,7 @@ enum desk_kind {
     DESK_MASTER,     // the grand master
     DESK_STOP_ALL,   // the console's own StopAll: the panic button
     DESK_HOLD,       // a Flash button fired while the finger is down (the hold model's)
+    DESK_BURST,      // a SingleShot chaser started on contact, stopped on release, ended by the master
     DESK_HAZE_OFF,   // SHOW's ambient OFF: stops whichever haze rhythm runs
     DESK_TEMPO,      // SHOW's tempo card: the show dial's BPM and a tap (the speed model's)
 };
@@ -53,8 +54,9 @@ struct desk_control {
     int pressed;        // a finger is on it now: local feedback only
     int pending;        // its frame went out; the master has not answered yet
     int64_t pending_since;
-    int hold_progress;  // DESK_HOLD: 0..1000 of the cap used while down, -1 idle
-    int hold_index;     // DESK_HOLD: the hold model's index, -1 when it has none
+    int hold_progress;  // DESK_HOLD, DESK_BURST: 0..1000 of the cap used while down, -1 idle
+    int hold_index;     // DESK_HOLD, DESK_BURST: the hold model's index, -1 when it has none
+    int burst_ms;       // DESK_BURST: the master's own length
 };
 
 #define DESK_PENDING_MS 1500

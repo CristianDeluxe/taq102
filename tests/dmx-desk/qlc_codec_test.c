@@ -100,6 +100,9 @@ int main(void) {
     encodes(qlc_encode_grand_master(b, sizeof b, 255), b, "GM_VALUE|255");
     encodes(qlc_encode_speed_ms(b, sizeof b, 54, 500), b, "54|SPEED_TIME|500");
     encodes(qlc_encode_speed_factor(b, sizeof b, 34, 7), b, "34|SPEED_FACTOR|7");
+    encodes(qlc_encode_function_status(b, sizeof b, 813, 1), b, "QLC+API|setFunctionStatus|813|1");
+    encodes(qlc_encode_function_status(b, sizeof b, 813, 0), b, "QLC+API|setFunctionStatus|813|0");
+    assert(qlc_encode_function_status(b, sizeof b, -1, 1) == -1);
     assert(qlc_encode_speed_factor(b, sizeof b, 34, 1) == -1);
     assert(qlc_encode_speed_factor(b, sizeof b, 34, 11) == -1);
     // The dial's state push: time and the multiplier enum, both checked.
