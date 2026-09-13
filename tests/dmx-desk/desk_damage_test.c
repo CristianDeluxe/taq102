@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_layout_resolve.c desk_show_layout.c showmap.c showmap_validate.c vcjson.c
+// SOURCES: desk_model.c desk_master_level_at.c desk_layout_resolve.c desk_show_layout.c showmap.c showmap_validate.c vcjson.c
 // What changed is what gets painted: a push lights one tile's rectangle, a
 // view change everything, and a clip keeps a primitive inside its damage.
 #include <assert.h>

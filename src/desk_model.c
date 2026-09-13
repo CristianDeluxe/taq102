@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include "desk_master_level_at.h"
+
 #define NO_CAPTURE (-1)
 
 static struct desk_action none(void) {
@@ -26,18 +28,6 @@ static int hit(const struct desk_model *m, int x, int y) {
             return i;
     }
     return -1;
-}
-
-// The master's fill runs bottom to top, and a drag anywhere in the tile sets
-// it.
-static int master_level_at(const struct desk_placement *p, int y) {
-    int span = p->h > 1 ? p->h - 1 : 1;
-    int from_bottom = p->y + p->h - 1 - y;
-    if (from_bottom < 0)
-        from_bottom = 0;
-    if (from_bottom > span)
-        from_bottom = span;
-    return from_bottom * 255 / span;
 }
 
 static void damage_all(struct desk_model *m) {
@@ -190,7 +180,8 @@ void desk_set_hold_progress(struct desk_model *m, int control, int progress, int
     damage_control(m, control);
 }
 
-struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y) {
+struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y,
+                                   const struct desk_rect *master_track) {
     int index = hit(m, x, y);
     if (index < 0)
         return none();
@@ -198,6 +189,8 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
     struct desk_control *c = &m->control[p->control];
     // Holds and the tempo card are the caller's: pressed on contact, per finger.
     if (c->kind == DESK_HOLD || c->kind == DESK_BURST || c->kind == DESK_TEMPO)
+        return none();
+    if (c->kind == DESK_MASTER && (!master_track || master_track->h <= 0))
         return none();
     if (!usable(m, c))
         return none();
@@ -222,17 +215,20 @@ struct desk_action desk_touch_down(struct desk_model *m, int slot, int x, int y)
     c->pressed = 1;
     damage_control(m, p->control);
 
+    // A drag anywhere in the tile sets the master; only the value uses the
+    // resolved track travel, saturating above and below it.
     // A fader follows the finger from the first contact; a cue waits for the
     // release, so sliding off it is a way to change your mind.
     if (c->kind == DESK_MASTER) {
-        c->requested_level = master_level_at(p, y);
+        c->requested_level = desk_master_level_at(master_track, y);
         struct desk_action a = { DESK_ACT_MASTER, c->widget_id, c->requested_level };
         return a;
     }
     return none();
 }
 
-struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y) {
+struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y,
+                                   const struct desk_rect *master_track) {
     if (slot == m->panic_slot && m->panic_placement >= 0) {
         // The outline follows the truth: off the button, nothing will fire.
         const struct desk_placement *pp = &m->layout.placement[m->panic_placement];
@@ -249,7 +245,9 @@ struct desk_action desk_touch_move(struct desk_model *m, int slot, int x, int y)
     struct desk_control *c = &m->control[m->capture_index];
     const struct desk_placement *p = &m->layout.placement[m->capture_placement];
     if (c->kind == DESK_MASTER) {
-        int level = master_level_at(p, y);
+        if (!master_track || master_track->h <= 0)
+            return none();
+        int level = desk_master_level_at(master_track, y);
         if (level != c->requested_level) {
             c->requested_level = level;
             damage_control(m, m->capture_index);

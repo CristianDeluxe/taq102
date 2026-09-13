@@ -6,6 +6,28 @@
 
 ### 2026-09
 
+- [x] 2026-09-13 - **Master fader:** align touch values with the visible grip travel.
+  - The whole-tile mapping produced 199/255 (78%) at the visible track top,
+    forcing I to drag towards the top-bar lock for 100%.
+  - Bundled Inter value height measures 31 px: the unchanged track is
+    `(876, 137, 116, 275)`, visible rows 137..411. Fallback glyph height 15
+    gives `(876, 121, 116, 291)`.
+  - `desk_master_track.c` owns the drawn geometry. Input resolves it with the
+    paint font and passes the rectangle into the font-independent model.
+    The 24 px thumb centre travels from 149 to 400 with Inter; inverse mapping
+    rounds to the nearest DMX level. An 8 px inward endpoint margin saturates
+    at 255 through y 157 and at 0 from y 392 without rescaling the interior.
+    Any initial contact in the tile still sets the fader, and captured drags
+    outside its travel still saturate. Track, caption and readout stay put.
+  - `desk_master_travel_test.c` covers production layout geometry with loaded
+    and fallback fonts, in-tile endpoints, midpoint, margins, monotonic dragging,
+    second-finger rejection and rendered thumb alignment.
+  - Validation: host baseline 38/0, final 39/0 under ASan/UBSan; tablet ARM
+    cross-build passed with GCC 14.3.0 under `-Wall -Wextra -Werror`. Existing
+    master/render assertions remain valid; their touch calls and source lists
+    now provide the shared geometry.
+  - Delivery is intentionally uncommitted and undeployed for owner review.
+
 - [x] 2026-09-13 - **Infrastructure:** QLC+ would not start, and it was
   Pioneer's `FwUpdateManagerd` wedging libusb, not QLC+.
   - Symptom: `qlcplus-qml` never bound its web port, so the tablet had no

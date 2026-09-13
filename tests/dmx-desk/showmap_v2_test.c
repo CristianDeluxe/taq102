@@ -1,4 +1,4 @@
-// SOURCES: showmap.c showmap_validate.c desk_model.c desk_layout_resolve.c desk_show_layout.c vcjson.c
+// SOURCES: showmap.c showmap_validate.c desk_model.c desk_master_level_at.c desk_layout_resolve.c desk_show_layout.c vcjson.c
 // The generated map (schema 2) parsed with its bounds, and built against the
 // console the master really serves: the room's states pressable, the held
 // hits carried disabled, the panic button live, and a console that is not
@@ -179,14 +179,14 @@ int main(void) {
 
     // The panic button is a completed tap when READY, and nothing otherwise.
     int sx = sp->x + 10, sy = sp->y + 10;
-    assert(desk_touch_down(&model, 0, sx, sy).kind == DESK_ACT_NONE);
+    assert(desk_touch_down(&model, 0, sx, sy, NULL).kind == DESK_ACT_NONE);
     assert(desk_touch_up(&model, 0, sx, sy).kind == DESK_ACT_NONE);
     desk_set_link(&model, DESK_LINK_READY);
-    assert(desk_touch_down(&model, 0, sx, sy).kind == DESK_ACT_NONE);
+    assert(desk_touch_down(&model, 0, sx, sy, NULL).kind == DESK_ACT_NONE);
     struct desk_action panic = desk_touch_up(&model, 0, sx, sy);
     assert(panic.kind == DESK_ACT_STOP_ALL && panic.widget_id == 21);
     // Nothing lives at the rail or the bar.
-    assert(desk_touch_down(&model, 0, 0, 0).kind == DESK_ACT_NONE);
+    assert(desk_touch_down(&model, 0, 0, 0, NULL).kind == DESK_ACT_NONE);
     // On the COLOR page the compact AUTO fires the same widget on every bank,
     // and Rig Rojo has a place on the bank the resolver gave it.
     int rojo_bank = -1;
@@ -197,14 +197,14 @@ int main(void) {
     desk_set_view(&model, 0, 0);
     const struct desk_placement *cap = desk_placement_of(&model, auto_ix);
     assert(cap && cap->tile == TILE_STATE);
-    assert(desk_touch_down(&model, 0, cap->x + 5, cap->y + 5).kind == DESK_ACT_NONE);
+    assert(desk_touch_down(&model, 0, cap->x + 5, cap->y + 5, NULL).kind == DESK_ACT_NONE);
     struct desk_action fired = desk_touch_up(&model, 0, cap->x + 5, cap->y + 5);
     assert(fired.kind == DESK_ACT_TOGGLE && fired.widget_id == 4);
     desk_set_view(&model, 1, rojo_bank);
     const struct desk_placement *rp = desk_placement_of(&model, (int)(rojo - model.control));
     assert(rp && rp->tile == TILE_SWATCH);
     // A view change mid-capture cancels the gesture.
-    assert(desk_touch_down(&model, 0, rp->x + 5, rp->y + 5).kind == DESK_ACT_NONE);
+    assert(desk_touch_down(&model, 0, rp->x + 5, rp->y + 5, NULL).kind == DESK_ACT_NONE);
     desk_set_view(&model, 0, 0);
     assert(desk_touch_up(&model, 0, rp->x + 5, rp->y + 5).kind == DESK_ACT_NONE);
 

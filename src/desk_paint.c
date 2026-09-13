@@ -6,6 +6,8 @@
 #include "canvas_blend.h"
 #include "desk_caption.h"
 #include "desk_layout.h"
+#include "desk_master_track.h"
+#include "desk_master_metrics.h"
 #include "desk_view.h"
 #include "desk_pager_bank_caption.h"
 #include "icon.h"
@@ -385,24 +387,26 @@ static void paint_master(struct canvas *c, const struct desk_control *ctl,
     centred(c, fonts->section, r.x, r.y + 10, r.w, 20, "MASTER", DESK_MUTED);
     int bh = text_h(fonts->value) + 8;
     centred(c, fonts->value, r.x, r.y + 30, r.w, bh, text, DESK_INK);
-    int track_y = r.y + 30 + bh + 12, track_h = r.h - (30 + bh + 12) - 16;
-    canvas_round_rect(c, r.x + 16, track_y, r.w - 32, track_h, 8, DESK_GLASS);
+    struct desk_rect track = desk_master_track(p, fonts->value);
+    int track_y = track.y, track_h = track.h;
+    canvas_round_rect(c, track.x, track_y, track.w, track_h, 8, DESK_GLASS);
     if (known) {
         int fill_h = ctl->level * track_h / 255;
         if (fill_h > 0)
-            canvas_round_rect(c, r.x + 16, track_y + track_h - fill_h, r.w - 32, fill_h, 8,
+            canvas_round_rect(c, track.x, track_y + track_h - fill_h, track.w, fill_h, 8,
                               live ? DESK_RAISED : DESK_LINE);
-        int thumb_y = track_y + track_h - fill_h - 12;
-        if (thumb_y < track_y)
-            thumb_y = track_y;
-        if (thumb_y > track_y + track_h - 24)
-            thumb_y = track_y + track_h - 24;
-        canvas_round_rect(c, r.x + 12, thumb_y, r.w - 24, 24, 8, live ? DESK_INK : DESK_MUTED);
+        // The grip follows its own travel, matching the input inverse; the
+        // track and fill retain their existing bounds.
+        int travel = track_h - DESK_MASTER_THUMB_H;
+        int thumb_y = track_y + ((255 - ctl->level) * travel + 127) / 255;
+        canvas_round_rect(c, r.x + 12, thumb_y, r.w - 24, DESK_MASTER_THUMB_H, 8,
+                          live ? DESK_INK : DESK_MUTED);
         canvas_fill_rect(c, r.x + r.w / 2 - 12, thumb_y + 11, 24, 2, DESK_GLASS);
     }
     if (ctl->pressed) {
-        int span = track_h > 1 ? track_h - 1 : 1;
-        int mark_y = track_y + track_h - 1 - ctl->requested_level * span / 255;
+        int span = track_h - DESK_MASTER_THUMB_H;
+        int mark_y = track_y + DESK_MASTER_THUMB_H / 2
+                   + ((255 - ctl->requested_level) * span + 127) / 255;
         canvas_fill_rect(c, r.x + 8, mark_y - 1, r.w - 16, BORDER, DESK_INK);
     }
 }

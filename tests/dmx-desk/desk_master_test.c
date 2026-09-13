@@ -1,4 +1,4 @@
-// SOURCES: desk_model.c desk_paint.c desk_pager_caption.c desk_pager_bank_caption.c icon.c desk_caption.c desk_view.c desk_view_pager.c desk_pager_label.c canvas.c canvas_blend.c font.c desk_fonts.c
+// SOURCES: desk_model.c desk_master_level_at.c desk_paint.c desk_master_track.c desk_pager_caption.c desk_pager_bank_caption.c icon.c desk_caption.c desk_view.c desk_view_pager.c desk_pager_label.c canvas.c canvas_blend.c font.c desk_fonts.c
 // The master is unknown until the master speaks, a drag moves only what the
 // desk asked for, and a finger on a tile never repaints what the show said.
 #include <assert.h>
@@ -8,6 +8,7 @@
 #include "canvas.h"
 #include "desk_layout.h"
 #include "desk_model.h"
+#include "desk_master_track.h"
 #include "desk_paint.h"
 
 static int count(const struct canvas *c, int x, int y, int w, int h, uint32_t col) {
@@ -48,6 +49,7 @@ int main(void) {
     struct canvas c = { .px = calloc(DESK_W * DESK_H, 4), .w = DESK_W, .h = DESK_H };
     struct desk_fonts fonts;
     memset(&fonts, 0, sizeof fonts);
+    struct desk_rect track = desk_master_track(mp, fonts.value);
     desk_paint(&c, &m, &fonts);
     // Unknown: no fill and no thumb in the master tile; amber is never a level.
     assert(count(&c, mp->x, mp->y, mp->w, mp->h, DESK_RAISED) == 0);
@@ -63,10 +65,10 @@ int main(void) {
     assert(half > mp->w * mp->h / 8 && half < mp->w * mp->h * 3 / 4);
 
     // A drag moves the requested level and the action, never the confirmed one.
-    struct desk_action a = desk_touch_down(&m, 0, mp->x + 10, mp->y + mp->h - 1);
+    struct desk_action a = desk_touch_down(&m, 0, mp->x + 10, mp->y + mp->h - 1, &track);
     assert(a.kind == DESK_ACT_MASTER && a.value == 0);
     assert(m.control[im].requested_level == 0 && m.control[im].level == 128);
-    a = desk_touch_move(&m, 0, mp->x + 10, mp->y);
+    a = desk_touch_move(&m, 0, mp->x + 10, mp->y, &track);
     assert(a.kind == DESK_ACT_MASTER && a.value == 255 && m.control[im].level == 128);
     desk_paint(&c, &m, &fonts);
     int during = count(&c, mp->x, mp->y, mp->w, mp->h, DESK_RAISED);
@@ -87,7 +89,7 @@ int main(void) {
     desk_paint(&c, &m, &fonts);
     int lit = count(&c, cp->x, cp->y, cp->w, cp->h, DESK_AMBER);
     assert(lit > cp->w * cp->h / 2);
-    desk_touch_down(&m, 1, cp->x + 20, cp->y + 20);
+    desk_touch_down(&m, 1, cp->x + 20, cp->y + 20, NULL);
     desk_paint(&c, &m, &fonts);
     int lit_pressed = count(&c, cp->x, cp->y, cp->w, cp->h, DESK_AMBER);
     assert(lit_pressed > lit * 8 / 10);

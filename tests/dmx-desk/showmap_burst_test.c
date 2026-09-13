@@ -1,4 +1,4 @@
-// SOURCES: showmap.c showmap_validate.c desk_model.c vcjson.c
+// SOURCES: showmap.c showmap_validate.c desk_model.c desk_master_level_at.c vcjson.c
 // A burst in the map: role, length and the hit it stands for parsed; a
 // burst without a length or a function refused; against a console with a
 // toggle over the chaser it validates as a burst control the master's own
