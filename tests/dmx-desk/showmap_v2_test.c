@@ -85,15 +85,17 @@ int main(void) {
             accents = &map.page[0].section[i];
     assert(accents && accents->count == 8);
     assert(accents == &map.page[0].section[map.page[0].sections - 1]);
-    int held = 0;
+    // The hits are bursts now: the master runs each for its own length and
+    // ends it itself, so the tablet may fire them.
+    int bursts = 0;
     for (int i = 0; i < accents->count; i++) {
         const struct map_control *c = &map.control[accents->first + i];
-        if (c->held) {
-            held++;
-            assert(!c->enabled && c->reason[0]);
+        if (c->role == MAP_ROLE_BURST) {
+            bursts++;
+            assert(!c->held && c->enabled && c->burst_ms > 0 && c->source[0]);
         }
     }
-    assert(held == 7);
+    assert(bursts == 7);
     // A colour pick carries the colour its scenes write.
     int red_found = 0;
     for (int i = 0; i < map.count; i++) {
@@ -145,11 +147,11 @@ int main(void) {
     int auto_ix = (int)(a - model.control);
     const struct desk_placement *ap = desk_placement_of(&model, auto_ix);
     assert(ap && ap->w == 111 && ap->x == DESK_CONTENT_X && ap->y == 76);
-    // A light hit fires from here while held; fog stays on the Mac.
+    // Every hit is a burst the master bounds, fog included.
     const struct desk_control *flash = by_label(&model, "FLASH");
-    assert(flash && flash->enabled && flash->kind == DESK_HOLD);
+    assert(flash && flash->enabled && flash->kind == DESK_BURST && flash->burst_ms == 8000);
     const struct desk_control *fog = by_label(&model, "HUMO YA");
-    assert(fog && !fog->enabled && strstr(fog->reason, "held"));
+    assert(fog && fog->enabled && fog->kind == DESK_BURST && fog->burst_ms == 3000);
     const struct desk_control *rojo = by_label(&model, "Rig Rojo");
     assert(rojo && rojo->enabled && rojo->swatches == 1);
     const struct desk_placement *rmini = desk_placement_of(&model, (int)(rojo - model.control));
@@ -162,17 +164,17 @@ int main(void) {
     const struct desk_control *master = by_kind(&model, DESK_MASTER);
     // Known from the snapshot: the console carries the slider's level.
     assert(master && master->enabled && master->state == DESK_ON && master->level == 255);
-    // Everything but the seventeen held hits (seven on LIVE, ten colour
-    // golpes) is enabled: 115, plus the master and the panic button.
+    // Nothing is held any more: every hit is a burst, so the whole map is
+    // enabled, plus the master, the stop and SHOW's own two.
     {
-        int holds_on = 0, on = 0;
+        int bursts_on = 0, on = 0;
         for (int i = 0; i < model.count; i++) {
             on += model.control[i].enabled;
-            holds_on += model.control[i].kind == DESK_HOLD && model.control[i].enabled;
+            bursts_on += model.control[i].kind == DESK_BURST && model.control[i].enabled;
         }
-        assert(holds_on == 13);            // the light hits of LIVE and COLOR; fog and strobes stay on the Mac
+        assert(bursts_on == 17);           // seven on LIVE, ten colour hits
         assert(enabled == on);
-        assert(enabled == 115 + 2 + holds_on + 2);   // the cues, master and stop, the holds, OFF and tempo
+        assert(enabled == map.count + 4);  // every control, the master, the stop, OFF and the tempo
     }
 
     // The panic button is a completed tap when READY, and nothing otherwise.

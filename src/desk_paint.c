@@ -239,8 +239,9 @@ static void paint_hold(struct canvas *c, const struct desk_control *ctl,
     const char *foot = unresolved ? "apagado sin confirmar" : capped ? "suelta y vuelve"
                      : live ? "mientras pulses" : "solo en el Mac";
     if (ctl->kind == DESK_BURST && live && !capped && !unresolved) {
-        // The master ends a burst by itself: the length is a promise it keeps.
-        snprintf(burst_foot, sizeof burst_foot, "mientras pulses \xc2\xb7 m\xc3\xa1x %d s",
+        // The master ends a burst by itself: the length is a promise it keeps,
+        // and it has to fit a 128 px tile.
+        snprintf(burst_foot, sizeof burst_foot, "pulsa \xc2\xb7 m\xc3\xa1x %d s",
                  (ctl->burst_ms + 500) / 1000);
         foot = burst_foot;
     }
