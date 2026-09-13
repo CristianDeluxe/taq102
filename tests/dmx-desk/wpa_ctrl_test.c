@@ -202,13 +202,13 @@ int main(void) {
     assert(desk_wifi_request_step(&card, c, 2999, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
     assert(card.pending == DESK_WIFI_NONE);
     assert(desk_wifi_request_step(&card, c, 3000, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
-    assert(desk_wifi_request_step(&card, c, 3100, 0, 1, buf, sizeof buf) == DESK_WIFI_STATUS);
+    assert(desk_wifi_request_step(&card, c, 3600, 0, 1, buf, sizeof buf) == DESK_WIFI_STATUS);
     assert(card.result == -1 && card.pending == DESK_WIFI_NONE);
     card.scan_queued = 1;
-    assert(desk_wifi_request_step(&card, c, 3110, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(desk_wifi_request_step(&card, c, 3610, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
     request.fd = wpa_ctrl_request_fd(c);
     assert(poll(&request, 1, 300) == 1);
-    assert(desk_wifi_request_step(&card, c, 3120, 0, 1, buf, sizeof buf) == DESK_WIFI_SCAN);
+    assert(desk_wifi_request_step(&card, c, 3620, 0, 1, buf, sizeof buf) == DESK_WIFI_SCAN);
     assert(card.result == 1 && strcmp(buf, "OK\n") == 0);
     wpa_ctrl_close(c);
     kill(helper, 9);
