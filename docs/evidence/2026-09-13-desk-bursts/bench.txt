@@ -1,0 +1,29 @@
+2026-09-13. The bench QLC+ 5.2.2 on this Mac (192.168.1.65:9998) loaded with the
+regenerated Vibra.qxw; the tablet's desk against it, no --host.
+
+The proof of concept, before the generator was touched (a hand-edited copy with
+one burst for HUMO YA, scene f812 copied from f638, chaser f813 SingleShot,
+one step hold 3000):
+
+  >> QLC+API|setFunctionStatus|813|1
+  <<    13.3 ms  FUNCTION|813|Running
+  <<    13.6 ms  FUNCTION|812|Running
+  <<  3009.6 ms  FUNCTION|812|Stopped        <- the master ended it, nobody asked
+  <<  3009.6 ms  FUNCTION|813|Stopped
+  early stop answered in 21 ms; a second start while running neither restarted
+  nor extended it.
+
+The generated show, seventeen bursts (the reviewer, DMX-Fixtures 91227ca):
+
+  fog, f819, 3 s:
+  <<     3.4 ms  FUNCTION|819|Running
+  <<  3004.7 ms  FUNCTION|818|Stopped
+  <<  3004.8 ms  665|BUTTON|0
+  <<  3004.8 ms  FUNCTION|819|Stopped
+  flash, f813, 8 s, stopped at 1 s: the stop answered in 7.5 ms.
+
+On the tablet: 136 of 132 controls enabled (the whole map plus the master, the
+stop, ambient OFF and the tempo card); nothing reads "solo en el Mac" any more.
+A burst started from the Mac lit its tile amber on the tablet within the frame
+(flash-running.png) and the amber was gone when the master ended it by itself
+(zero amber pixels in the same crop, measured).
