@@ -23,7 +23,7 @@ enum desk_target desk_input_target(const struct desk_model *m, int x, int y, int
     int banks = m->layout.pages > 0 ? m->layout.banks[m->page] : 1;
     if (banks > 1 && y >= DESK_PAGER_Y) {
         for (int i = 0; i < banks; i++) {
-            if (desk_rect_contains(desk_view_pager(i, banks), x, y)) {
+            if (desk_rect_contains(desk_view_pager(i, &m->layout, m->page), x, y)) {
                 *index = i;
                 return TARGET_BANK;
             }
@@ -51,6 +51,9 @@ enum desk_target desk_input_feed(struct desk_input *in, const struct desk_model 
     if (ev->kind == TOUCH_DOWN) {
         in->slot[ev->slot].target = desk_input_target(m, (int)ev->x, (int)ev->y, &at);
         in->slot[ev->slot].index = at;
+        in->slot[ev->slot].page = m->page;
+        in->slot[ev->slot].rect = in->slot[ev->slot].target == TARGET_RAIL
+                               ? desk_view_tab(at) : desk_view_pager(at, &m->layout, m->page);
         return in->slot[ev->slot].target;
     }
     enum desk_target owner = in->slot[ev->slot].target;
@@ -61,8 +64,19 @@ enum desk_target desk_input_feed(struct desk_input *in, const struct desk_model 
     }
     if ((owner == TARGET_RAIL || owner == TARGET_BANK) && ev->kind == TOUCH_UP) {
         enum desk_target now = desk_input_target(m, (int)ev->x, (int)ev->y, &at);
-        if (now == owner && at == pressed)
-            *index = at;
+        // A neighbouring entry wins hit testing but never inherits this tap.
+        // Only the originally pressed rectangle gets the finger-roll margin.
+        if ((now == TARGET_RAIL || now == TARGET_BANK) && (now != owner || at != pressed))
+            return owner;
+        if (owner == TARGET_BANK && m->page != in->slot[ev->slot].page)
+            return owner;
+        struct desk_rect r = in->slot[ev->slot].rect;
+        r.x -= DESK_INPUT_SLOP;
+        r.y -= DESK_INPUT_SLOP;
+        r.w += 2 * DESK_INPUT_SLOP;
+        r.h += 2 * DESK_INPUT_SLOP;
+        if (pressed >= 0 && desk_rect_contains(r, (int)ev->x, (int)ev->y))
+            *index = pressed;
     }
     return owner;
 }

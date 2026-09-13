@@ -1,4 +1,4 @@
-// SOURCES: desk_view.c desk_input.c desk_model.c desk_layout_resolve.c desk_show_layout.c showmap.c
+// SOURCES: desk_view.c desk_view_pager.c desk_pager_label.c desk_input.c desk_model.c desk_layout_resolve.c desk_show_layout.c showmap.c
 // The rail, the bank pills and the lock target: where they are, and which one
 // a finger lands on. A tap completes only on the entry it started on.
 #include <assert.h>
@@ -24,8 +24,7 @@ int main(void) {
     struct desk_rect lock = desk_view_lock_target(), gear = desk_view_gear();
     assert(lock.w == 48 && lock.h == 48 && lock.x + lock.w <= DESK_W && lock.y == 0);
     assert(gear.x + gear.w <= lock.x);
-    struct desk_rect b1 = desk_view_pager(1, 2);
-    assert(b1.x > DESK_CONTENT_X && b1.y >= DESK_PAGER_Y && b1.x + b1.w <= DESK_CONTENT_X + DESK_CONTENT_W);
+
 
     struct show_map map;
     assert(showmap_load("show/vibra.desk.json", &map) == 0);
@@ -48,7 +47,7 @@ int main(void) {
         if (layout.banks[i] > 1) { paged = i; break; }
     assert(paged >= 0);
     desk_set_view(&m, paged, 0);
-    struct desk_rect p1 = desk_view_pager(1, layout.banks[paged]);
+    struct desk_rect p1 = desk_view_pager(1, &layout, paged);
     assert(desk_input_target(&m, p1.x + 5, p1.y + 5, &index) == TARGET_BANK && index == 1);
     // A page with one bank has no pager: the same point is content.
     desk_set_view(&m, 6, 0);
@@ -75,6 +74,41 @@ int main(void) {
     assert(desk_input_feed(&in, &m, &mv, &index) == TARGET_CONTENT);
     u = ev(TOUCH_UP, 1, 20, e1.y + 10);
     assert(desk_input_feed(&in, &m, &u, &index) == TARGET_CONTENT && index == -1);
+    // Both target kinds tolerate a roll, but never transfer to a neighbour.
+    desk_set_view(&m, paged, 0);
+    for (int rail = 0; rail <= 1; rail++) {
+        struct desk_rect first = rail ? desk_view_tab(0) : desk_view_pager(0, &layout, paged);
+        struct desk_rect second = rail ? desk_view_tab(1) : desk_view_pager(1, &layout, paged);
+        enum desk_target target = rail ? TARGET_RAIL : TARGET_BANK;
+        const int lifts[][3] = {
+            {first.x - 4, first.y + 20, 0},
+            {first.x + 20, first.y + first.h + 4, 0},
+            {first.x - DESK_INPUT_SLOP, first.y + 20, 0},
+            {first.x - DESK_INPUT_SLOP - 1, first.y + 20, -1},
+            {second.x, second.y + 20, -1},
+            {second.x + second.w / 2, second.y + 20, -1},
+            {first.x + 20, first.y + first.h + 40, -1},
+        };
+        for (unsigned i = 0; i < sizeof lifts / sizeof lifts[0]; i++) {
+            d = ev(TOUCH_DOWN, 0, first.x + 20, first.y + 20);
+            assert(desk_input_feed(&in, &m, &d, &index) == target && index == -1);
+            u = ev(TOUCH_UP, 0, lifts[i][0], lifts[i][1]);
+            assert(desk_input_feed(&in, &m, &u, &index) == target && index == lifts[i][2]);
+            assert(desk_input_feed(&in, &m, &u, &index) == TARGET_NONE && index == -1);
+        }
+        d = ev(TOUCH_DOWN, 0, first.x + 20, first.y + 20);
+        desk_input_feed(&in, &m, &d, &index);
+        u = ev(TOUCH_CANCEL, 0, first.x + 20, first.y + 20);
+        assert(desk_input_feed(&in, &m, &u, &index) == target && index == -1);
+    }
+    // A bank pressed before another finger changes tab must not select a
+    // bank on that other page, even when the rectangles happen to coincide.
+    p1 = desk_view_pager(1, &layout, paged);
+    d = ev(TOUCH_DOWN, 0, p1.x + 20, p1.y + 20);
+    desk_input_feed(&in, &m, &d, &index);
+    desk_set_view(&m, 0, 0);
+    u = ev(TOUCH_UP, 0, p1.x + 20, p1.y + 20);
+    assert(desk_input_feed(&in, &m, &u, &index) == TARGET_BANK && index == -1);
     printf("desk_view ok\n");
     return 0;
 }

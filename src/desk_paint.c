@@ -7,6 +7,7 @@
 #include "desk_caption.h"
 #include "desk_layout.h"
 #include "desk_view.h"
+#include "desk_pager_bank_caption.h"
 #include "icon.h"
 
 // Alpha stays 0xFF everywhere, as in rescue_paint: the framebuffer is added
@@ -521,20 +522,30 @@ static void paint_headings(struct canvas *c, const struct desk_model *model,
     }
 }
 
-// The pager, only when the page has more than one bank: small buttons at
-// the bottom right, an amber dot on a bank where something runs.
+// Section names and parts describe each bank; the small number keeps its place
+// in the sequence. Invert the current segment so it reads across the wide bar.
 static void paint_pager(struct canvas *c, const struct desk_model *model,
                         const struct desk_fonts *fonts) {
     int banks = model->layout.pages > 0 ? model->layout.banks[model->page] : 1;
     if (banks <= 1)
         return;
     for (int i = 0; i < banks; i++) {
-        struct desk_rect b = desk_view_pager(i, banks);
+        struct desk_rect b = desk_view_pager(i, &model->layout, model->page);
         int current = i == model->bank;
-        canvas_round_rect(c, b.x, b.y, b.w, b.h, 8, current ? DESK_RAISED : DESK_TILE);
+        canvas_round_rect(c, b.x, b.y, b.w, b.h, 8, current ? DESK_INK : DESK_TILE);
         char digit[16];
         snprintf(digit, sizeof digit, "%d", i + 1);
-        centred(c, fonts->tab, b.x, b.y, b.w, b.h, digit, current ? DESK_INK : DESK_MUTED);
+        char label[DESK_PAGER_BANK_CAPTION_MAX];
+        desk_pager_bank_caption(model, fonts->tab, model->page, i, b.w - 64, label);
+        uint32_t ink = current ? DESK_GLASS : DESK_MUTED;
+        if (!label[0]) {
+            centred(c, fonts->tab, b.x, b.y, b.w, b.h, digit, ink);
+        } else {
+            text_at(c, fonts->small, b.x + 16, b.y + (b.h - text_h(fonts->small)) / 2,
+                    24, digit, ink);
+            text_at(c, fonts->tab, b.x + 40, b.y + (b.h - text_h(fonts->tab)) / 2,
+                    b.w - 64, label, ink);
+        }
         int running = 0;
         for (int j = 0; j < model->layout.placements && !running && i != model->bank; j++) {
             const struct desk_placement *p = &model->layout.placement[j];

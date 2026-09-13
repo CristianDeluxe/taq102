@@ -65,11 +65,11 @@
 #define DESK_TILE_W DESK_HOOK_W
 #define DESK_TILE_H DESK_HOOK_H
 
-// The pager for a tab with more than one page: small buttons at the bottom
-// right of the content.
-#define DESK_PAGER_W 48
-#define DESK_PAGER_H 48
-#define DESK_PAGER_Y 536
+// The pager fills the existing 56 px strip; six minimum widths plus five
+// 8 px gaps fit without taking any room from the content above it.
+#define DESK_PAGER_MIN_W 128
+#define DESK_PAGER_H 56
+#define DESK_PAGER_Y (DESK_CONTENT_END - DESK_PAGER_H)
 
 // The palette. Amber means the master says running and nothing else; the
 // stop is the one red; a hold-to-fire button has its own violet field.
