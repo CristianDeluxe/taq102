@@ -1,7 +1,8 @@
 # TODO
 
 > Consolidated from the accessible the working session, the reviewer, Cursor, and Antigravity
-> project history. Last reviewed: 2026-09-09. History coverage: Partial.
+> project history. Last reviewed: 2026-09-13 (repository evidence
+> reconciliation). History coverage: Partial.
 > Unavailable: the session scratchpads of 2026-09-01 and 2026-09-02 (gone; the
 > the reviewer research report they held survives on the archive disk), and the reviewer's
 > 2026-09-01 round 3, which never answered. No Cursor or Antigravity history
@@ -11,25 +12,29 @@
 > verified complete · `[-]` obsolete or superseded. Closed work moves to
 > `TODO_LOG.md`.
 
-Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
-v40, vendor 4.4.167), `recovery` = `recovery-taq102-v75-cube-touch-x.img` (mainline
-7.3.0-rc2, the 17-patch series, touch geometry measured, glcube scaled), BCB = `boot-recovery`, so every
-power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
-appliance back. The journal is `README.md` here and
-`~/p/brain/personal/denver-taq102-tablet.md`; images and checksums are in
-`/Volumes/Datos4TB2/denver-taq102/`.
+Device evidence reviewed 2026-09-13: mainline 7.3.0-rc2 has booted since
+v59 and run the cube since v64-v66; v85 records charging policy and an eight-hour
+soak, v86 the nineteenth kernel patch, v87 the sleep fix, and v88 the revised
+boot-logo palette (its appearance is still unverified). The last recorded BCB
+selects `recovery`; the vendor appliance remains the fallback in `boot`.
+The exact current partition image hashes were not read during this review.
+Boot still launches `/usr/bin/glcube`; the intended application is the Vibra DMX
+desk, currently launched from `/tmp` with `tools/run-dmxdesk.sh`. Persistent desk
+packaging is open below. The journal is `README.md`; archived images and
+checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
 
 ## Security
 
 ## Bugs
-- [ ] `usb2phy` charger detection reports nothing: `/sys/class/extcon/extcon0`
-  shows `USB`, `SDP`, `CDP`, `DCP` and `SLOW-CHARGER` all zero with VBUS
-  present and the gadget enumerated (2026-09-10, v83). The rk3128 config in
-  `phy-rockchip-inno-usb2.c` does carry a `chg_det` block, so this is a wiring
-  or a bvalid problem rather than an unimplemented feature. Until it works the
-  RK816 charger cannot tell a wall adapter from a laptop port, and the board's
-  declared `input-current-limit-microamp` is what stands in for it. Evidence:
-  `docs/evidence/2026-09-10-charging/`.
+- [ ] `usb2phy` charger detection reports all cable states zero with VBUS
+  present and the gadget enumerated (2026-09-10). This does not diagnose wiring
+  or bvalid: `EXTCON_USB` is only published for SDP, and peripheral mode does
+  not disable detection. Unknown ports stay at 450 mA; the appliance's explicit
+  userspace override requests 1.6 A, rounded down to 1500 mA, and unplug clears
+  the override. The board's DCP limit is not an automatic unknown-port fallback.
+  Evidence: `docs/evidence/2026-09-10-charging/README.md`, review section,
+  `c6aaef3`. Next: trace BC1.2 detection with known SDP and DCP sources before
+  attributing the all-zero state to a hardware signal.
 - [!] Tembleques on the panel, third sighting 2026-09-12 (observed: "es la
   tercera vez"), 17 h into the boot, on the desk and then on the cube, at any
   backlight level. The 2026-09-10 verdict of "probably self-inflicted by the
@@ -46,8 +51,10 @@ appliance back. The journal is `README.md` here and
   and every A/B after that ran in the clean state and proves nothing about
   the mechanism. Blocked on the next occurrence. Unblock: `panel-trap` now
   logs the PHY, VOP clocks, rails, charger, load, drawing app and kernel
-  lines once a minute to `/data/panel-trap.log` (in `taq102-diag`, started by
-  hand on 2026-09-12; make the image start it). When it shimmers again: note
+  lines once a minute to `/data/panel-trap.log` (started by hand on 2026-09-12).
+  The package now installs `/usr/bin/panel-trap`; next build an image with it
+  and add boot startup, then verify a log record after reboot. When it shimmers
+  again: note
   the time, do not restart anything, `diff` that minute against a clean one,
   and run the camera on `fliptest vlines` before it clears.
 - [ ] Three of the tablet's USB gadget resets on 2026-09-12 (`dwc2: new
@@ -123,31 +130,15 @@ appliance back. The journal is `README.md` here and
   Blocked: a device-tree change U-Boot itself reads; needs a resource flash and someone at the buttons if it does not come up.
 - [ ] Why the stock 4.4.103 does not flicker with the VOP IOMMU while our
   4.4.167 did is unknown and not needed (mainline drops the IOMMU too). Minor.
-- [~] Move to a current mainline kernel. 2026-09-08: the kernel side is
-  written and builds against 7.3.0-rc2 -- zImage 13234688 bytes, no warnings,
-  nine patches in `kernel/mainline/` with the apply order and the evidence in
-  its README. LVDS, the RK816 fuel gauge, the GSL3673 touch through mainline's
-  own `silead.c`, the eMMC and SDIO, and a config fragment whose 32 symbols
-  were each checked against the post-`olddefconfig` `.config`. The PHY needed
-  no PLL patch: mainline's LVDS path hardcodes the same 336 MHz divider pair
-  `patches/0001` forces. Nothing has run on hardware.
-  Blocked on userspace, not on the kernel: `glcube` links the r7p0 Utgard blob,
-  which cannot talk to `CONFIG_DRM_LIMA`, so this kernel would draw nothing.
-  Next: a Buildroot branch with Mesa's lima driver and glcube relinked against
-  it, plus `silead/gsl3673.fw` and `rtw88/rtw8703b_fw.bin` in the initramfs --
-  both are requested asynchronously, so missing they give a silently absent
-  touchscreen and a silently absent wlan0.
-  2026-09-08: the userspace exists now -- `taq102_mainline_defconfig` builds it
-  with Mesa/Lima instead of the Utgard blob, and both firmware blobs are in the
-  image. What blocks the port is no longer userspace but the kernel not
-  reaching it; see `kernel/mainline/README.md`, "Four boots, no output".
-- [ ] The next mainline attempt must not lose its crash log again. Two causes,
-  both now fixed but neither yet exercised: `tools/recover-from-mainline.sh`
-  used the default known_hosts, where an older key for 192.168.1.51 fails
-  verification, so its ssh dump never ran; and 0x68100000 is ordinary RAM to
-  the vendor kernel, which had already put modetest and libevdev there by the
-  time it was read three minutes in. The rootfs `/init` now copies that region
-  to /tmp before /data is even mounted, and parks it under /data afterwards.
+- [~] Finish the mainline integration. Linux 7.3.0-rc2 boots on hardware
+  (v59), Mesa/Lima draws the cube (v64-v66), touch has produced real events,
+  and Wi-Fi/charging fixes reached v85-v86. The earlier claim that userspace
+  did not exist or the kernel never reached it is superseded by `TODO_LOG.md`
+  and `kernel/mainline/README.md`. Still open: reproducible kernel/module
+  packaging, the `fw_devlink=off` workaround, regulator-backed GPU OPPs, and
+  the remaining driver and owner checks below. Next: wire the mainline kernel
+  and `modules_install` into the defconfig rather than assembling the ramdisk
+  by hand; keep the existing built-in-boot trace task as the deadlock follow-up.
 - [ ] Replace the `fw_devlink=off` workaround with a real fix. The one-line
   candidate, `GENPD_FLAG_NO_SYNC_STATE` on the Rockchip power domains, was
   tried in v63 with the display stack built in and the boot still hangs before
@@ -186,79 +177,39 @@ appliance back. The journal is `README.md` here and
   has an entry in 0008 and the DTS is covered by the Rockchip glob. The genpd
   deadlock goes as a bug report with
   `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
-- [x] Wi-Fi on mainline after a warm reboot: fixed 2026-09-10 by patch 0018,
-  `wifi: rtw88: 8703b: complete the card-disable to card-emulation transition`.
-  `trans_cardemu_to_carddis_8703b` sleeps the chip's 12H LDO (`0x23[4]`) and
-  suspends the SDIO interface; `trans_carddis_to_cardemu_8703b` only cleared the
-  power-down bit, so neither was ever undone and the WLAN MAC stayed unpowered
-  while the card still enumerated. v79 recovers a chip wedged by a loader-mode
-  reboot on its first boot and survives repeated warm reboots. Evidence in
-  `docs/evidence/2026-09-10-wifi/`, account in `README.md`.
-- [~] Touch on mainline: the controller is not scanning, which is a different
-  fault from the one this item used to describe. Measured 2026-09-10 on v85
-  while I was asked to touch the glass: the interrupt on gpio2 15
-  stayed at 164, its count from probe, across three windows totalling a minute;
-  the pin's own level read 0 for 40 consecutive samples over 20 s (`devmem
-  0x20084050` bit 15), with the iomux confirmed as GPIO (`0x200080cc` reads 0);
-  and the controller itself reported **zero fingers over i2c** the whole time
-  (`i2cget -f -y 2 0x40 0x80`). So it is not the INT line or its mux, which is
-  where this item pointed before: the GSL3673 is not detecting anything to
-  report. Probe succeeds and the firmware loads, so the suspicion is that the
-  reset write whose data byte NAKs (patch 0012 accepts the NAK) leaves the chip
-  loaded but never started. Unconfirmed until I says they touched the
-  glass inside one of those windows.
-  Next: compare the vendor driver's post-firmware start-up writes against
-  `silead.c`, the same table-by-table way the Wi-Fi wedge was found; the vendor
-  source is in the VM at
-  `/work/kernel/drivers/input/touchscreen/gslX680*`.
-- [-] Flash `recovery-taq102-v55-mainline-beacon.img` and read the panel. Built
-  and verified 2026-09-08: same kernel and resource image as v54, ramdisk
-  carrying the backlight beacon, the ramoops rescue and the userspace marker.
-  Unlike v50-v54 this one reports something whatever happens -- count the
-  flashes (1 no UDC, 2 UDC unbound, 3 bound but unconfigured, 4 configured),
-  and if it dies earlier, v49's own /init rescues the log on the way back.
-  Costs I one button dance; arm `tools/recover-from-mainline.sh` first.
-- [-] **Owner's task: recover the tablet.** It currently boots the mainline
-  diagnostic image (v54) from `recovery` and stops with a white screen,
-  enumerating nothing on USB, so there is no software way back in. The BCB
-  still says `boot-recovery`, which is why every power-on returns to it.
-  The sequence, from I, 2026-09-08: unplug USB, hold power ~10 s until
-  the panel goes dark, then hold both buttons and plug USB in while holding,
-  keeping them down 10-15 s. A white screen means that pass already failed.
-  Measured unreliable on this board and it took several tries once before.
-  When it lands, two waiters do the rest automatically: one zeroes the BCB at
-  LBA 24608 (`scratchpad/rescue-bcb.sh`) and `boot` = v49 comes back; the other
-  dumps ramoops at 0x68100000 over ssh (`scratchpad/grab-ramoops.sh`). Re-arm
-  them before the attempt -- they expire on a deadline.
-- [ ] Read the mainline crash log out of ramoops at 0x68100000 and act on it.
-  It is a race: that address is ordinary RAM to the vendor kernel, so the dump
-  must happen in the first seconds after recovery. The log should name the
-  driver that failed, which is now believed to be DWC2 or the Rockchip USB2
-  PHY, since the white screen proves the kernel reached the driver phase.
-- [-] Flashing a mainline kernel is a one-way door and is not authorised yet.
-  Overtaken by events: mainline images have been flashed to `recovery` and
-  booted repeatedly since 2026-09-08, and `/usr/sbin/reboot-loader` plus the
-  PMU poke (`devmem 0x100a0038 32 0x5242C301`) make loader mode reachable from
-  software, so the door is no longer one-way. `boot` still holds the vendor
-  appliance and the BCB still selects between them.
+- [~] Touch on mainline works in recorded sessions, but intermittent failure
+  is not ruled out. On v85 (2026-09-10), IRQ gpio2 15 stayed at 164, the pin
+  stayed low, and the controller reported zero fingers over i2c; I
+  never confirmed touching inside those measurement windows. That cannot
+  establish that the controller never scans. Real finger taps retimed both
+  dials on 2026-09-12 (`docs/evidence/2026-09-12-desk-phase4/tablet.txt`).
+  Next: capture a timestamped finger/drag test with IRQ and finger-count
+  readings at the same time; compare start-up writes only if a confirmed
+  contact produces no events.
 - [ ] The PLL jitter mechanism is probable, not proven (prediv 12 runs the
   phase detector at 2 MHz, prediv 2 at 12 MHz); a 348 MHz probe on 2026-09-04
   was cut off. Only matters if the panel clock ever changes.
 
 ## Appliance
 
-- [~] Sleep and the boot logo, v87 (2026-09-11). Auto-sleep now runs on the
-  charger too, and the pick-up detector arms on stillness rather than on a
-  two-second stopwatch, so the tablet no longer wakes itself moments after the
-  power key. Measured: slept by itself while plugged, still asleep four minutes
-  later, zero wake events. The boot screen is now the Vibra wordmark white on
-  black instead of the vendor's white logo.
-  Not yet confirmed by hand: that the power key still *wakes* it. Needs the
-  owner.
+- [ ] Add voltage-based low-battery shutdown after an owner decision.
+  `kernel/mainline/RK816-BATTERY.md`, "The zero algorithm", says the hardware
+  can cut out while the driver still reports 3%; voltage must be the trigger.
+  No source implements power-off; `src/reboot_target.c` only calls
+  `reboot(RB_AUTOBOOT)`. Next: agree a voltage threshold and validation plan
+  under show load with I, including transient sag and warning time.
+  Do not implement or test an unapproved shutdown path during a show.
+
+- [~] Verify wake by power key after the v87 sleep fix (2026-09-11).
+  Charger auto-sleep and stillness-based pickup arming are measured and closed
+  in `TODO_LOG.md` (`79eea3d`); waking with the power key still needs I
+  at the tablet. The Vibra asset decodes correctly, but U-Boot's rendering is
+  not accepted: the separate smudge item below remains blocked.
 - [!] The new boot logo draws as a smudge (observed, 2026-09-11, v87). The BMP is
   provably well formed -- 600 rows of exactly 1024 pixels, runs only, the
-  vendor's own palette since v88 -- and Pillow decodes it back correctly, so
-  the fault is in what U-Boot makes of it rather than in the file's shape.
+  vendor's own palette since v88 -- and Pillow decodes it back correctly. That
+  proves the asset decodes, not
+  that U-Boot renders it correctly; the source of the smudge remains unverified.
   Blocked on seeing it: `uboot_logo=0x02000000@0x9dc00000` is a reserved
   simple-framebuffer that `/dev/mem` refuses under `CONFIG_STRICT_DEVMEM` and
   that DRM has replaced by the time there is a shell, so the boot has to be
@@ -288,6 +239,15 @@ appliance back. The journal is `README.md` here and
   Blocked: needs the tablet unplugged and the power button held by hand; RK816 shutdown path in the kernel to read first.
 ## Infrastructure and tooling
 
+- [!] Complete the DMX host verification gate in an environment that permits
+  local sockets. On 2026-09-13, the baseline had 27 PASS / 6 FAIL; TCP and
+  Unix bind probes both returned EPERM. The affected tests are http_fetch,
+  master_find, qlc_session, wifi_join, wpa_ctrl and ws_client. Unblock: rerun
+  `tools/test-dmx-desk-host.sh` with local socket binding allowed, retaining
+  sanitizer coverage. The ARM build also remains unverified: OrbStack timed
+  out waiting for the taq102 VM to start. Restore that VM, then rerun
+  `tools/build-dmxdesk.sh`. Logs: `output/desk-fixes/` (local artifacts).
+
 - [ ] Mac side: Pioneer DJ's `FwUpdateManagerd` (LaunchDaemon
   `com.pioneerdj.FwUpdateManagerd`) can wedge `IOServiceOpen` for every
   libusb client at boot; `rkdeveloptool ld` then hangs on its first device
@@ -305,22 +265,35 @@ MacBook as master. Design and evidence:
 `docs/2026-09-12-dmx-desk-design.md`, the reviewer review in
 `docs/evidence/2026-09-12-dmx-desk-findings.md`.
 
-- [!] Fog cannot be a held button from the tablet. The show's `HUMO` cue is
-  VC widget 125, `actionType: 1` (Flash), function 364: on while held, off on
-  release. If the link drops between press and release the machine stays on
-  and the tablet cannot stop it, and QLC+ 5.2.2 has no master-side timeout
-  (checked in the 5.2.2 sources). Unblock: add a finite fog cue (single-step
-  chaser with a duration) to the prepared workspace and bind the tablet to
-  that. Until then the desk refuses to load a map with a `momentary` fog
-  control.
-- [ ] Experiment 1, the protocol against a prepared show: on the 5.2.2 Mac
-  with the DMX interface unplugged, drive widgets 108, 35, 28, the grand
-  master, speed dial 54, XY pad 0, a new colour slider and the fog cue from a
-  WebSocket probe. Confirm one message per Toggle gesture, solo-frame
-  behaviour when Mac and tablet alternate, the coarse/fine values the XY pad
-  produces once its `hMin=0, hMax=0` range is fixed, colour takeover and
-  release, and resynchronisation after a reconnect. Then kill the client
-  between a flash press and its release and watch the fog stay on.
+- [ ] Deploy the desk persistently as the appliance application.
+  `tools/run-dmxdesk.sh` copies binary and map into `/tmp`; reboot discards
+  both, and `br2-external/board/taq102/rootfs-overlay/usr/bin/taq102-app`
+  still defaults to `/usr/bin/glcube`. `tools/build-dmxdesk.sh` explicitly
+  defers Buildroot packaging. Next: add a desk package containing binary and
+  versioned map, select it at boot, and verify restart/reboot behaviour with
+  an agreed fallback.
+- [ ] Implement the fog cooldown policy once its exact timing is settled.
+  I-approved cooldown is not built: `src/desk_build_holds.c` registers
+  every burst, including fog, with cooldown 0 (formerly in `dmxdesk.c`).
+  The local hold model can express cooldowns, but a master-side burst bound
+  alone does not impose a minimum interval between bursts. Next: confirm the
+  duration and enforcement point with I, then test retriggering and
+  reconnects with the rig; keep the master-side duration bound.
+- [~] Qualify the finite fog bursts with the rig. All 17 bounded bursts,
+  including HUMO YA and HUMO VERT, ship in `show/vibra.desk.json` with
+  master-side SingleShot bounds (`fca61bf`, `8892dcc`, `ecc3379`). The former
+  requirement to implement a finite fog cue is complete. Still owed: observe
+  physical DMX output reaching zero by the deadline with the client killed
+  and Wi-Fi pulled during ON. Next: I-led rig session below; do not
+  substitute a websocket echo for output measurement.
+- [~] Finish protocol/output qualification against the generated Vibra map,
+  `show/vibra.desk.json`: room states, family picks, grand master w246,
+  PARAR TODO w21 and dials w34/w274. Solo handoff and reconnect have recorded
+  bench evidence (`docs/evidence/2026-09-12-desk-phase1/handoff.txt`); finite
+  starts/stops have `docs/evidence/2026-09-13-desk-bursts/`. Next: measure
+  burst deadlines and colour/shutter priority at actual DMX output in the
+  hands-on rig session. Position and attribute takeover remain separate
+  experiments against this show's own widget and function ids.
 - [ ] Experiment 2, the link cold with no venue Internet: Mac as AP from a
   cold start (band, security, DHCP, firewall, reachability), repeated after a
   reboot, then the same on the travel router. Thirty minutes of timestamped
@@ -333,10 +306,12 @@ MacBook as master. Design and evidence:
   present, missed flips, input-to-queued-command, RSS, `MemAvailable`, packed
   image size and battery current. A fresh touch drag test comes first, since
   the v75 and v85 notes disagree about the touch stack.
-- [ ] Prepare the gig copy of the workspace: save `DeluxeEventos.qxw` as a
-  tablet copy in 5.2.2, fix the XY pad horizontal range, add the Click-and-Go
-  colour sliders the desk needs, add the finite fog cue, and publish the show
-  map against that copy's hash. The original stays untouched.
+- [~] Qualify the generated `Vibra.qxw` gig copy from the show repository's
+  `qlctool` worktree. Its map already carries 132 controls, seven pages, two
+  dials and 17 bounded bursts; generation is complete. Next: agree durations
+  and colour/shutter priority at the rig, then regenerate and validate the
+  map with the approved show and bind it to the workspace actually loaded.
+  Position/colour-attribute additions need their own output-range evidence.
 - [ ] `DMX-Fixtures` has no `docs/` in its tip, although the brain page
   describes five documents there (`qxw-format.md`, `rig.md`,
   `show-operation.md`, `qlcplus-environment.md`, `toolkit.md`). Find out
@@ -361,19 +336,24 @@ MacBook as master. Design and evidence:
   report` history. Measure the heartbeat round trip over an hour before
   loosening it: a threshold chosen to hide a stall is worse than a drop that
   recovers.
-- [x] The desk needs its own heartbeat. Pushes are change-driven and the
-  server's WebSocket ping is every 5000 ms, so the 750 ms staleness rule would
-  disconnect a healthy idle desk. Acceptance: a scene held untouched for ten
-  minutes with the link still up.
-- [ ] Validation needs a manifest generated on the Mac from the prepared
-  `.qxw` and the fixture definitions: `/vc.json` has no speed-group
-  membership, no fixture or channel bindings, no solo-frame exclusivity and no
-  fog dependency graph, and a different workspace can keep every id while
-  changing what the scenes output.
-- [ ] Only 24 of this show's 376 functions stop on their own
-  (`tools/show-manifest.py`). That is the general case behind the fog rule:
-  most cues run until something stops them, so any control the desk fires has
-  to have a stopping story, not just a starting one.
+- [~] Verify the heartbeat's untouched-scene acceptance on the current
+  Vibra show. The heartbeat implementation and RTT are proven: 2744 samples
+  over 30 minutes, p50 19 ms, p95 47 ms, max 319 ms, no drops. But
+  `docs/evidence/2026-09-12-desk-phase1/heartbeat-rtt-30min.log` identifies
+  `deluxe-eventos` with only 1 of 11 controls enabled, not a ten-minute held
+  Vibra scene. Next: run an enabled current-show scene untouched for ten
+  minutes and retain the link and scene-state log.
+- [ ] Bind validation to the workspace the master actually loaded. The show
+  repository already generates the manifest/map; `src/showmap.c` reads its
+  `show.sha256`, but no runtime code compares it against the master's loaded
+  workspace. Matching widget ids cannot prove matching channel outputs or
+  dependencies. Next: define an authoritative loaded-workspace identity from
+  the master and reject a mismatched map before enabling controls; add a
+  same-ids/different-workspace regression once that source is established.
+- [ ] Keep a stopping policy for every future control added to the generated
+  Vibra map. The current 17 bursts are master-bounded; latched states and
+  picks deliberately run until changed or stopped. Next: extend the show's existing generator checks whenever a new action type is
+  proposed, proving its stop/timeout and disconnect behaviour at the master.
 - [~] The desk as a professional busking surface: the plan is
   `docs/2026-09-12-desk-pro-design.md` (the reviewer reviews in
   `docs/evidence/2026-09-12-desk-pro-findings.md` and
@@ -382,10 +362,15 @@ MacBook as master. Design and evidence:
   `~/p/DMX-Fixtures-qlctool`). Phases 0 (link trust), 1 (qualify the show,
   generated map, LIVE states and PARAR TODO), 2 (pages, lock, power key,
   damage repaint), 3 (setup without ssh) and 4 (speed: two cards, tap, BPM
-  steps, half and double time, Tap both) are done and measured; see
-  `TODO_LOG.md` 2026-09-12. What remains is gated on I: Phase 5
-  finite accents (the fog and bump decisions below) and Phase 6 position (the
-  XY pad's range experiment below). The desk is usable for a show as it is.
+  steps, half and double time, Tap both) have implementation and bench
+  evidence; see `TODO_LOG.md` 2026-09-12. Phase 4's acceptance gate remains
+  unmet: the spec requires touch-to-DMX p95 under 100 ms, but
+  `docs/evidence/2026-09-12-desk-phase4/tablet.txt` records touch-to-ECHO only,
+  seven samples 39/40/45/56/58/145/179 ms (nearest-rank p95 179 ms).
+  Next: measure timestamped touch-to-DMX with enough samples and resolve the
+  tail before accepting the phase. Phase 5's 17 finite accents are built;
+  rig timing/HTP priority and cooldown remain open, as does Phase 6 position.
+  Show readiness is not established by these bench checks alone.
 - [!] The second design's checks that need a finger on the tablet (the desk
   runs there with SHOW first, every hit a bounded burst): hold FLASH and see
   the light while held and the tile amber, lift and see it off; hold past
@@ -437,13 +422,13 @@ MacBook as master. Design and evidence:
   that sits under the row instead would read better.
 - [ ] A page or bank change repaints the whole screen once, about 41 ms on
   the tablet: one frame, off the drag path, so it stays.
-- [ ] Bumps (Phase 5) stay rejected as first designed: the reviewer showed a
-  SingleShot start does not carry Flash priority or ForceLTP, so a colour
-  bump over a running wheel mixes to white, and the vertical smoke scene
-  drives four columns. The held hits are carried in the map disabled with
-  `held on the Mac`; a purpose-built additive intensity bump is the first
-  candidate, and any fog needs my hold and cooldown plus a DMX-output
-  proof with the client killed mid-burst.
+- [~] Resolve burst priority over a running state (Phase 5). All 17 hits now
+  ship enabled as bounded bursts, not disabled held controls. SingleShot does
+  not confer Flash priority or ForceLTP: complementary colour hits can mix
+  to white, strobes can lose the shutter to a chase, and vertical smoke drives
+  four columns. Evidence: `docs/evidence/2026-09-13-desk-bursts-findings.md`.
+  Next: use I-led rig session to choose additive intensity or another
+  show policy per hit and verify restoration of the underlying look.
 - [ ] Show mode: the appliance sleeps the screen after five minutes idle, and
   a desk waiting for the next cue is idle. Hold the screen on during a show,
   give the power button a defined behaviour, and cancel every contact on a
@@ -468,19 +453,10 @@ MacBook as master. Design and evidence:
 
 ## Future ideas
 
-- [x] Soak the mainline cube: done 2026-09-10, 8 hours unattended on v85. The
-  VOP interrupt advanced 168 counts in 3 s at the end of it, exactly the
-  panel's 56 Hz, so the display was still flipping rather than merely alive;
-  glcube still running, Wi-Fi still associated, battery charged to 100 % and
-  holding at a 13 mA trickle. No GPU hang, no `flip_done` timeout, no oops. The
-  only recurring message is `rtw88_8723cs: failed to get tx report from
-  firmware`, 11 times in 8 hours, which is its own item below.
 - [ ] `rtw88_8723cs: failed to get tx report from firmware`, 11 times in an
   8 hour soak (2026-09-10, v85), roughly every 10 to 60 minutes and never in
   bursts. The link stayed associated throughout, so it costs nothing visible;
   worth understanding before the driver work is called finished.
-- [ ] A real application in place of the `glcube` demo; what the appliance is
-  for is still unstated.
 - [ ] Bluetooth: which of the three RTL8723CS firmware variants this board loads
   (`_cg` and `_vf` are byte-identical, `_xx` differs) is not established, and
   nothing has tried BT.

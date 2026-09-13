@@ -23,6 +23,7 @@ define TAQ102_DIAG_INSTALL_TARGET_CMDS
 	$(foreach t,$(TAQ102_DIAG_TOOLS), \
 		$(INSTALL) -D -m 0755 $(@D)/$(t) $(TARGET_DIR)/usr/bin/$(t)
 	)
+	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_TAQ102_PATH)/package/taq102-diag/panel-trap $(TARGET_DIR)/usr/bin/panel-trap
 endef
 
 $(eval $(generic-package))

@@ -6,6 +6,77 @@
 
 ### 2026-09
 
+- [x] 2026-09-13 - **Desk: descriptive bank segments and forgiving releases.**
+  Owner: "los botones de la pantalla de color para cambiar (1/2) funcionan
+  fatal, es muy dificil pulsar, quizas seria mejor hacerlos mas grandes y
+  descriptivos, tenemos mucho espacio ahi." The earlier "bien pequeños"
+  backlog item incorrectly referred to tiles inside bank 2; this report is
+  about the pager that switches banks. The pager now fills the existing
+  828x56 strip at x16/y528, with 8 px gaps, a 128 px minimum and widths
+  allocated from label demand. First headings name banks without translating
+  the show's captions; numbers remain small prefixes, missing headings use
+  numbers alone, and long labels are ellipsized. COLOR and GOBOS each show
+  "1 AUTO" and "2 ELEGIR" in 410x56 segments at x16 and x434. Six equal-demand
+  segments are 131/131/132/131/131/132 px wide. Content above the strip and
+  running/current styling are unchanged.
+  Tabs and pager taps accept 8 px of release slop (about 1.7 mm), but never
+  complete on a neighbouring entry or after moving far away. A bank contact
+  also stays tied to the page on which it began. Evidence:
+  `tests/dmx-desk/desk_pager_test.c` (2..6 banks, UTF-8 demand, first-heading
+  selection, missing headings and ellipsis), `desk_view_test.c` (slop,
+  neighbour/far-away/cancel cases), and `desk_render_test.c` (six-bank text
+  containment, palette and running dot, real and fallback fonts).
+  Host suite: 31 PASS / 6 FAIL; all six are the known sandbox EPERM socket
+  restrictions, against my unrestricted baseline of 36 PASS / 0 FAIL
+  before this new test. Rendered COLOR and synthetic six-bank frames inspected
+  under `output/pager-refinement/`. No tablet acceptance or unrestricted rerun
+  is claimed; no independent control-tile sizing issue is inferred.
+- [x] 2026-09-13 - **Desk: hold capacity covers the map.** The seventeenth
+  burst formerly had no slot. `desk_hold.[ch]` now uses MAP_MAX_CONTROLS
+  (256) throughout; `desk_build_holds.[ch]` disables failed registrations
+  with a reason, and runtime release batches cover that capacity. The host
+  regression builds 260 controls, checks all excess controls unavailable,
+  fires the seventeenth and last valid slot, and covers mixed holds/bursts.
+  `desk_hold_test.c` now tests the map bound instead of the obsolete 16.
+  Evidence: `tests/dmx-desk/desk_build_holds_test.c`; post-task host gate
+  28 PASS / 6 FAIL, the six socket-bind failures already present at baseline.
+  Full unrestricted-suite acceptance remains open in TODO.md.
+- [x] 2026-09-13 - **Desk: remember the bank on each page.** Owner report:
+  "on the colours page he switches to page 2, changes tab, comes back, and
+  has to press page 2 again." `desk_set_view` remembers each clamped bank;
+  tab selection recalls it. `desk_rebuild_model.[ch]` saves every page's bank
+  around console validation and clamps it on restore, while new layouts
+  start at zero. Evidence: `tests/dmx-desk/desk_bank_memory_test.c`, including
+  hidden pages, a shrinking bank count and removed pages. Post-task gate
+  29 PASS / 6 FAIL, the same environment failures; no tablet check claimed.
+- [x] 2026-09-13 - **Desk: one optical system for status icons.** Owner report:
+  "the Wi-Fi icon is huge next to the battery and the lock, the gear is
+  different again, each one a different size, and the Wi-Fi one is ugly."
+  `tools/icons.py` defines an 18 px optical box and 2 px stroke, a gear 10%
+  smaller and battery 2 px wider; Wi-Fi has three concentric, evenly spaced
+  arcs with round ends plus its dot. Regenerated `src/icon_data.h` with
+  Pillow 12.3.0, preserving the enum, bitmap format, size and call sites.
+  `icon_test.c` checks all alpha extents within the box plus 1 px, and disjoint
+  Wi-Fi layers. Its old >10-pixel minimum became >0 for the smaller dot;
+  statusbar assertions are unchanged. Both tests pass; post-task gate
+  29 PASS / 6 FAIL, unchanged socket restrictions. Host preview inspected;
+  owner approval on the tablet is not claimed.
+- [x] 2026-09-13 - **Diagnostics: install panel-trap; remove the stale hash.**
+  `taq102-diag.mk` installs the shell script separately from its five C tools
+  into `/usr/bin/panel-trap`, 0755. The real install recipe passes
+  `tests/dmx-desk/diag_install_test.c` with GNU install, checking content and
+  permissions. Removed orphan `vc-vibra.sha256`; the retained
+  `vc-vibra.json.sha256` matches the fixture (f9ba17eb...). Post-task gate
+  30 PASS / 6 FAIL, all six pre-existing bind restrictions. Image deployment
+  and automatic startup remain open.
+- [-] 2026-09-13 - **Desk: retire the June qualification assumptions.** The
+  old widget ids, 24-of-376 function count and `tools/show-manifest.py` task
+  were superseded by generated `show/vibra.desk.json` (132 controls, seven
+  pages, two dials, 17 bounded bursts), `995e261`, `fca61bf`, `8892dcc` and
+  `ecc3379`. The show has a generator; the remaining identity gap is comparing
+  its hash with the workspace actually loaded on the master. Rig qualification,
+  priority and fog cooldown remain open. The appliance purpose is the DMX
+  desk; persistent packaging replaces the old undefined-application item.
 - [x] 2026-09-13 - **Desk: every hit a bounded burst, so the tablet may fire
   the smoke.** I asked for longer hits and for the smoke on the
   tablet, with the Wi-Fi not the thing that keeps it safe. A Flash held over
@@ -99,6 +170,25 @@
   Evidence: `docs/evidence/2026-09-13-desk-async-supplicant-findings.md`.
   Commits: `3b451fb`, `b526d5d`. No tablet or QLC+ instance contacted.
 
+- [x] 2026-09-12 - **Panel: retain state before the next shimmer.** `a331d8e`
+  adds `panel-trap`, logging PHY/VOP clocks, rails, charging, battery, load,
+  drawing app and kernel lines to `/data/panel-trap.log` once a minute;
+  `58f8df4` adds regmap-derived VBUS alongside USB_CTRL. The latter records
+  4.44 V while draining and +666 mA after changing the limiter threshold,
+  but the cause/rearm policy remains open. `fliptest vlines`, forced desk
+  flips and the flip counter were used in the clean-state A/B. The third
+  shimmer cleared before those comparisons, so they do not diagnose it.
+  Evidence: both commits, `br2-external/package/taq102-diag/panel-trap` and
+  the remaining panel/charging items in TODO.md. Automatic startup was not
+  delivered with this instrumentation.
+- [x] 2026-09-12 - **Desk: heartbeat implementation and measured RTT.** The
+  dedicated heartbeat prevents an idle healthy link expiring while waiting
+  for QLC+'s five-second websocket ping. Recorded 2744 samples over 30 min:
+  p50 19 ms, p95 47 ms, p99 50 ms, max 319 ms, zero drops. Evidence:
+  `docs/evidence/2026-09-12-desk-phase1/heartbeat-rtt-30min.log` identifies
+  the old `deluxe-eventos` map with 1 of 11 controls enabled. This closes
+  implementation/RTT only; the ten-minute untouched current-show scene
+  acceptance has been restored to TODO.md as unverified.
 - [x] 2026-09-12 - **Desk: the interface review, two rounds with the reviewer.**
   Every page and bank dumped from the tablet, six defects found by eye and
   fixed first: the master fader read `--` until somebody moved it on the Mac
@@ -131,7 +221,7 @@
   sweep and the saves, stale supplicant replies drained, another show said
   in a banner, the keyboard's `abc` and a hold-to-show. Evidence: the
   frames in `docs/evidence/2026-09-12-desk-review/`. Leftovers in `TODO.md`.
-- [x] 2026-09-12 - **Desk, Phase 4: speed.** The map's two dials (`Tempo Show`
+- [x] 2026-09-12 - **Desk, Phase 4: speed implementation.** The map's two dials (`Tempo Show`
   w34, five members; `Vel. Movimiento` w274, eighteen) parsed with their
   per-member multiplier enums; the engine's table mirrored (`speed_factor`:
   1/16 is 62 thousandths, None is a skipped field, Zero is zero); the codec
@@ -153,6 +243,9 @@
   Mac's side showed as 150 BPM with the note, and a run of taps on `Tap
   both` retimed both dials with the master's echo 39..179 ms after the
   touch-down, median 56 (`docs/evidence/2026-09-12-desk-phase4/`).
+  Acceptance correction, 2026-09-13: these seven touch-to-ECHO samples have
+  nearest-rank p95 179 ms. They miss 100 ms even as a proxy and are not the
+  specified touch-to-DMX measurement; phase acceptance remains in TODO.md.
 - [x] 2026-09-12 - **Desk, Phase 3: setup without ssh.** A gear at the left
   of the status bar opens a settings surface over the rail and content, the
   master column staying live. The Wi-Fi card talks to wpa_supplicant over its
@@ -215,8 +308,9 @@
   desk's palette with an unknown battery drawn as such; the desk draws before
   it dials. On the tablet against QLC+ 5.2.2 (Vibra, port 9998): a 3 s frozen
   master dropped at 805 ms and relinked by itself; a dead host reported as
-  `connect timeout` every ten seconds with the loop alive; 30 min of
-  heartbeats: 2744 samples, p50 19 ms, p95 47, p99 50, max 319, zero drops
+  `connect timeout` every ten seconds with the loop alive. The separate
+  30-minute heartbeat log uses `deluxe-eventos`, 1 of 11 controls enabled,
+  so it proves RTT, not a held Vibra scene. Its heartbeats: 2744 samples, p50 19 ms, p95 47, p99 50, max 319, zero drops
   (`docs/evidence/2026-09-12-desk-phase1/heartbeat-rtt-30min.log`).
   Phase 1: the reviewer found and the source confirmed that every generated solo
   frame carried `ExcludeMonitored=True`, so a pick never stopped the wheel
@@ -231,19 +325,55 @@
   starts 720/706/640; the Rig Rojo pick stops the wheel 706; CHARLA stops
   720 and 640 and releases the pick 727; PARAR TODO stops the rest. The
   hand-written June map and `tools/show-manifest.py` are gone.
+- [x] 2026-09-11 - **Mainline: restrict the PCIe DMA write to PCIe.** Patch
+  0019 changes the interface mask of the MAC 0x301 write in
+  `trans_act_to_lps_8703b`, matching the sibling and vendor tables instead
+  of touching PCIe DMA on SDIO. `8b45f35` records clean checkpatch and v86
+  verification: interface down/up reassociates and obtains an address,
+  warm reboot recovers Wi-Fi, no mac-power-on failure. Evidence:
+  `kernel/mainline/0019-wifi-rtw88-8703b-stop-the-PCIe-DMA-write-reaching-SDI.patch`
+  and `docs/evidence/2026-09-10-wifi/README.md`.
+- [x] 2026-09-11 - **Mainline: submit Wi-Fi patches 0018 and 0019 upstream.**
+  `2e8c06c` records the first submission; `d7450e9` corrects its delivery
+  result. Six simultaneous list deferrals hit cPanel's five-deferral limit
+  and discarded the first attempt. Sending the cover alone established the
+  greylist entry; then both patches delivered to both lists and the maintainer,
+  all three messages Completed, queue empty. Evidence: those commits and
+  `kernel/mainline/README.md`, "Submitted upstream". Delivery is complete;
+  upstream review/acceptance remains open.
+- [x] 2026-09-11 - **Appliance: charger sleep and stable pickup arming.**
+  `79eea3d` removes the battery-only sleep condition and requires three
+  accelerometer samples within 60 mg to arm pickup. On v87, with a one-minute
+  timer while plugged in, the tablet slept and stayed asleep four minutes,
+  zero wake events in `/data/log/taq102-app.log`. The commit records 17/17
+  control-centre host tests passing, including corrected touch-flip arguments.
+  Evidence: `src/sleep_state.c`, the commit and README's sleep journal.
+  Power-key wake still needs an owner check. The accompanying Vibra logo
+  asset is decodable, but the v87 smudge/v88 palette work does not prove
+  U-Boot rendering; that remains blocked in TODO.md.
+- [x] 2026-09-10 - **Panel: package fliptest and correct the flicker metric.**
+  `7c1bac5` adds fliptest to the five compiled diagnostics; v80 carries it.
+  `tools/panel-camera/flicker.py` now separates fixed spatial banding from
+  variation between frames. The measured moving component is 0.1-0.4% of
+  mean, comparable to the bezel, with no distinction between static, every
+  vblank and 100 ms flips; the backlight sweep showed no PWM signature.
+  Evidence: the commit and `docs/evidence/2026-09-10-panel/README.md`.
+  These clean-state measurements do not close the later intermittent shimmer.
 - [x] 2026-09-10 - **Mainline:** 8 hour unattended soak of the cube on v85,
   clean. The check that matters is progress rather than liveness: the VOP
   interrupt advanced 168 counts in 3 s at the end, exactly the panel's 56 Hz.
   Wi-Fi stayed associated across the whole run, which is the charger and the
   rtw88 fix from the same night both holding. Battery reached 100 % and settled
-  to a 13 mA trickle. One recurring driver message, now its own backlog item.
+  to a 13 mA trickle. No GPU hang, flip_done timeout or oops was recorded;
+  the sole recurring rtw88 tx-report message appeared 11 times and remains
+  its own backlog item. Duplicate active soak entry removed 2026-09-13.
 - [x] 2026-09-10 - **Mainline:** the tablet discharged with the cable in,
   reporting `Charging` while `current_now` was -301 mA. The RK816's input limit
   sat at 450 mA because the charger driver takes that when the USB PHY's BC1.2
   detection reports neither SDP, CDP nor DCP -- and on this board it reports
-  every cable as zero, `USB` included. Folded into patch 0008: when detection
-  says nothing, take the board's declared `input-current-limit-microamp`, which
-  the DTS has carried all along and which was only ever read for DCP. From a
+  every cable as zero, `USB` included. The initial patch 0008 attempt used
+  the board's DCP limit for an unknown port; the review below rejected that
+  inference and the final policy keeps the driver conservative. From a
   clean boot on v85, brightness 255 with the cube running: +584 mA and the
   battery climbing, against -259 mA before. Measured along the way: the
   backlight costs about 300 mA and the cube 50 to 90.
@@ -271,6 +401,23 @@
   wedge, and the chip itself is fine. Evidence:
   `docs/evidence/2026-09-10-wifi/` (16 files, including the the reviewer briefing and
   its answer); account in `README.md`.
+- [-] 2026-09-09 - **Mainline: the v54 rescue and v55 beacon tasks are obsolete.**
+  The white-screen recovery instructions and expiring scratch waiters described
+  a past boot, not the running device. v59 booted on 2026-09-08 and v64-v66
+  subsequently ran the cube; the repeated recovery/cube evidence is in
+  `kernel/mainline/README.md` and `docs/evidence/2026-09-09-cube/`.
+  Removed both obsolete entries and the old "mainline flash is not authorised"
+  entry from the active backlog. Software loader entry and a vendor fallback
+  are documented in README; no flashing is performed by this reconciliation.
+- [-] 2026-09-09 - **Mainline: retire the old ramoops recovery race.**
+  `7de354a` proved the RAM mailbox survives a warm reboot, but the button
+  recovery cuts power and erases DRAM. Reading earlier after that recovery
+  cannot retrieve the failed boot's log. `8c72a6a` then captured the actual
+  genpd lock wait with the shell alive, in
+  `docs/evidence/2026-09-08-mainline/genpd-deadlock-stack.txt`.
+  The existing live built-in-boot trace / fw_devlink task owns the remaining
+  deadlock work; the crash-dump task and its unexercised-rescue duplicate are
+  removed from TODO.md.
 - [x] 2026-09-09 — **Mainline:** touch works. The GSL3673 reports a
   1664x896 grid with X inverted; the DTS says so and glcube scales the
   declared range to the panel (v75, confirmed at the tablet; v74 had Y inverted
@@ -588,6 +735,11 @@
   - Evidence: commit `192cde9`; `docs/evidence/2026-09-05/vlines-*.png`;
     `src/testpattern.c`, `src/phytune.c`, `src/lvdsdiag.c`.
 
+- [-] 2026-09-05 — **Kernel:** "The serial clock must be 7x the pixel clock"
+  (350 MHz, prediv 12).
+  - Resolution: measured with LDO6 off; superseded by the vendor's 336 MHz
+    pair, which drives the panel with a hundredfold less jitter.
+
 - [x] 2026-09-04 — **Backend:** the reviewer runs: accelerometer read moved off the
   render thread (the black flashes), touch flip mapped to the KMS mode with
   `GLCUBE_TOUCH_FLIP`, `lvdsdiag` variant harness.
@@ -682,6 +834,24 @@
   - Evidence: commits `4281d04`, `9fd1b3f`, `cfd735a`, `5deda33`;
     `kernel/patches/0001-*`.
 
+- [-] 2026-09-03 — **Kernel:** Hardware fault in the flex, connector or TCON
+  (the reviewer round 2).
+  - Resolution: refuted by the v14 control run on the same panel; the cause
+    was LDO6.
+
+- [-] 2026-09-03 — **Kernel:** The rebuilt PHY module "will not load" (`invalid
+  module format`).
+  - Resolution: a zero-byte file on the tablet; every copy now checks size and hash.
+
+- [-] 2026-09-03 — **Kernel:** Capture U-Boot's live PHY registers before the
+  kernel reprograms them.
+  - Resolution: with no driver claiming the block it stays clock-gated and
+    reads as zeroes; superseded by instrumenting the running kernel.
+
+- [-] 2026-09-03 — **Kernel:** "The own-built 4.4.167 kernel never boots."
+  - Resolution: it always did; the non-boot was the malformed resource blob and
+    the missing console.
+
 - [x] 2026-09-02 — **Infrastructure:** A logo is not a brick; host tools
   scripted.
   - Result: the tablet sat at the Denver logo because the BCB still said
@@ -735,39 +905,6 @@
   around, cross-built in the OrbStack machine `taq102`.
   - Evidence: first three commits; `br2-external/configs/taq102_defconfig`.
 
-- [x] 2026-09-01 — **Documentation:** Hardware identified and backed up; route
-  settled.
-  - Result: RK3126C on a BND-RK3126C-D708 board, Android 8.1, kernel 4.4.103,
-    GSL3673, RK816, RTL8723CS; full eMMC image and 16 partition dumps,
-    sha256-verified; GSL3673 firmware extracted from the stock kernel. Route:
-    keep the stock boot chain, replace only the recovery ramdisk with a
-    Buildroot userspace (the reviewer, two rounds).
-  - Evidence: `/Volumes/Datos4TB2/denver-taq102/SHA256SUMS.txt` and
-    `research/FINDINGS.md`; `~/p/brain/personal/denver-taq102-tablet.md`.
-
-- [-] 2026-09-05 — **Kernel:** "The serial clock must be 7x the pixel clock"
-  (350 MHz, prediv 12).
-  - Resolution: measured with LDO6 off; superseded by the vendor's 336 MHz
-    pair, which drives the panel with a hundredfold less jitter.
-
-- [-] 2026-09-03 — **Kernel:** Hardware fault in the flex, connector or TCON
-  (the reviewer round 2).
-  - Resolution: refuted by the v14 control run on the same panel; the cause
-    was LDO6.
-
-- [-] 2026-09-03 — **Kernel:** The rebuilt PHY module "will not load" (`invalid
-  module format`).
-  - Resolution: a zero-byte file on the tablet; every copy now checks size and hash.
-
-- [-] 2026-09-03 — **Kernel:** Capture U-Boot's live PHY registers before the
-  kernel reprograms them.
-  - Resolution: with no driver claiming the block it stays clock-gated and
-    reads as zeroes; superseded by instrumenting the running kernel.
-
-- [-] 2026-09-03 — **Kernel:** "The own-built 4.4.167 kernel never boots."
-  - Resolution: it always did; the non-boot was the malformed resource blob and
-    the missing console.
-
 - [-] 2026-09-02 — **Infrastructure:** An SD rescue card (idbloader + miniloader
   + our system) to recover the dark tablet.
   - Resolution: superseded by loader mode plus the BCB at LBA 24608, and by
@@ -777,6 +914,16 @@
   `recovery`.
   - Resolution: the tablet has two buttons; the combination reaches loader
     mode, the single button trips the autostart hatch. The paths are software.
+
+- [x] 2026-09-01 — **Documentation:** Hardware identified and backed up; route
+  settled.
+  - Result: RK3126C on a BND-RK3126C-D708 board, Android 8.1, kernel 4.4.103,
+    GSL3673, RK816, RTL8723CS; full eMMC image and 16 partition dumps,
+    sha256-verified; GSL3673 firmware extracted from the stock kernel. Route:
+    keep the stock boot chain, replace only the recovery ramdisk with a
+    Buildroot userspace (the reviewer, two rounds).
+  - Evidence: `/Volumes/Datos4TB2/denver-taq102/SHA256SUMS.txt` and
+    `research/FINDINGS.md`; `~/p/brain/personal/denver-taq102-tablet.md`.
 
 - [-] 2026-09-01 — **Infrastructure:** Replace U-Boot, and mainline first.
   - Resolution: never needed; the stock boot chain stays and the recovery

@@ -2032,3 +2032,59 @@ the Mac lights its tile amber and goes dark when the master ends it. The
 lengths (eight seconds for the flashes and the colour hits, four for the
 strobes, three for the fog) are one table in the show repository, and they
 are guesses until I runs them against the rig.
+
+
+## Desk correctness and evidence reconciliation (2026-09-13)
+
+The generated Vibra map contains seventeen bursts, while the hold model only
+accepted sixteen. Its capacity now follows MAP_MAX_CONTROLS (256), and a failed
+registration disables the control with a reason. Registration is a host-tested
+module; the runtime's release batches use the same capacity. A synthetic model
+with 260 burst controls proves that every enabled control has a slot and that
+the excess controls paint unavailable. The seventeenth and final valid slots
+both fire in the regression.
+
+I reported losing the colours page's second bank after changing tabs.
+The model now remembers a bank for each page, and a tab recalls it through
+`desk_set_view`. Console refreshes preserve those banks around the validator's
+whole-model reset, clamping them when a page loses banks. Installing a new
+layout still starts at zero. The regression exercises visible and hidden pages,
+shrinking/removing pages and the no-change fast path.
+
+Status icons share an 18 px optical box and 2 px stroke on the unchanged 24 px
+grid. The gear is 10% smaller to balance its dense shape; the short battery is
+2 px wider. Wi-Fi is a dot and three evenly spaced concentric arcs with round
+ends. Pillow 12.3.0 regenerated the alpha data. Host bounds checks allow one
+pixel beyond the optical box and verify that the independently lit Wi-Fi layers
+do not overlap. The generated preview was inspected; no tablet approval of the
+new icons is claimed. The diagnostic package also now installs `panel-trap`
+separately from its five compiled tools, with an install-recipe regression.
+
+`tools/test-dmx-desk-host.sh` began at 27 passed / 6 failed. After the hold fix
+it was 28/6; after bank memory 29/6; after icons 29/6; after the packaging fix
+30/6. The packaging regression first failed with macOS install's different -D
+semantics (29/7); selecting GNU install in the host harness fixed it. All six
+remaining failures are the baseline socket-bind assertions; independent TCP
+and Unix bind probes return EPERM in this environment. Logs are under
+`output/desk-fixes/`. An unrestricted full gate and hardware validation remain
+open; the new regression tests and existing icon/statusbar tests pass.
+The ARM build was attempted but OrbStack timed out starting the taq102 VM;
+no cross-build success is claimed.
+
+The backlog now separates delivered code from unproven acceptance. Phase 4's
+seven touch-to-echo samples are 39, 40, 45, 56, 58, 145 and 179 ms: nearest-rank
+p95 is 179 ms, and the required touch-to-DMX p95 under 100 ms has not been
+measured. The thirty-minute heartbeat log identifies `deluxe-eventos` with one
+of eleven controls enabled; it proves RTT, not a ten-minute untouched scene in
+the current show. Mainline boot and real touch are established, while an
+intermittent touch fault remains possible. Charging uses a conservative 450 mA
+unknown-port default plus an explicit userspace override. The Vibra boot asset
+decodes, but the smudge report leaves U-Boot rendering unverified. Historical
+closures and their commit evidence are in TODO_LOG.md.
+
+The remaining product decisions stay in TODO.md: loaded-workspace identity,
+physical burst duration/priority checks, fog cooldown, persistent desk packaging,
+second-bank colour button sizing, and voltage-based shutdown. No shutdown
+threshold or power-off path was implemented; that needs my decision
+and a load-tested policy. No show repository, hardware or external service was
+modified, and these changes are left uncommitted as requested.
