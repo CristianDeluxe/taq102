@@ -6,6 +6,39 @@
 
 ### 2026-09
 
+- [x] 2026-09-13 - **Desk: the second design, built with the reviewer.** I
+  judged the first interface a student's: ugly icons, misaligned buttons,
+  wasted space, not built around a show, the most used controls on a second
+  page and dead. References looked at (ChamSys QuickQ and MagicQ, Photon,
+  grandMA3), mockups drawn in `tools/mockup.py` and critiqued by the reviewer
+  (`docs/evidence/2026-09-13-desk-v2-design-findings.md`), then built in three
+  stages: (1) tabs and status in one 48 px bar with real icons rasterised
+  from vectors (`tools/icons.py` -> `src/icon_data.h`, `src/icon.[ch]`), the
+  content full width, a master column with a track and a 24 px thumb and the
+  readout above the travel, one grid (200x64 buttons, 128x88 picks with
+  colour discs, 128x104 holds), a palette with amber for the master's word
+  alone and a violet field for hold-to-fire, a type scale in `desk_fonts`;
+  (2) SHOW as a fixed composition (`desk_show_layout.c`): the seven states,
+  the hits as holds with COLOR BEAM as a toggle under its own "Fijo", the
+  fog holds on the Mac, the ambient selector with OFF (a model pseudo
+  control that toggles whichever rhythm runs) under "dispara al elegir",
+  the ten rig colours as 52x80 minis, the tempo card with TAP; the
+  hold-to-fire model written by the reviewer in a worktree (`desk_hold`, 79
+  assertions: one release per press, caps, cooldowns, link loss and owed
+  releases) and wired per finger outside the model's capture with releases
+  on lock, tab change, settings, blank, link loss and before a snapshot
+  rebuilds the model (a reviewer agent's blocker), a release that could not
+  be sent owed again and painted "apagado sin confirmar"; (3) the settings
+  sheet on the content's grid with a header and Cerrar top right, no white
+  slabs, a check on the connected master, a slim brightness track, a toggle
+  pill, everything in the operator's language, the keyboard likewise;
+  CONTROL's words from the generator ("Barridos de intensidad", "Luz del
+  humo vertical", "Pares / impares"). Safety line, after the reviewer's two
+  judgments: light flashes fire from the tablet with a 3 s cap; strobes and
+  manual fog stay on the Mac, since a tablet's cap cannot bound an output
+  after a lost link. Frames in `docs/design/v2-frames/`; the reviewer's critique
+  of them in `docs/evidence/2026-09-13-desk-v2-frames-findings.md`, most of it
+  applied, the rest in `TODO.md`. The desk on the tablet shows SHOW first.
 - [x] 2026-09-13 - **Desk: the review's leftovers, all six, the reviewer writing
   the hardest.** the reviewer implemented the asynchronous supplicant in its own
   worktree (`review-async`, three commits, merged as `a1a4921`; its own log
