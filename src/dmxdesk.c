@@ -63,9 +63,11 @@
 #include "perf_window.h"
 #include "power_key.h"
 #include "qlc_session.h"
+#include "desk_heartbeat_ms.h"
 #include "showmap.h"
 #include "showmap_validate.h"
 #include "status.h"
+#include "loop_trace.h"
 #include "touch_flip.h"
 #include "touch_input.h"
 #include "vcjson.h"
@@ -80,7 +82,6 @@
 // The master pushes only when something changes, and its own ping is every
 // five seconds, so the desk asks a question of its own well inside the window
 // it treats as stale.
-#define HEARTBEAT_MS 400
 #define STALE_MS 750
 #define RECONNECT_MS 1500
 #define CONNECT_TIMEOUT_MS 3000
@@ -464,7 +465,7 @@ int main(int argc, char **argv) {
     signal(SIGUSR1, on_snapshot);
 
     struct qlc_session_config cfg = {
-        .port = port, .heartbeat_ms = HEARTBEAT_MS, .stale_ms = STALE_MS,
+        .port = port, .heartbeat_ms = DESK_HEARTBEAT_MS, .stale_ms = STALE_MS,
         .reconnect_ms = RECONNECT_MS, .connect_timeout_ms = CONNECT_TIMEOUT_MS,
         .fetch_timeout_ms = FETCH_TIMEOUT_MS, .snapshot_limit = VC_LIMIT,
     };
@@ -486,7 +487,9 @@ int main(int argc, char **argv) {
     setup.brightness = power.level;
     setup.power_aware = desk_power_aware(&power);
     desk_setup_set_master(&setup, conf.master, conf.port, conf.master[0] != '\0');
+    int64_t attach_at = loop_trace(NULL, 0);
     struct wpa_ctrl *wpa = wpa_ctrl_open(WPA_SOCKET);
+    loop_trace("wpa_ctrl_open", attach_at);
     setup.wifi_available = wpa != NULL;
     if (!wpa)
         fprintf(stderr, "desk: no supplicant control at %s: the Wi-Fi card is read-only\n", WPA_SOCKET);
@@ -542,6 +545,8 @@ int main(int argc, char **argv) {
     char last_reason[96] = "";
 
     while (!stop) {
+        int64_t iteration_at = loop_trace(NULL, 0);
+        int64_t phase_at = iteration_at;
         struct pollfd fds[6];
         int count = 0, touch_slot = -1, power_slot = -1;
         if (touch) {
@@ -571,6 +576,7 @@ int main(int argc, char **argv) {
         count += qlc_session_pollfds(session, fds + count, 2);
         // Forced flips run at the panel's own pace, not the loop's.
         poll(fds, (nfds_t)count, force_flip || fake_drag ? 0 : 100);
+        phase_at = loop_trace("poll", phase_at);
         int64_t now = now_ms();
         if (fake_drag) {
             for (int i = 0; i < model.count; i++)
@@ -619,6 +625,7 @@ int main(int argc, char **argv) {
                     lock.state == DESK_BLANKED ? "blanked" : "locked");
         }
 
+        phase_at = loop_trace("power-input", phase_at);
         if (touch_slot >= 0 && (fds[touch_slot].revents & POLLIN)) {
             struct touch_event events[32];
             int n = touch_input_read_fd(touch, touch_fd, events, 32);
@@ -627,6 +634,15 @@ int main(int argc, char **argv) {
                     desk_lock_contact(&lock, 1);
                 else if (events[i].kind == TOUCH_UP || events[i].kind == TOUCH_CANCEL)
                     desk_lock_contact(&lock, 0);
+                // Account for the physical contact above, even when its
+                // coordinates are invalid. Out-of-bounds moves/releases cancel
+                // the gesture; they never commit an action or map a fader.
+                if (events[i].x < 0 || events[i].x >= DESK_W ||
+                    events[i].y < 0 || events[i].y >= DESK_H) {
+                    if (events[i].kind == TOUCH_DOWN)
+                        continue;
+                    events[i].kind = TOUCH_CANCEL;
+                }
                 int index;
                 int slot = events[i].slot;
                 int x = (int)events[i].x, y = (int)events[i].y;
@@ -890,6 +906,7 @@ int main(int argc, char **argv) {
             }
         }
 
+        phase_at = loop_trace("touch-input", phase_at);
         // The supplicant's events: a scan's end fills the card; every line
         // reaches a running join, which also watches the address.
         if (wpa) {
@@ -969,6 +986,7 @@ int main(int argc, char **argv) {
                 setup.dirty = 1;
             }
         }
+        phase_at = loop_trace("supplicant", phase_at);
         if (setup.master_busy[0]) {
             int exit_status = 0;
             if (aw_poll(finder, &exit_status)) {
@@ -978,7 +996,9 @@ int main(int argc, char **argv) {
             }
         }
 
+        phase_at = loop_trace("finder", phase_at);
         enum qlc_link link = qlc_session_step(session, now);
+        phase_at = loop_trace("qlc-step", phase_at);
         struct vc_doc fresh;
         if (qlc_session_take_snapshot(session, &fresh)) {
             vc_free(&console);
@@ -1058,7 +1078,7 @@ int main(int argc, char **argv) {
         if (link != last_link || strcmp(last_reason, qlc_session_reason(session)) != 0) {
             last_link = link;
             snprintf(last_reason, sizeof last_reason, "%s", qlc_session_reason(session));
-            fprintf(stderr, "desk: link %s (%s)\n",
+            fprintf(stderr, "desk: at=%lld link %s (%s)\n", (long long)now,
                     link == QLC_READY ? "ready" : link == QLC_FETCHING ? "reading the show"
                     : link == QLC_CONNECTING ? "connecting" : "down", last_reason);
         }
@@ -1068,11 +1088,14 @@ int main(int argc, char **argv) {
             setup.dirty = 1;
         }
 
+        phase_at = loop_trace("qlc-frames-model", phase_at);
         if (now - last_status_ms >= STATUS_MS) {
             last_status_ms = now;
             struct status next;
             status_read(&next);
+            phase_at = loop_trace("status_read", phase_at);
             desk_power_tick(&power, &next, now);
+            phase_at = loop_trace("desk_power_tick", phase_at);
             if (setup.open) {
                 if (power.level != setup.brightness && !setup.dragging_fader) {
                     setup.brightness = power.level;
@@ -1097,6 +1120,7 @@ int main(int argc, char **argv) {
                             status.have_wifi ? status_wifi_bars(&status) : 0, setup.open);
         }
 
+        phase_at = loop_trace("status-apply", phase_at);
         // A blanked display is not painted: the CRTC is off and a flip would
         // only wake the pipeline the operator just switched off.
         if (lock.state == DESK_BLANKED)
@@ -1134,11 +1158,13 @@ int main(int argc, char **argv) {
                 if (log_perf)
                     perf_window_add(&paint_ms, (int)(now_ms() - t0));
             }
+            phase_at = loop_trace("paint", phase_at);
             int64_t t1 = now_ms();
             if (present_frame_damage(present, &canvas, dx, dy, dw, dh) != 0)
                 break;
             if (log_perf)
                 perf_window_add(&present_ms, (int)(now_ms() - t1));
+            phase_at = loop_trace("present", phase_at);
             flips++;
             // A dump waits for the link, so the frame shows the show and not
             // the banner; six seconds without one and it shows that instead.
@@ -1147,6 +1173,7 @@ int main(int argc, char **argv) {
                 break;
             }
         }
+        phase_at = loop_trace("damage-dump", phase_at);
         if (now - last_report_ms >= 10000) {
             last_report_ms = now;
             printf("desk: %lu flips so far, link %s (%s)\n", flips,
@@ -1167,6 +1194,8 @@ int main(int argc, char **argv) {
             printf("desk: wrote /tmp/desk.ppm\n");
             fflush(stdout);
         }
+        loop_trace("report-snapshot", phase_at);
+        loop_trace("iteration", iteration_at);
     }
 
     if (touch)
@@ -1177,8 +1206,11 @@ int main(int argc, char **argv) {
         close(power_fd);
     qlc_session_free(session);
     wifi_join_free(&join);
-    if (wpa)
+    if (wpa) {
+        int64_t detach_at = loop_trace(NULL, 0);
         wpa_ctrl_close(wpa);
+        loop_trace("wpa_ctrl_close", detach_at);
+    }
     aw_free(finder);
     desk_power_free(&power);
     desk_fonts_close(&fonts);

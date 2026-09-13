@@ -111,8 +111,13 @@ int qlc_session_pollfds(const struct qlc_session *s, struct pollfd *fds, int cap
 static int pump_frames(struct qlc_session *s, int64_t now) {
     char frame[RING_FRAME_MAX];
     int r;
-    while ((r = ws_recv_text(s->ws, frame, sizeof frame)) == 1) {
-        s->last_heard_ms = now;
+    for (;;) {
+        int activity = 0;
+        r = ws_recv_text(s->ws, frame, sizeof frame, &activity);
+        if (activity)
+            s->last_heard_ms = now;
+        if (r != 1)
+            break;
         if (s->beat_sent_ms && strncmp(frame, "QLC+API|isProjectLoaded", 23) == 0) {
             s->last_rtt_ms = (int)(now - s->beat_sent_ms);
             s->beat_sent_ms = 0;
@@ -229,7 +234,9 @@ enum qlc_link qlc_session_step(struct qlc_session *s, int64_t now) {
         // The master pushes only when something changes and its own ping is
         // every five seconds, so the desk asks a question of its own well
         // inside the window it treats as stale.
-        if (now - s->last_beat_ms >= s->cfg.heartbeat_ms) {
+        // One outstanding probe preserves its original send time. Replacing
+        // that clock on every retry made slow replies look artificially fast.
+        if (!s->beat_sent_ms && now - s->last_beat_ms >= s->cfg.heartbeat_ms) {
             s->last_beat_ms = now;
             s->beat_sent_ms = now;
             if (ws_send_text(s->ws, "QLC+API|isProjectLoaded") != 0) {
@@ -242,6 +249,10 @@ enum qlc_link qlc_session_step(struct qlc_session *s, int64_t now) {
             break;
         }
         if (now - s->last_heard_ms > s->cfg.stale_ms) {
+            fprintf(stderr, "qlc: stale at=%lld last_activity=%lld probe_sent=%lld probe_age=%lld ms\n",
+                    (long long)now, (long long)s->last_heard_ms,
+                    (long long)s->beat_sent_ms,
+                    (long long)(s->beat_sent_ms ? now - s->beat_sent_ms : 0));
             char reason[96];
             snprintf(reason, sizeof reason, "%lld ms without a word from the master",
                      (long long)(now - s->last_heard_ms));
