@@ -387,17 +387,23 @@ MacBook as master. Design and evidence:
   finite accents (the fog and bump decisions below) and Phase 6 position (the
   XY pad's range experiment below). The desk is usable for a show as it is.
 - [!] The second design's checks that need a finger on the tablet (the desk
-  runs there with SHOW first): hold FLASH and see the light while held, lift
-  and see it off, hold past three seconds and see it go off with "suelta y
-  vuelve"; two fingers on two hits; tap a state, a colour, an ambient
-  rhythm and OFF; TAP on the tempo card; the tab strip and the pager; the
-  gear, Cerrar, the keyboard; the lock target in the bar (tap locks, a held
-  second unlocks). Smallest action: I at the tablet, ten minutes.
+  runs there with SHOW first, every hit a bounded burst): hold FLASH and see
+  the light while held and the tile amber, lift and see it off; hold past
+  eight seconds and see the master end it by itself; HUMO YA and HUMO VERT
+  the same at three seconds; two fingers on two hits; tap a state, a colour,
+  an ambient rhythm and OFF; TAP on the tempo card; the tab strip and the
+  pager; the gear, Cerrar, the keyboard; the lock target in the bar. Then
+  the durations: 8 s for the flashes and the colour hits, 4 s for the
+  strobes, 3 s for the fog are provisional, in `BURST_MS` in the show
+  repository's `desk_policy.py`. Smallest action: I at the tablet
+  with the rig on, fifteen minutes.
 - [ ] Second design leftovers, from the reviewer's critique of the built frames
-  (`docs/evidence/2026-09-13-desk-v2-frames-findings.md`): the ambient rhythms
-  fire fog from the tablet (the show's own toggles, enabled as before) while
-  manual fog and strobes stay on the Mac, a policy I should confirm
-  or reverse; the master's readout is above the travel now but the pressed
+  (`docs/evidence/2026-09-13-desk-v2-frames-findings.md`): the burst durations
+  and their priority over a running state want a rig session (the reviewer's
+  per-hit judgment is in `docs/evidence/2026-09-13-desk-bursts-findings.md`:
+  fog and full-intensity flashes win HTP; colour hits can mix to white over
+  a complementary state, strobes can lose a shutter to a running chase);
+  the master's readout is above the travel now but the pressed
   request marker and the level's word still want a look on the tablet under
   a finger; segmented discs have stepped edges (no anti-aliasing in the
   round-rect primitive); accents in the show's own captions ("AUTO rapido",

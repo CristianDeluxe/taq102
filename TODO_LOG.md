@@ -6,6 +6,34 @@
 
 ### 2026-09
 
+- [x] 2026-09-13 - **Desk: every hit a bounded burst, so the tablet may fire
+  the smoke.** I asked for longer hits and for the smoke on the
+  tablet, with the Wi-Fi not the thing that keeps it safe. A Flash held over
+  a websocket cannot be made safe (QLC+ 5.2.2 has no lease, and a lost link
+  leaves the output on), so the bound moved to the master: a private copy of
+  each hit's scene and a Chaser in SingleShot whose one step holds for the
+  burst's length. The tablet starts it on contact with
+  `QLC+API|setFunctionStatus|id|1` and stops it on release with `|0`, both
+  idempotent; the master ends it by itself whatever the tablet does. Proven
+  on the bench before the generator was touched: start answered in 13 ms,
+  self-stop at 3009 ms, early stop in 21 ms, a second start neither
+  restarting nor extending. the reviewer then generated all seventeen (seven on
+  LIVE, ten colour hits) in its own worktree with a rule
+  (`checks/rule_desk_bursts.py`) that rejects a shared scene, another
+  caller, a wrong run order or a wrong hold, a dated regression, mutation
+  tests, and all three shows regenerated and validated (DMX-Fixtures
+  `91227ca`); its per-hit priority judgment is in
+  `docs/evidence/2026-09-13-desk-bursts-findings.md`. On the desk: a `burst`
+  role in the map with `burstMs` and `source`, `qlc_encode_function_status`,
+  a `DESK_BURST` kind fired on contact and lit only by the master's own
+  `FUNCTION` push, riding the hold model under a namespace of its own so a
+  function id never collides with a widget id, with the desk's stop on
+  release as a belt over the master's brace. On the tablet against the
+  regenerated show: 136 of 132 controls enabled, nothing says "solo en el
+  Mac" any more, a burst started from the Mac lit its tile amber and the
+  amber was gone when the master ended it (`docs/evidence/2026-09-13-desk-bursts/`).
+  Durations provisional in the show's `BURST_MS`: flashes and colour hits
+  8 s, strobes 4 s, fog 3 s.
 - [x] 2026-09-13 - **Desk: the second design, built with the reviewer.** I
   judged the first interface a student's: ugly icons, misaligned buttons,
   wasted space, not built around a show, the most used controls on a second

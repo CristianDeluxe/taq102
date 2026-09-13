@@ -1990,3 +1990,45 @@ strobes back on the Mac, a release that could not be sent kept as owed and
 painted "apagado sin confirmar". What remains is in `TODO.md`, and what
 needs a finger is there too: the desk on the tablet shows SHOW first, and
 the flashes wait for my hand.
+
+## The bound moved to the master, and the smoke came back (2026-09-13)
+
+I wanted two things the first safety line denied him: hits that last
+long enough to be worth pressing, and the smoke on the tablet. He also said
+the thing that mattered: the Wi-Fi does not normally fail during a show. Both
+are fair, and the answer was not to trust the link harder but to stop
+depending on it.
+
+A Flash button held over a websocket cannot be made safe from this side. The
+tablet's cap is a local deadline, not a bound on the output: if the link goes
+while a finger is down, the release never arrives and the light, or the fog,
+stays on until someone releases it on the Mac. QLC+ 5.2.2 has no lease to
+ask for. So the bound moved to where it can be kept. Each hit now has a
+private copy of its scene and a Chaser in SingleShot whose single step holds
+for the hit's length. The tablet starts it on contact and stops it on
+release, both through the API's idempotent `setFunctionStatus`, and the
+master ends it by itself at the end of the step whatever the tablet does or
+fails to do.
+
+It was proven before anything was generated, with one hand-edited burst on
+the bench master: started in 13 ms, ended itself at 3009 ms with nobody
+asking, an early stop answered in 21 ms, and a second start while running
+that neither restarted it nor extended it. the reviewer then generated the other
+sixteen in a worktree of its own, with a rule that refuses a burst sharing
+its scene with anything, called by anything automatic, or carrying the wrong
+run order or hold, a dated regression, mutation tests, and all three
+workspaces regenerated and validated. Its per-hit note on priority is worth
+reading before the rig session: fog and the full-intensity flashes win on
+HTP, but a colour hit over a complementary state can mix to white and a
+strobe can lose its rate to a running shutter chase.
+
+On the desk a burst is its own kind: fired on contact, lit only by the
+master's own `FUNCTION` push, riding the same hold model under a namespace
+of its own so a function id can never be mistaken for a widget id, with the
+desk's own stop on release as a belt over the master's brace. On the tablet,
+against the regenerated show, every one of the map's 132 controls is
+enabled, no tile says "solo en el Mac" any more, and a burst started from
+the Mac lights its tile amber and goes dark when the master ends it. The
+lengths (eight seconds for the flashes and the colour hits, four for the
+strobes, three for the fog) are one table in the show repository, and they
+are guesses until I runs them against the rig.
