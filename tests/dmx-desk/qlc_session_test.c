@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "qlc_session.h"
+#include "desk_heartbeat_ms.h"
 #include "vcjson.h"
 
 static void nonblock(int fd) { fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK); }
@@ -119,11 +120,12 @@ static void fake_service(struct fake *k) {
                 continue;
             }
             // A masked client text frame: count it as a heartbeat, drop it.
-            if (k->have >= 6 && (k->buf[0] & 0x0F) == 1) {
+            if (k->have >= 6 && ((k->buf[0] & 0x0F) == 1 || (k->buf[0] & 0x0F) == 0xA)) {
                 size_t len = (unsigned char)k->buf[1] & 0x7F;
                 if (k->have < 6 + len)
                     break;
-                k->pings_seen++;
+                if ((k->buf[0] & 0x0F) == 1)
+                    k->pings_seen++;
                 memmove(k->buf, k->buf + 6 + len, k->have - 6 - len);
                 k->have -= 6 + len;
                 k->buf[k->have] = 0;
@@ -244,6 +246,67 @@ int main(void) {
     if (drive_until(s, &k, &now, QLC_READY, 600, 5) != QLC_READY) { fprintf(stderr, "again: link %d reason [%s]\n", qlc_session_link(s), qlc_session_reason(s)); assert(0); }
     assert(qlc_session_take_snapshot(s, &doc) == 1);
     vc_free(&doc);
+    qlc_session_free(s);
+    fake_close(&k);
+
+    // Replay the live failure: a Ping arrived 230 ms after the last text,
+    // then an API response took 514 ms. The old text-only clock dropped at
+    // 805 ms, despite having answered the master's Ping only 575 ms before.
+    fake_init(&k);
+    k.snapshot = snap;
+    k.snapshot_len = snap_len;
+    cfg = config(k.port);
+    s = qlc_session_new(&cfg);
+    now = 1000;
+    assert(drive_until(s, &k, &now, QLC_READY, 400, 5) == QLC_READY);
+    server_text(k.ws_fd, "FUNCTION|720|Running");
+    drive(s, &k, &now, 4, 0);
+    int64_t base = now;
+    const unsigned char ping[] = {0x89, 0x00};
+    now = base + 230;
+    assert(write(k.ws_fd, ping, sizeof ping) == sizeof ping);
+    assert(drive(s, &k, &now, 4, 0) == QLC_READY);
+    now = base + 400;
+    assert(drive(s, &k, &now, 4, 0) == QLC_READY);
+    assert(k.pings_seen == 1);
+    now = base + 805;
+    assert(drive(s, &k, &now, 4, 0) == QLC_READY);
+    assert(k.pings_seen == 1);  // no duplicate probe overwrites the RTT clock
+    now = base + 914;
+    server_text(k.ws_fd, "QLC+API|isProjectLoaded|true");
+    assert(drive(s, &k, &now, 4, 0) == QLC_READY);
+    assert(qlc_session_last_rtt(s) == 514);
+    assert(qlc_session_step(s, base + 1664) == QLC_READY); // 750 ms
+    assert(qlc_session_step(s, base + 1665) == QLC_DOWN);  // 751 ms
+    assert(qlc_session_send(s, "4|255") == -1);
+    qlc_session_free(s);
+    fake_close(&k);
+
+    // Reserve transport time inside the same 750 ms deadline. A 514 ms
+    // response without an intervening Ping cannot fit behind a 400 ms idle
+    // wait; the desk's earlier probe leaves room, including a 100 ms poll.
+    fake_init(&k);
+    k.snapshot = snap;
+    k.snapshot_len = snap_len;
+    cfg = config(k.port);
+    cfg.heartbeat_ms = DESK_HEARTBEAT_MS;
+    s = qlc_session_new(&cfg);
+    now = 1000;
+    assert(drive_until(s, &k, &now, QLC_READY, 400, 5) == QLC_READY);
+    server_text(k.ws_fd, "FUNCTION|720|Running");
+    drive(s, &k, &now, 4, 0);
+    base = now;
+    now = base + cfg.heartbeat_ms + 100; // worst poll allowance
+    assert(drive(s, &k, &now, 4, 0) == QLC_READY);
+    assert(k.pings_seen == 1);
+    int64_t probe_at = now;
+    now += 514;
+    assert(drive(s, &k, &now, 4, 0) == QLC_READY); // no reply yet
+    server_text(k.ws_fd, "QLC+API|isProjectLoaded|true");
+    assert(drive(s, &k, &now, 4, 0) == QLC_READY);
+    assert(qlc_session_last_rtt(s) == now - probe_at);
+    assert(qlc_session_step(s, now + 750) == QLC_READY);
+    assert(qlc_session_step(s, now + 751) == QLC_DOWN);
     qlc_session_free(s);
     fake_close(&k);
 

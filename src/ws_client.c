@@ -256,7 +256,9 @@ static void consume(struct ws *ws, size_t bytes) {
     ws->have -= bytes;
 }
 
-int ws_recv_text(struct ws *ws, char *buf, size_t cap) {
+int ws_recv_text(struct ws *ws, char *buf, size_t cap, int *activity) {
+    if (activity)
+        *activity = 0;
     if (!ws || ws->fd < 0 || ws->state != WS_OPEN || !buf || cap == 0)
         return -1;
     for (;;) {
@@ -290,6 +292,12 @@ int ws_recv_text(struct ws *ws, char *buf, size_t cap) {
                 consume(ws, offset + len);
                 return -1;
             }
+            if (opcode == 0x9 || opcode == 0xA) {
+                if (!fin || len > 125)
+                    return -1;
+                if (activity)
+                    *activity = 1;
+            }
             if (opcode == 0x9) {         // ping: answer with the same body
                 // Six header bytes and up to 125 of payload: the buffer was
                 // two bytes short of that once, and a 125-byte ping wrote
@@ -321,6 +329,8 @@ int ws_recv_text(struct ws *ws, char *buf, size_t cap) {
                 consume(ws, offset + len);
                 if (!complete)
                     continue;
+                if (activity)
+                    *activity = 1;
                 size_t n = ws->assembled_len < cap - 1 ? ws->assembled_len : cap - 1;
                 memcpy(buf, ws->assembled, n);
                 buf[n] = '\0';

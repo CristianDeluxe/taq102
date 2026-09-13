@@ -12,11 +12,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "status.h"
+#include "loop_trace.h"
 
 static int read_line(const char *path, char *out, size_t n) {
+    int64_t started = loop_trace(NULL, 0);
     out[0] = 0;
     FILE *f = fopen(path, "r");
-    if (!f) return 0;
+    if (!f) { loop_trace(path, started); return 0; }
     int ok = fgets(out, (int)n, f) != NULL;
     if (ok) {
         size_t length = strlen(out);
@@ -24,6 +26,7 @@ static int read_line(const char *path, char *out, size_t n) {
         else if (!feof(f)) ok = 0;
     }
     fclose(f);
+    loop_trace(path, started);
     return ok;
 }
 
@@ -71,6 +74,7 @@ void status_power_read_at(struct status *st, const char *root, int64_t read_ms) 
 // /proc/net/wireless, which prints "0000  100.  -37.  -256." -- integers
 // each followed by a dot; %f would swallow "100." whole.
 static void read_wifi(struct status *st) {
+    int64_t started = loop_trace(NULL, 0);
     struct ifreq ifr = { 0 };
     int s = socket(AF_INET, SOCK_DGRAM, 0);
     strncpy(ifr.ifr_name, "wlan0", IFNAMSIZ - 1);
@@ -80,9 +84,10 @@ static void read_wifi(struct status *st) {
         snprintf(st->addr, sizeof st->addr, "NO WIFI YET");
     if (s >= 0) close(s);
 
+    started = loop_trace("wifi-address-ioctl", started);
     st->have_wifi = 0;
     FILE *f = fopen("/proc/net/wireless", "r");
-    if (!f) return;
+    if (!f) { loop_trace("proc-net-wireless", started); return; }
     char line[256];
     while (fgets(line, sizeof line, f)) {
         char *w = strstr(line, "wlan0:");
@@ -99,15 +104,19 @@ static void read_wifi(struct status *st) {
         }
     }
     fclose(f);
+    loop_trace("proc-net-wireless", started);
 }
 
 void status_read(struct status *st) {
     struct timespec now;
     memset(st, 0, sizeof *st);
+    int64_t started = loop_trace(NULL, 0);
     read_wifi(st);
+    started = loop_trace("read_wifi", started);
     clock_gettime(CLOCK_MONOTONIC, &now);
     status_power_read_at(st, "/sys/class/power_supply",
                          (int64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000);
+    loop_trace("status_power_read_at", started);
 }
 
 int status_wifi_bars(const struct status *st) {

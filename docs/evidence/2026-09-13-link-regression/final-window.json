@@ -1,0 +1,10 @@
+{
+  "start_ms": 184972682,
+  "end_ms": 185572682,
+  "observed_ms": 630688,
+  "window_ms": 600000,
+  "drops": [],
+  "rtt_samples": 4009,
+  "rtt_max_ms": 381,
+  "last_link": "ready (linked)"
+}

@@ -44,8 +44,10 @@ int ws_flush(struct ws *ws);
 
 // Non-blocking. 1 and a NUL-terminated frame in `buf`, 0 when nothing has
 // arrived yet, -1 when the connection has closed or broken. Call it until it
-// returns 0: one read can carry several frames.
-int ws_recv_text(struct ws *ws, char *buf, size_t cap);
+// returns 0: one read can carry several frames. If non-NULL, activity is reset
+// on entry and set when a complete text message or valid Ping/Pong is consumed.
+// A Ping/Pong can set activity even when this call returns 0 (no text).
+int ws_recv_text(struct ws *ws, char *buf, size_t cap, int *activity);
 
 // Wraps an already-connected socket as WS_OPEN with no handshake. For tests
 // that speak frames over a socketpair.

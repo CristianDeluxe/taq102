@@ -1,0 +1,22 @@
+desk: at=183517454 link connecting (not connected yet)
+desk: at=183517582 link reading the show (not connected yet)
+desk: at=183517862 link ready (linked)
+stall: at=183518138 phase=iteration duration=282 ms
+desk: at=183630317 link down (806 ms without a word from the master)
+desk: at=183631880 link connecting (806 ms without a word from the master)
+desk: at=183631941 link reading the show (806 ms without a word from the master)
+stall: at=183632389 phase=qlc-step duration=206 ms
+desk: at=183632182 link ready (linked)
+stall: at=183632452 phase=iteration duration=292 ms
+desk: at=183641146 link down (804 ms without a word from the master)
+desk: at=183642717 link connecting (804 ms without a word from the master)
+desk: at=183642761 link reading the show (804 ms without a word from the master)
+stall: at=183643194 phase=qlc-step duration=205 ms
+desk: at=183642989 link ready (linked)
+stall: at=183643250 phase=iteration duration=274 ms
+desk: at=183917976 link down (835 ms without a word from the master)
+desk: at=183919536 link connecting (835 ms without a word from the master)
+desk: at=183919602 link reading the show (835 ms without a word from the master)
+stall: at=183920066 phase=qlc-step duration=212 ms
+desk: at=183919852 link ready (linked)
+stall: at=183920124 phase=iteration duration=272 ms

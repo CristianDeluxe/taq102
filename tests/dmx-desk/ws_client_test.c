@@ -55,7 +55,7 @@ static void test_pong_fits(void) {
     memset(body, 'p', sizeof body);
     server_frame(sv[1], 0x9, body, 125);            // the longest legal ping
     char buf[64];
-    assert(ws_recv_text(ws, buf, sizeof buf) == 0);  // consumed, nothing for us
+    assert(ws_recv_text(ws, buf, sizeof buf, NULL) == 0);  // consumed, nothing for us
     assert(ws_flush(ws) == 1);
     unsigned char pong[256];
     ssize_t n = read(sv[1], pong, sizeof pong);
@@ -77,19 +77,19 @@ static void test_frames(void) {
     // Two frames in one read.
     server_frame(sv[1], 0x1, "FUNCTION|6|Running", 18);
     server_frame(sv[1], 0x1, "GM_VALUE|128|50%", 16);
-    assert(ws_recv_text(ws, buf, sizeof buf) == 1 && strcmp(buf, "FUNCTION|6|Running") == 0);
-    assert(ws_recv_text(ws, buf, sizeof buf) == 1 && strcmp(buf, "GM_VALUE|128|50%") == 0);
-    assert(ws_recv_text(ws, buf, sizeof buf) == 0);
+    assert(ws_recv_text(ws, buf, sizeof buf, NULL) == 1 && strcmp(buf, "FUNCTION|6|Running") == 0);
+    assert(ws_recv_text(ws, buf, sizeof buf, NULL) == 1 && strcmp(buf, "GM_VALUE|128|50%") == 0);
+    assert(ws_recv_text(ws, buf, sizeof buf, NULL) == 0);
     // A fragmented text frame is reassembled.
     unsigned char h1[2] = { 0x01, 4 }, h2[2] = { 0x80, 4 };
     assert(write(sv[1], h1, 2) == 2 && write(sv[1], "98|B", 4) == 4);
-    assert(ws_recv_text(ws, buf, sizeof buf) == 0);
+    assert(ws_recv_text(ws, buf, sizeof buf, NULL) == 0);
     assert(write(sv[1], h2, 2) == 2 && write(sv[1], "UTTO", 4) == 4);
-    assert(ws_recv_text(ws, buf, sizeof buf) == 1 && strcmp(buf, "98|BUTTO") == 0);
+    assert(ws_recv_text(ws, buf, sizeof buf, NULL) == 1 && strcmp(buf, "98|BUTTO") == 0);
     // A 64-bit length is refused and closes the link.
     unsigned char huge[2] = { 0x81, 127 };
     assert(write(sv[1], huge, 2) == 2);
-    assert(ws_recv_text(ws, buf, sizeof buf) == -1);
+    assert(ws_recv_text(ws, buf, sizeof buf, NULL) == -1);
     ws_close(ws);
     close(sv[1]);
 }
@@ -140,7 +140,7 @@ static void test_handshake(void) {
     for (int i = 0; i < 50 && !got; i++) {
         struct pollfd p = { .fd = ws_fd(ws), .events = POLLIN, .revents = 0 };
         poll(&p, 1, 10);
-        got = ws_recv_text(ws, buf, sizeof buf);
+        got = ws_recv_text(ws, buf, sizeof buf, NULL);
     }
     assert(got == 1 && strcmp(buf, "FUNCTION|0|Stopped") == 0);
     // A send is queued and flushed, masked.
