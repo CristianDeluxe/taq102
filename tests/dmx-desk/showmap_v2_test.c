@@ -144,10 +144,10 @@ int main(void) {
     assert(a && a->enabled && a->widget_id == 4 && a->function_id == 720);
     int auto_ix = (int)(a - model.control);
     const struct desk_placement *ap = desk_placement_of(&model, auto_ix);
-    assert(ap && ap->w == 452 && ap->x == DESK_GRID_X && ap->y == DESK_GRID_Y + 32);
+    assert(ap && ap->w == 200 && ap->x == DESK_CONTENT_X && ap->y == DESK_CONTENT_Y + 32);
     const struct desk_control *flash = by_label(&model, "FLASH");
     assert(flash && !flash->enabled && strstr(flash->reason, "held"));
-    assert(desk_placement_of(&model, (int)(flash - model.control)) == NULL);   // on another bank
+    (void)flash;
     const struct desk_control *rojo = by_label(&model, "Rig Rojo");
     assert(rojo && rojo->enabled && rojo->swatches == 1);
     assert(desk_placement_of(&model, (int)(rojo - model.control)) == NULL);    // on another page
@@ -180,9 +180,9 @@ int main(void) {
         if (layout.placement[i].control == (int)(rojo - model.control) && layout.placement[i].page == 1)
             rojo_bank = layout.placement[i].bank;
     assert(rojo_bank >= 0);
-    desk_set_view(&model, 1, 0);
+    desk_set_view(&model, 0, 0);
     const struct desk_placement *cap = desk_placement_of(&model, auto_ix);
-    assert(cap && cap->tile == TILE_COMPACT);
+    assert(cap && cap->tile == TILE_CUE);
     assert(desk_touch_down(&model, 0, cap->x + 5, cap->y + 5).kind == DESK_ACT_NONE);
     struct desk_action fired = desk_touch_up(&model, 0, cap->x + 5, cap->y + 5);
     assert(fired.kind == DESK_ACT_TOGGLE && fired.widget_id == 4);

@@ -5,11 +5,12 @@
 #define DESK_PLACEMENT_H
 
 enum desk_tile {
-    TILE_CUE,       // 218x96, caption on two lines, a detail line when known
-    TILE_WIDE,      // 452x96, the first state of the room
-    TILE_SWATCH,    // 100x88, a swatch ring over a small caption
-    TILE_COMPACT,   // 86x56, the room's states on every other page
-    TILE_HAZE,      // 160x96, four to a row
+    TILE_CUE,       // 200x64, a state, a hook, a toggle, a chase
+    TILE_WIDE,      // 200x64 as well; kept for the hand-laid tests
+    TILE_SWATCH,    // 128x88, a pick: its colour as a disc over its name
+    TILE_COMPACT,   // 128x64, a small button
+    TILE_HAZE,      // 200x64, an ambient rhythm
+    TILE_HOLD,      // 128x104, a hit: held on the Mac, or fired while held here
     TILE_MASTER,    // the fader in the right column
     TILE_PANIC,     // the stop-all under it
 };

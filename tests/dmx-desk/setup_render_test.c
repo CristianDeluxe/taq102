@@ -1,4 +1,4 @@
-// SOURCES: desk_setup.c desk_setup_paint.c keyboard.c keyboard_paint.c wifi_scan.c desk_conf.c canvas.c canvas_blend.c font.c
+// SOURCES: desk_setup.c desk_setup_paint.c keyboard.c keyboard_paint.c wifi_scan.c desk_conf.c canvas.c canvas_blend.c font.c desk_fonts.c
 // The settings surface painted: cards with a scan and found masters, the
 // footer, the confirmation, and the keyboard for a key. Writes PPMs to look
 // at; asserts only that painting touches the sheet and leaves the master
@@ -12,6 +12,7 @@
 #include "desk_setup.h"
 #include "desk_setup_layout.h"
 #include "desk_setup_paint.h"
+#include "desk_fonts.h"
 #include "font.h"
 
 static void write_ppm(const struct canvas *c, const char *path) {
@@ -35,12 +36,8 @@ static void save(const struct canvas *c, const char *name) {
 }
 
 int main(void) {
-    struct desk_fonts fonts = {
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf", 22),
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf", 56),
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 20),
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 16),
-    };
+    struct desk_fonts fonts;
+    assert(desk_fonts_open(&fonts, "br2-external/package/taq102-fonts/fonts") == 0);
     struct canvas canvas = { .px = calloc(DESK_W * DESK_H, 4), .w = DESK_W, .h = DESK_H };
     assert(canvas.px);
     const uint32_t sentinel = 0xFF123456u;

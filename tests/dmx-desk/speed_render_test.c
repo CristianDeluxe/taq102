@@ -1,4 +1,4 @@
-// SOURCES: desk_speed.c desk_speed_paint.c desk_tap.c speed_factor.c showmap.c vcjson.c canvas.c canvas_blend.c font.c
+// SOURCES: desk_speed.c desk_speed_paint.c desk_tap.c speed_factor.c showmap.c vcjson.c canvas.c canvas_blend.c font.c desk_fonts.c
 // The SPEED page's cards painted: both dials known from the console, one
 // change waiting, one noted; then the page before anything is known.
 #include <assert.h>
@@ -10,6 +10,7 @@
 #include "desk_speed.h"
 #include "desk_speed_layout.h"
 #include "desk_speed_paint.h"
+#include "desk_fonts.h"
 #include "font.h"
 
 static char *slurp(const char *path, size_t *len) {
@@ -50,12 +51,8 @@ int main(void) {
     assert(showmap_parse(map_text, map_len, &map) == 0);
     struct vc_doc console;
     assert(vc_parse(vc_text, vc_len, &console) == 0);
-    struct desk_fonts fonts = {
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf", 22),
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-SemiBold.ttf", 56),
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 20),
-        font_open("br2-external/package/taq102-fonts/fonts/Inter-Regular.ttf", 16),
-    };
+    struct desk_fonts fonts;
+    assert(desk_fonts_open(&fonts, "br2-external/package/taq102-fonts/fonts") == 0);
     struct canvas canvas = { .px = calloc(DESK_W * DESK_H, 4), .w = DESK_W, .h = DESK_H };
     assert(canvas.px);
     for (int i = 0; i < DESK_W * DESK_H; i++)
@@ -76,7 +73,7 @@ int main(void) {
     // The cards sit in the content only.
     assert(canvas.px[(SPEED_CARD_Y(0) + 40) * DESK_W + SPEED_CARD_X + 40] == DESK_TILE);
     assert(canvas.px[SPEED_CARD_Y(0) * DESK_W + 900] == DESK_GLASS);
-    assert(canvas.px[100 * DESK_W + 400] == DESK_GLASS);
+    assert(canvas.px[20 * DESK_W + 400] == DESK_GLASS);
     printf("speed_render ok\n");
     vc_free(&console);
     free(map_text);

@@ -7,28 +7,27 @@
 
 enum desk_target desk_input_target(const struct desk_model *m, int x, int y, int *index) {
     *index = -1;
-    if (y < DESK_BAR_H)
-        return TARGET_NONE;
-    if (x < DESK_RAIL_W) {
+    if (y < DESK_BAR_H) {
         if (desk_rect_contains(desk_view_lock_target(), x, y))
             return TARGET_LOCK;
         for (int i = 0; i < m->layout.pages; i++) {
-            if (desk_rect_contains(desk_view_rail_entry(i), x, y)) {
+            if (desk_rect_contains(desk_view_tab(i), x, y)) {
                 *index = i;
                 return TARGET_RAIL;
             }
         }
-        return TARGET_NONE;
+        return TARGET_NONE;     // the gear is the caller's
     }
+    if (x >= DESK_MASTER_X)
+        return TARGET_CONTENT;
     int banks = m->layout.pages > 0 ? m->layout.banks[m->page] : 1;
-    if (banks > 1 && x < DESK_MASTER_X && y >= DESK_H - DESK_SELECTOR_H) {
+    if (banks > 1 && y >= DESK_PAGER_Y) {
         for (int i = 0; i < banks; i++) {
-            if (desk_rect_contains(desk_view_bank_button(i), x, y)) {
+            if (desk_rect_contains(desk_view_pager(i, banks), x, y)) {
                 *index = i;
                 return TARGET_BANK;
             }
         }
-        return TARGET_NONE;
     }
     return TARGET_CONTENT;
 }

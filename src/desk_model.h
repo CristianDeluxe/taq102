@@ -62,7 +62,9 @@ struct desk_model {
     enum desk_link link;
     int locked;             // the surface accepts nothing; painted as such
     int mismatch;           // the console is another show: every control off, said once
-    char master_name[64];   // what the desk is talking to, for the rail
+    char master_name[64];   // what the desk is talking to, for the bar
+    int battery, charging, wifi_bars;   // the bar's status, fed by the caller
+    int setup_open;                     // the gear reads as pressed
     int dirty;
     // What changed since the last paint: a rectangle in panel pixels, or
     // everything. A full repaint costs a fifth of a second on the tablet's
@@ -117,6 +119,9 @@ void desk_touch_cancel(struct desk_model *m, int slot);
 // must not deliver a gesture that started on the other side of it.
 void desk_cancel_all(struct desk_model *m);
 void desk_set_locked(struct desk_model *m, int locked);
+// The bar's facts: battery 0..100 (-1 unknown), charging, Wi-Fi bars 0..3,
+// whether the settings surface is open. Damages the bar when any changed.
+void desk_set_status(struct desk_model *m, int battery, int charging, int wifi_bars, int setup_open);
 
 // Adds a rectangle to the damage (the status bar, say, which the model does
 // not know about).

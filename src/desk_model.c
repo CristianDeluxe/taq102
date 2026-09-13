@@ -110,6 +110,7 @@ static void release(struct desk_model *m) {
 void desk_init(struct desk_model *m) {
     memset(m, 0, sizeof *m);
     m->link = DESK_LINK_DOWN;
+    m->battery = -1;
     m->dirty = 1;
     m->capture_slot = NO_CAPTURE;
     m->capture_index = -1;
@@ -293,6 +294,17 @@ void desk_cancel_all(struct desk_model *m) {
         release_panic(m);
         m->dirty = 1;
     }
+}
+
+void desk_set_status(struct desk_model *m, int battery, int charging, int wifi_bars, int setup_open) {
+    if (m->battery == battery && m->charging == charging && m->wifi_bars == wifi_bars &&
+        m->setup_open == setup_open)
+        return;
+    m->battery = battery;
+    m->charging = charging;
+    m->wifi_bars = wifi_bars;
+    m->setup_open = setup_open;
+    desk_damage_rect(m, 0, 0, 1024, 48);
 }
 
 void desk_set_locked(struct desk_model *m, int locked) {
