@@ -61,6 +61,7 @@ struct desk_setup {
     int master_configured;
     char link_word[SETUP_WORD_MAX];
     char found[SETUP_FOUND_MAX][SETUP_HOST_MAX];
+    int found_port[SETUP_FOUND_MAX];    // zero for legacy callers: use configured port
     int found_count;
     int found_partial;
     int found_page;

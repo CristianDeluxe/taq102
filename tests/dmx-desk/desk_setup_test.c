@@ -1,4 +1,4 @@
-// SOURCES: desk_setup.c keyboard.c wifi_scan.c desk_conf.c
+// SOURCES: desk_setup_read_found.c desk_setup.c keyboard.c wifi_scan.c desk_conf.c
 // The settings surface as a model: a tap on a network asks for its key, the
 // key goes to a confirmation and out as one join action; a found master is
 // one tap; the fader moves brightness; nothing fires while a job runs.
@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "desk_setup.h"
+#include "desk_setup_read_found.h"
 #include "desk_setup_layout.h"
 #include "keyboard.h"
 #include "keyboard_layout.h"
@@ -146,6 +147,59 @@ int main(void) {
     desk_setup_touch_down(&s, SETUP_MASTER_X + 40, row0);
     desk_setup_set_found(&s, hosts, 2, 0);
     assert(desk_setup_touch_up(&s, SETUP_MASTER_X + 40, row0).kind == SETUP_NONE);
+
+    // The actual child protocol reaches row selection with the discovered port.
+    FILE *found = tmpfile();
+    assert(found);
+    fputs("192.168.1.62:9998\n192.168.1.62:9999\npartial\n", found);
+    rewind(found);
+    desk_setup_read_found(&s, found, 0);
+    assert(s.found_count == 2 && s.found_partial && !s.master_busy[0]);
+    assert(s.found_port[0] == 9998 && s.found_port[1] == 9999);
+    a = tap(&s, SETUP_MASTER_X + 40, row0 + SETUP_ROW_H);
+    assert(a.kind == SETUP_SET_MASTER && !strcmp(a.host, "192.168.1.62") && a.port == 9999);
+    fclose(found);
+
+    found = tmpfile();
+    assert(found);
+    desk_setup_read_found(&s, found, 0);
+    assert(!s.found_count && !strcmp(s.master_note, "No QLC+ answered scanned ports"));
+    desk_setup_read_found(&s, found, 2);
+    assert(!s.found_count && !strcmp(s.master_note, "Could not sweep"));
+    desk_setup_read_found(&s, NULL, 0);
+    assert(!strcmp(s.master_note, "Could not sweep"));
+    snprintf(s.master_note, sizeof s.master_note, "Search stopped");
+    desk_setup_read_found(&s, NULL, -1);
+    assert(!strcmp(s.master_note, "Search stopped"));
+    s.master_note[0] = '\0';
+    fputs("partial\n", found);
+    rewind(found);
+    desk_setup_read_found(&s, found, 0);
+    assert(s.found_partial && !strcmp(s.master_note, "No QLC+ in scanned range"));
+    fclose(found);
+
+    const char *invalid[] = { "192.168.1.62:0\n", "192.168.1.62:65536\n",
+        "192.168.1.62:9998oops\n", "192.168.1.62:9998", "garbage\n",
+        "partial\n192.168.1.62:9998\n", "192.168.1.62:9998\ngarbage\n" };
+    for (size_t i = 0; i < sizeof invalid / sizeof invalid[0]; i++) {
+        found = tmpfile();
+        assert(found);
+        fputs(invalid[i], found);
+        rewind(found);
+        desk_setup_read_found(&s, found, 0);
+        assert(!s.found_count && !strcmp(s.master_note, "Could not sweep"));
+        fclose(found);
+    }
+    found = tmpfile();
+    assert(found);
+    fputs("192.168.1.62\n", found);
+    rewind(found);
+    desk_setup_read_found(&s, found, 0);
+    assert(s.found_count == 1 && s.found_port[0] == s.port);
+    rewind(found);
+    desk_setup_read_found(&s, found, -1);
+    assert(!s.found_count && !strcmp(s.master_note, "Could not sweep"));
+    fclose(found);
 
     // The fader and the toggle.
     s.brightness_max = 255;

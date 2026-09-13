@@ -1,5 +1,8 @@
 #include "master_find.h"
 
+#include "master_find_ports.h"
+#include "master_find_peer_error.h"
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -22,6 +25,7 @@ static int64_t now_ms(void) {
 struct probe {
     int fd;
     uint32_t host;          // host order
+    int port;
     int sent;
     char reply[REPLY_MAX + 1];
     size_t have;
@@ -47,47 +51,66 @@ static int parse_cidr(const char *cidr, uint32_t *addr, int *prefix) {
     return 0;
 }
 
-static void start(struct probe *p, uint32_t host, int port) {
+static int start(struct probe *p, uint32_t host, int port) {
     memset(p, 0, sizeof *p);
     p->host = host;
+    p->port = port;
     p->fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (p->fd < 0) {
-        p->done = 1;
-        return;
-    }
-    fcntl(p->fd, F_SETFL, fcntl(p->fd, F_GETFL, 0) | O_NONBLOCK);
+    if (p->fd < 0)
+        return -1;
+    int flags = fcntl(p->fd, F_GETFL, 0);
+    if (flags < 0 || fcntl(p->fd, F_SETFL, flags | O_NONBLOCK) < 0)
+        return -1;
+#ifdef SO_NOSIGPIPE
+    int enabled = 1;
+    if (setsockopt(p->fd, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof enabled) < 0)
+        return -1;
+#endif
     struct sockaddr_in a;
     memset(&a, 0, sizeof a);
     a.sin_family = AF_INET;
     a.sin_port = htons((uint16_t)port);
     a.sin_addr.s_addr = htonl(host);
     if (connect(p->fd, (struct sockaddr *)&a, sizeof a) != 0 && errno != EINPROGRESS) {
+        if (!master_find_peer_error(errno))
+            return -1;
         close(p->fd);
         p->fd = -1;
         p->done = 1;
     }
+    return 0;
 }
 
-static void step(struct probe *p) {
+static int step(struct probe *p) {
     if (p->done)
-        return;
+        return 0;
     if (!p->sent) {
         int err = 0;
         socklen_t len = sizeof err;
         struct pollfd w = { .fd = p->fd, .events = POLLOUT, .revents = 0 };
-        if (poll(&w, 1, 0) <= 0 || !(w.revents & POLLOUT))
-            return;
-        if (getsockopt(p->fd, SOL_SOCKET, SO_ERROR, &err, &len) != 0 || err != 0) {
+        int ready = poll(&w, 1, 0);
+        if (ready < 0)
+            return errno == EINTR ? 0 : -1;
+        if (!ready)
+            return 0;
+        if (getsockopt(p->fd, SOL_SOCKET, SO_ERROR, &err, &len) != 0)
+            return -1;
+        if (err != 0) {
             p->done = 1;
-            return;
+            errno = err;
+            return master_find_peer_error(err) ? 0 : -1;
         }
         static const char request[] = "GET / HTTP/1.0\r\n\r\n";
-        if (send(p->fd, request, sizeof request - 1, 0) != (ssize_t)(sizeof request - 1)) {
+        int flags = 0;
+#ifdef MSG_NOSIGNAL
+        flags = MSG_NOSIGNAL;
+#endif
+        if (send(p->fd, request, sizeof request - 1, flags) != (ssize_t)(sizeof request - 1)) {
             p->done = 1;
-            return;
+            return 0;
         }
         p->sent = 1;
-        return;
+        return 0;
     }
     ssize_t n = recv(p->fd, p->reply + p->have, REPLY_MAX - p->have, 0);
     if (n > 0) {
@@ -99,10 +122,11 @@ static void step(struct probe *p) {
         } else if (p->have >= REPLY_MAX) {
             p->done = 1;
         }
-        return;
+        return 0;
     }
     if (n == 0 || (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR))
         p->done = 1;
+    return 0;
 }
 
 static void finish(struct probe *p) {
@@ -115,8 +139,12 @@ static void finish(struct probe *p) {
 int master_find_run(const char *cidr, int port, FILE *out) {
     uint32_t self;
     int prefix;
-    if (parse_cidr(cidr, &self, &prefix) != 0 || port < 1 || port > 65535)
+    int ports[MASTER_FIND_MAX_PORTS];
+    int port_count = master_find_ports(port, ports);
+    if (parse_cidr(cidr, &self, &prefix) != 0 || port_count < 0 || !out) {
+        errno = EINVAL;
         return -1;
+    }
     uint32_t mask = prefix == 0 ? 0 : 0xFFFFFFFFu << (32 - prefix);
     uint32_t network = self & mask, broadcast = network | ~mask;
     uint32_t first = network + 1, last = broadcast - 1;
@@ -127,22 +155,37 @@ int master_find_run(const char *cidr, int port, FILE *out) {
     }
     int found = 0;
     struct probe batch[MASTER_FIND_BATCH];
-    for (uint32_t base = first; base <= last; base += MASTER_FIND_BATCH) {
-        int count = 0;
-        for (uint32_t h = base; h <= last && count < MASTER_FIND_BATCH; h++) {
-            if (h == self)
-                continue;
-            start(&batch[count++], h, port);
-        }
+    uint32_t host = first;
+    int port_index = 0;
+    while (host <= last) {
+        int count = 0, failed = 0;
         int64_t deadline = now_ms() + MASTER_FIND_BATCH_MS;
-        for (;;) {
+        while (host <= last && count < MASTER_FIND_BATCH) {
+            if (host == self) {
+                host++;
+                continue;
+            }
+            int result = start(&batch[count++], host, ports[port_index]);
+            if (++port_index == port_count) {
+                port_index = 0;
+                host++;
+            }
+            if (result < 0) {
+                failed = errno;
+                break;
+            }
+        }
+        while (!failed) {
             int live = 0;
             for (int i = 0; i < count; i++) {
-                step(&batch[i]);
+                if (step(&batch[i]) < 0) {
+                    failed = errno;
+                    break;
+                }
                 if (!batch[i].done)
                     live++;
             }
-            if (!live || now_ms() >= deadline)
+            if (failed || !live || now_ms() >= deadline)
                 break;
             struct pollfd fds[MASTER_FIND_BATCH];
             int n = 0;
@@ -155,19 +198,26 @@ int master_find_run(const char *cidr, int port, FILE *out) {
                 n++;
             }
             int wait = (int)(deadline - now_ms());
-            poll(fds, (nfds_t)n, wait > 20 ? 20 : (wait > 0 ? wait : 0));
+            if (poll(fds, (nfds_t)n, wait > 20 ? 20 : (wait > 0 ? wait : 0)) < 0 && errno != EINTR)
+                failed = errno;
         }
         for (int i = 0; i < count; i++) {
-            if (batch[i].hit) {
+            if (!failed && batch[i].hit) {
                 struct in_addr a = { htonl(batch[i].host) };
-                fprintf(out, "%s\n", inet_ntoa(a));
+                if (fprintf(out, "%s:%d\n", inet_ntoa(a), batch[i].port) < 0)
+                    failed = errno ? errno : EIO;
                 found++;
             }
             finish(&batch[i]);
         }
+        if (failed) {
+            errno = failed;
+            return -1;
+        }
     }
-    if (partial)
-        fprintf(out, "partial\n");
-    fflush(out);
+    if (partial && fprintf(out, "partial\n") < 0)
+        return -1;
+    if (fflush(out) != 0)
+        return -1;
     return found;
 }

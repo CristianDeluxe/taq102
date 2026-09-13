@@ -161,18 +161,23 @@ static void master_card(struct canvas *c, const struct desk_setup *s, const stru
         shown = SETUP_ROWS;
     for (int r = 0; r < shown; r++) {
         const char *host = s->found[s->found_page * SETUP_ROWS + r];
+        int port = s->found_port[s->found_page * SETUP_ROWS + r];
+        if (!port)
+            port = s->port;
+        snprintf(line, sizeof line, "%s:%d", host, port);
         int ry = SETUP_ROWS_Y + r * SETUP_ROW_H;
-        int current = s->master_configured && strcmp(host, s->master) == 0;
+        int current = s->master_configured && strcmp(host, s->master) == 0 && port == s->port;
         // The connected master carries a check, not a white row.
         canvas_round_rect(c, x + 8, ry + 4, SETUP_CARD_W - 16, SETUP_ROW_H - 8, 12, current ? DESK_RAISED : DESK_GLASS);
-        text_at(c, fonts->tile, x + 24, ry + (SETUP_ROW_H - text_h(fonts->tile)) / 2, SETUP_CARD_W - 88, host,
+        text_at(c, fonts->tile, x + 24, ry + (SETUP_ROW_H - text_h(fonts->tile)) / 2, SETUP_CARD_W - 88, line,
                 DESK_INK);
         if (current)
             icon_paint(c, ICON_CHECK, x + SETUP_CARD_W - 44, ry + (SETUP_ROW_H - 24) / 2, DESK_INK);
     }
     if (s->found_count == 0)
         text_at(c, fonts->label, x + 16, SETUP_ROWS_Y + 16, SETUP_CARD_W - 32,
-                s->master_busy[0] ? "Barriendo la red" : "Sin resultados de b\xc3\xbasqueda", DESK_MUTED);
+                s->master_busy[0] ? "Barriendo la red" : s->master_note[0] ? es(s->master_note) :
+                "Sin resultados de b\xc3\xbasqueda", DESK_MUTED);
     char note[160];
     const char *discovery = s->master_busy[0] ? "" : es(s->master_note);
     snprintf(note, sizeof note, "%s%s%s%s%s", es(s->save_note),

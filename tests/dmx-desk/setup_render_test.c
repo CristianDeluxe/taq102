@@ -1,4 +1,4 @@
-// SOURCES: desk_setup.c desk_setup_paint.c keyboard.c keyboard_paint.c wifi_scan.c desk_conf.c canvas.c canvas_blend.c font.c desk_fonts.c icon.c
+// SOURCES: desk_setup_read_found.c desk_setup.c desk_setup_paint.c keyboard.c keyboard_paint.c wifi_scan.c desk_conf.c canvas.c canvas_blend.c font.c desk_fonts.c icon.c
 // The settings surface painted: cards with a scan and found masters, the
 // footer, the confirmation, and the keyboard for a key. Writes PPMs to look
 // at; asserts only that painting touches the sheet and leaves the master
@@ -10,6 +10,7 @@
 
 #include "desk_layout.h"
 #include "desk_setup.h"
+#include "desk_setup_read_found.h"
 #include "desk_setup_layout.h"
 #include "desk_setup_paint.h"
 #include "desk_fonts.h"
@@ -63,9 +64,11 @@ int main(void) {
     int known[WIFI_SCAN_MAX] = { 1, 0, 0, 0, 0, 0 };
     desk_setup_set_scan(&s, &scan, known);
     snprintf(s.wifi_note, sizeof s.wifi_note, "Joined TestNet");
-    char hosts[2][SETUP_HOST_MAX] = { "192.168.1.65", "192.168.1.56" };
+    char hosts[2][SETUP_HOST_MAX] = { "192.168.1.62", "192.168.1.62" };
     desk_setup_set_found(&s, hosts, 2, 0);
-    desk_setup_set_master(&s, "192.168.1.65", 9999, 1);
+    s.found_port[0] = 9998;
+    s.found_port[1] = 9999;
+    desk_setup_set_master(&s, "192.168.1.62", 9998, 1);
     snprintf(s.link_word, sizeof s.link_word, "Linked 3 ms");
     s.brightness = 180;
     s.power_aware = 1;
@@ -100,6 +103,22 @@ int main(void) {
     desk_setup_open(&e);
     desk_setup_paint(&canvas, &e, &fonts);
     save(&canvas, "setup-empty.ppm");
+    FILE *result = tmpfile();
+    assert(result);
+    desk_setup_read_found(&e, result, 0);
+    desk_setup_paint(&canvas, &e, &fonts);
+    save(&canvas, "setup-find-none.ppm");
+    assert(font_width(fonts.label, e.master_note) <= SETUP_CARD_W - 32);
+    desk_setup_read_found(&e, NULL, 2);
+    desk_setup_paint(&canvas, &e, &fonts);
+    save(&canvas, "setup-find-failed.ppm");
+    assert(font_width(fonts.label, e.master_note) <= SETUP_CARD_W - 32);
+    fputs("partial\n", result);
+    rewind(result);
+    desk_setup_read_found(&e, result, 0);
+    desk_setup_paint(&canvas, &e, &fonts);
+    save(&canvas, "setup-find-partial.ppm");
+    fclose(result);
     printf("setup_render ok\n");
     return 0;
 }
