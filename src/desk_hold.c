@@ -21,6 +21,19 @@ static struct hold_action off(struct desk_hold_control *c, int64_t now) {
     return (struct hold_action){ c->widget_id, 0 };
 }
 
+int desk_hold_unsent(struct desk_hold *h, int widget_id) {
+    for (int i = 0; i < h->count; i++)
+        if (h->control[i].widget_id == widget_id) {
+            h->control[i].owed_release = 1;
+            return 0;
+        }
+    return -1;
+}
+
+int desk_hold_unresolved(const struct desk_hold *h, int i) {
+    return i >= 0 && i < h->count && h->control[i].owed_release && !h->control[i].down;
+}
+
 static int drain(struct desk_hold *h, struct hold_action *out, int cap, int64_t now) {
     if (!h->link_ready || !out || cap <= 0)
         return 0;

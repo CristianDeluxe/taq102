@@ -89,6 +89,11 @@ int desk_show_compose(const struct show_map *map, int page, int haze_off, int te
         if (heading(out, page, ROW_HITS_Y - HEADING_ABOVE, "Golpes \xc2\xb7 mientras pulses",
                     section_index(map, live, accents)) != 0)
             return -1;
+        out->heading[out->headings - 1].w = 5 * (DESK_SHOW_HOLD_W + DESK_GAP) - DESK_GAP;
+        if (heading(out, page, ROW_HITS_Y - HEADING_ABOVE, "Fijo", section_index(map, live, accents)) != 0)
+            return -1;
+        out->heading[out->headings - 1].x = DESK_CONTENT_X + 5 * (DESK_SHOW_HOLD_W + DESK_GAP);
+        out->heading[out->headings - 1].w = DESK_CONTENT_W - 5 * (DESK_SHOW_HOLD_W + DESK_GAP);
         for (int i = accents->first; i < accents->first + accents->count; i++) {
             const struct map_control *c = &map->control[i];
             if (c->role == MAP_ROLE_ACCENT && is_fog(c)) {
@@ -117,12 +122,19 @@ int desk_show_compose(const struct show_map *map, int page, int haze_off, int te
             }
         }
     }
-    // Row three, right: the ambient selector, OFF first.
-    if (heading(out, page, ROW_FOG_Y - HEADING_ABOVE, "Humo", accents ? section_index(map, live, accents) : 0) != 0)
+    // Row three, right: the ambient selector, OFF first, under its own
+    // words: choosing a rhythm fires at once, OFF stops the cycle.
+    if (heading(out, page, ROW_FOG_Y - HEADING_ABOVE, "Humo a mano", accents ? section_index(map, live, accents) : 0) != 0)
         return -1;
+    out->heading[out->headings - 1].w = 320;
     if (haze) {
+        if (heading(out, page, ROW_FOG_Y - HEADING_ABOVE, "Ambiente \xc2\xb7 dispara al elegir \xc2\xb7 OFF lo para",
+                    (int)(haze - map->page[live].section)) != 0)
+            return -1;
+        out->heading[out->headings - 1].x = DESK_CONTENT_X + 336;
+        out->heading[out->headings - 1].w = DESK_CONTENT_W - 336;
         int x = DESK_CONTENT_X + 336;
-        int y = ROW_FOG_Y + 20;
+        int y = ROW_FOG_Y;
         if (haze_off >= 0) {
             if (add(out, haze_off, page, x, y, DESK_SEGMENT_W, DESK_SEGMENT_H, TILE_SEGMENT) != 0)
                 return -1;

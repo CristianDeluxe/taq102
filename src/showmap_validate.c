@@ -57,8 +57,10 @@ static const struct vc_widget *check_hold(struct desk_control *c,
     return w;
 }
 
+// Fog and strobes stay on the Mac: a tablet's cap cannot bound an output
+// after the link is lost, and neither may be left running unattended.
 static int is_fog(const struct map_control *m) {
-    return strncmp(m->key, "humo", 4) == 0;
+    return strncmp(m->key, "humo", 4) == 0 || strncmp(m->key, "strobo", 6) == 0;
 }
 
 static const struct vc_widget *check_cue(struct desk_control *c,

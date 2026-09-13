@@ -19,7 +19,7 @@ static struct touch_event ev(enum touch_kind kind, int slot, int x, int y) {
 
 int main(void) {
     struct desk_rect e0 = desk_view_tab(0), e1 = desk_view_tab(1);
-    assert(e0.x == 16 && e0.y == 8 && e0.w == 76 && e0.h == 32 && e0.y + e0.h <= DESK_BAR_H);
+    assert(e0.x == 16 && e0.y == 0 && e0.w == 76 && e0.h == 48 && e0.y + e0.h <= DESK_BAR_H);
     assert(e1.x == e0.x + 80);
     struct desk_rect lock = desk_view_lock_target(), gear = desk_view_gear();
     assert(lock.w == 48 && lock.h == 48 && lock.x + lock.w <= DESK_W && lock.y == 0);

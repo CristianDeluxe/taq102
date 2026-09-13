@@ -10,7 +10,7 @@
 #define SPEED_CARD_H 160
 #define SPEED_CARD_Y(i) (56 + (i) * 176)      // 56, 232
 #define SPEED_BOTH_Y 408
-#define SPEED_BOTH_H 96
+#define SPEED_BOTH_H 64
 #define SPEED_RADIUS 20
 
 #define SPEED_READOUT_X 16

@@ -282,7 +282,7 @@
    "sections": [
     {
      "key": "chases",
-     "title": "BARRIDOS",
+     "title": "BARRIDOS DE INTENSIDAD",
      "solo": null,
      "controls": [
       "barrido-de-intensidad",
@@ -293,7 +293,7 @@
     },
     {
      "key": "haze-light",
-     "title": "HUMO VERTICAL",
+     "title": "LUZ DEL HUMO VERTICAL",
      "solo": null,
      "controls": [
       "humo-vertical"
@@ -2223,8 +2223,8 @@
    "function": 657,
    "functionType": "Chaser",
    "action": "toggle",
-   "caption": "Pares",
-   "detail": "impares",
+   "caption": "Pares / impares",
+   "detail": "",
    "role": "chase",
    "solo": null,
    "key": "Z",
@@ -2251,8 +2251,8 @@
    "function": 271,
    "functionType": "Chaser",
    "action": "toggle",
-   "caption": "HUMO VERTICAL",
-   "detail": "su luz",
+   "caption": "Luz del humo vertical",
+   "detail": "",
    "role": "toggle",
    "solo": null,
    "key": "N",
