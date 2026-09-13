@@ -52,7 +52,7 @@ cp \$VENDOR/cJSON.h \$BUILD/include/cjson/
     \$SRC/wifi_join_advance.c \$SRC/wifi_join_restore.c \$SRC/wifi_join_fail.c \
     \$SRC/wifi_join_start.c \$SRC/wifi_join_start_renewal.c \$SRC/wifi_join_event_matches.c \
     \$SRC/wifi_join.c \$SRC/wifi_join_free.c \$SRC/desk_wifi_request.c \$SRC/wifi_status.c \$SRC/action_worker.c \
-    \$SRC/desk_conf.c \$SRC/master_find.c \$SRC/iface_prefix.c \
+    \$SRC/desk_conf.c \$SRC/master_find.c \$SRC/master_find_ports.c \$SRC/master_find_peer_error.c \$SRC/desk_setup_read_found.c \$SRC/iface_prefix.c \
     \$SRC/speed_factor.c \$SRC/desk_tap.c \$SRC/desk_speed.c \$SRC/desk_speed_paint.c \
     \$BUILD/cJSON.o \
     -L\$SYSROOT/usr/lib -ldrm -lm

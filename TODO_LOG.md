@@ -6,6 +6,55 @@
 
 ### 2026-09
 
+- [x] 2026-09-13 - **QLC+ finder:** extend the existing subnet sweep to a small
+  ordered port set and distinguish completed searches from failed sweeps.
+  - The subnet enumeration, 256-host cap, non-blocking batches, HTTP `GET /`
+    and `QLC+` detection in the first 2048 bytes already existed and remain.
+    Ports are configured first, then 9998 and 9999, deduplicated (2-3 ports).
+    QLC+ tag `QLC+_5.2.2`, `webaccess/src/webaccessbase.cpp`, defines
+    `DEFAULT_PORT_NUMBER` as 9999 and uses it when no web port is supplied:
+    <https://github.com/mcallegari/qlcplus/blob/QLC%2B_5.2.2/webaccess/src/webaccessbase.cpp#L47>.
+  - At most 768 attempts and 64 simultaneous sockets, with twelve 400 ms
+    deadlines (4.8 seconds plus syscall/scheduling overhead); two ports need
+    eight deadlines (3.2 seconds). The UI worker watchdog is now 8 seconds.
+    A host/port cursor prevents duplicate probes when self is skipped in a
+    batch; the old host-base increment could duplicate a boundary host.
+  - `--find ADDR/PREFIX CONFIGURED_PORT` emits one `IPv4:port` per line and
+    keeps the trailing `partial` marker. Both producer and UI reader changed
+    together; the reader also accepts legacy bare IPv4 lines. Rows display
+    the port, selection applies it, and the current-row check compares both.
+  - The shell's `exec` prevented the following `mv` from publishing results;
+    removing it restores atomic publication on success. The UI now waits for
+    `aw_poll`'s actual exit status. Missing, malformed or failed output is
+    `Could not sweep`; a successful empty scan is
+    `No QLC+ answered scanned ports`. Capped empty scans and cancellation
+    retain distinct outcomes. Unknown subnet prefixes no longer guess /24.
+    Socket, non-blocking setup, connect and poll failures propagate to exit 2.
+  - Unsandboxed gate: 39 passed, 0 new failures, both before and after. Raw
+    runs also include the pre-existing, intentionally failing
+    `desk_geometry_test`; its source and audit tree were left untouched.
+    Extended existing finder/setup/render tests use ephemeral loopback peers,
+    exercise arbitrary configured ports and both known ports, verify 768
+    unique attempts and a 64-socket peak, and inject local failures. Measured
+    silent worst-case sweep: 4823 ms. Rendered result/error cards were inspected.
+  - Cross-build passed with GCC 14.3.0 and `-Werror`. A separate binary at
+    `/tmp/dmxdesk-finder-check.oYdDvT/dmxdesk` on tablet `.71` found
+    `192.168.1.76:9998` while configured for 12345, including shell result
+    publication. The supplied `.62:9998` was not reachable from the tablet;
+    that network observation is recorded in TODO. Live loopback no-match
+    exited 0 with empty output; invalid CIDR and exhausted descriptors
+    exited 2 with errors. The running desk was not replaced or restarted.
+  - Local evidence: `output/finder-baseline.log`,
+    `output/finder-final-gate.log`, `output/finder-cross-build.log`,
+    `output/finder-live-results.json`, and `output/finder-*.png`.
+    Delivery is now verified on the running desk: the three SHA-256 values
+    match, the tablet's `--find 192.168.1.71/24 9998` prints `.76:9998`,
+    and `/data/desk.conf` selects `192.168.1.76`, port `9998`. The final
+    process uses the saved config and reaches `link ready (linked)`.
+    The delivery gate records 39 passed and the one intentional geometry
+    failure, with no EPERM failures; the silent sweep measures 4815 ms.
+    Evidence: `docs/evidence/2026-09-13-finder-delivery/README.md`.
+
 - [x] 2026-09-13 - **Master fader:** align touch values with the visible grip travel.
   - The whole-tile mapping produced 199/255 (78%) at the visible track top,
     forcing I to drag towards the top-bar lock for 100%.

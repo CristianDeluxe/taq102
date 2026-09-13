@@ -301,7 +301,7 @@ struct setup_action desk_setup_touch_up(struct desk_setup *s, int x, int y) {
             return none();
         a.kind = SETUP_SET_MASTER;
         snprintf(a.host, sizeof a.host, "%s", s->found[index]);
-        a.port = s->port;
+        a.port = s->found_port[index] ? s->found_port[index] : s->port;
         return a;
     case T_MASTER_PREV:
         if (s->found_page > 0)
@@ -381,6 +381,7 @@ void desk_setup_set_wifi(struct desk_setup *s, const char *ssid, const char *sta
 void desk_setup_set_found(struct desk_setup *s, const char (*hosts)[SETUP_HOST_MAX], int count, int partial) {
     drop_row_capture(s);
     s->found_count = count < SETUP_FOUND_MAX ? count : SETUP_FOUND_MAX;
+    memset(s->found_port, 0, sizeof s->found_port);
     for (int i = 0; i < s->found_count; i++)
         snprintf(s->found[i], SETUP_HOST_MAX, "%s", hosts[i]);
     s->found_partial = partial;

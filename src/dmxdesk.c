@@ -58,6 +58,7 @@
 #include "font.h"
 #include "iface_prefix.h"
 #include "master_find.h"
+#include "desk_setup_read_found.h"
 #include "qlc_codec.h"
 #include "perf_window.h"
 #include "power_key.h"
@@ -86,7 +87,7 @@
 #define FETCH_TIMEOUT_MS 4000
 #define STATUS_MS 1000
 #define SCAN_TIMEOUT_MS 15000
-#define FIND_TIMEOUT_S 40
+#define FIND_TIMEOUT_S 8
 
 #define DESK_CONF_PATH "/data/desk.conf"
 #define WIFI_CONF_PATH "/data/wifi.conf"
@@ -273,35 +274,23 @@ static void status_field(const char *reply, const char *key, char *out, size_t c
 static int finder_start(struct action_worker *w, const char *exe, const char *addr, int port) {
     int prefix = iface_prefix("wlan0");
     if (prefix < 8 || prefix > 30)
-        prefix = 24;
+        return -1;
     char cidr[64], port_text[16];
     snprintf(cidr, sizeof cidr, "%.40s/%d", addr, prefix);
     snprintf(port_text, sizeof port_text, "%d", port);
     const char *argv[] = {
-        "/bin/sh", "-c", "exec \"$0\" --find \"$1\" \"$2\" > " FIND_TMP " && mv " FIND_TMP " " FIND_OUT,
+        "/bin/sh", "-c", "\"$0\" --find \"$1\" \"$2\" > " FIND_TMP " && mv " FIND_TMP " " FIND_OUT,
         exe, cidr, port_text, NULL,
     };
     unlink(FIND_OUT);
     return aw_start(w, argv, FIND_TIMEOUT_S);
 }
 
-static void finder_collect(struct desk_setup *setup) {
-    char hosts[SETUP_FOUND_MAX][SETUP_HOST_MAX];
-    int count = 0, partial = 0;
+static void finder_collect(struct desk_setup *setup, int exit_status) {
     FILE *f = fopen(FIND_OUT, "r");
-    if (f) {
-        char line[128];
-        while (fgets(line, sizeof line, f)) {
-            line[strcspn(line, "\n")] = '\0';
-            if (strcmp(line, "partial") == 0)
-                partial = 1;
-            else if (desk_conf_valid_host(line) && count < SETUP_FOUND_MAX)
-                snprintf(hosts[count++], SETUP_HOST_MAX, "%s", line);
-        }
+    desk_setup_read_found(setup, f, exit_status);
+    if (f)
         fclose(f);
-    }
-    desk_setup_set_found(setup, hosts, count, partial);
-    setup->master_busy[0] = '\0';
 }
 
 // The known networks, matched against a scan for the card's "known" tag.
@@ -343,8 +332,19 @@ int main(int argc, char **argv) {
     int view_page = 0, view_bank = 0;    // --view P,B: the first page shown, for dumps
     int start_setup = 0;                 // --setup: the surface open at start, for dumps
 
-    if (argc == 4 && !strcmp(argv[1], "--find"))
-        return master_find_run(argv[2], atoi(argv[3]), stdout) < 0 ? 2 : 0;
+    if (argc == 4 && !strcmp(argv[1], "--find")) {
+        char *end;
+        long port = strtol(argv[3], &end, 10);
+        if (!argv[3][0] || *end || port < 1 || port > 65535) {
+            fprintf(stderr, "find: invalid configured port\n");
+            return 2;
+        }
+        if (master_find_run(argv[2], (int)port, stdout) < 0) {
+            perror("find: could not sweep");
+            return 2;
+        }
+        return 0;
+    }
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--host") && i + 1 < argc) host = argv[++i];
@@ -719,13 +719,14 @@ int main(int argc, char **argv) {
                             break;
                         case SETUP_FIND:
                             setup.master_note[0] = '\0';
+                            desk_setup_set_found(&setup, NULL, 0, 0);
                             if (!status.have_wifi || !status.addr[0]) {
                                 snprintf(setup.master_note, sizeof setup.master_note, "No network address");
                                 fprintf(stderr, "desk: find: no address on wlan0\n");
                             } else if (finder_start(finder, exe, status.addr, setup.port) == 0) {
                                 snprintf(setup.master_busy, sizeof setup.master_busy, "Finding");
                             } else {
-                                snprintf(setup.master_note, sizeof setup.master_note, "Search failed");
+                                snprintf(setup.master_note, sizeof setup.master_note, "Could not sweep");
                                 fprintf(stderr, "desk: find: cannot start the sweep\n");
                             }
                             break;
@@ -970,11 +971,8 @@ int main(int argc, char **argv) {
         }
         if (setup.master_busy[0]) {
             int exit_status = 0;
-            if (aw_poll(finder, &exit_status) || !aw_busy(finder)) {
-                finder_collect(&setup);
-                if (setup.found_count == 0 && strcmp(setup.master_note, "Search stopped") != 0)
-                    snprintf(setup.master_note, sizeof setup.master_note, "%s",
-                             exit_status != 0 ? "Search failed" : "No QLC+ on this network");
+            if (aw_poll(finder, &exit_status)) {
+                finder_collect(&setup, exit_status);
                 fprintf(stderr, "desk: find: %d master%s%s\n", setup.found_count,
                         setup.found_count == 1 ? "" : "s", setup.found_partial ? " (partial)" : "");
             }
