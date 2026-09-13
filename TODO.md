@@ -262,12 +262,27 @@ checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
   Blocked: needs the tablet unplugged and the power button held by hand; RK816 shutdown path in the kernel to read first.
 ## Infrastructure and tooling
 
-- [ ] Mac side: Pioneer DJ's `FwUpdateManagerd` (LaunchDaemon
-  `com.pioneerdj.FwUpdateManagerd`) can wedge `IOServiceOpen` for every
-  libusb client at boot; `rkdeveloptool ld` then hangs on its first device
-  and `loader-watch.sh` polls forever. Killing the daemon frees it
-  (2026-09-09). Either unload the daemon or make `loader-watch.sh` run
-  `rkdeveloptool` under a per-call timeout and say so.
+- [!] Mac side, and it is a show risk rather than a nuisance: Pioneer DJ's
+  `FwUpdateManagerd` (`com.pioneerdj.FwUpdateManagerd`) wedges `IOServiceOpen`
+  for every libusb client, and **QLC+ is one of them**. Measured 2026-09-13:
+  with the daemon up (started 16:18), `qlcplus-qml` hangs during startup and
+  never binds its web port, so the tablet has no master and there is no
+  lighting desk at all. `sample` put 2656 of 2656 stacks in one place:
+  `App::initDoc` -> `IOPluginCache::load` -> `DMXUSB::rescanWidgets` ->
+  `LibFTDIInterface::interfaces` -> `ftdi_init` -> `libusb_init_context` ->
+  `IOCreatePlugInInterfaceForService` -> `IOServiceOpen` -> `mach_msg2_trap`.
+  Causation is not inferred: killing the daemon let the ALREADY HUNG process
+  continue and bind 9998 seconds later, without a restart, and the tablet
+  relinked by itself. The same block is what hangs `rkdeveloptool ld` and
+  makes `loader-watch.sh` poll forever (2026-09-09); QLC+ is the serious face
+  of it because it fails at showtime, on a stage, with the rig dark.
+  Blocked on my decision: the daemon belongs to his DJ firmware
+  updater, so unloading it for good is his call, not ours. Smallest action:
+  decide between `launchctl bootout gui/$UID/com.pioneerdj.FwUpdateManagerd`
+  (or disabling the agent so it does not return at login) and a documented
+  pre-show step that kills it before QLC+ is launched. Either way the launch
+  script should refuse to start QLC+ while that daemon is alive rather than
+  hang, and `loader-watch.sh` still wants its per-call timeout.
 - [ ] Mainline `u_serial` warns in `gs_close()` when the host vanishes with
   the ACM console open (seen when the Mac rebooted). Harmless; a report for
   the gadget list some day.
