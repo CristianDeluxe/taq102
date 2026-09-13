@@ -138,7 +138,11 @@ int showmap_build(struct desk_model *model, const struct show_map *map,
         const struct vc_widget *widget = NULL;
         if (wrong_show)
             disable(&c, "show mismatch");
-        else if (m->held && !is_fog(m)) {
+        else if (m->role == MAP_ROLE_BURST) {
+            c.kind = DESK_BURST;
+            c.burst_ms = m->burst_ms;
+            widget = check_cue(&c, m, doc);
+        } else if (m->held && !is_fog(m)) {
             c.kind = DESK_HOLD;
             widget = check_hold(&c, m, doc);
         } else if (!m->enabled)

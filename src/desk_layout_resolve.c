@@ -37,7 +37,7 @@ static struct tile_size size_of(enum desk_tile tile) {
 // are 200x64 buttons; picks 128x88 with their colour; a hit held on the Mac
 // or fired from here 128x104 in the hold look.
 static enum desk_tile tile_for(const struct map_control *c) {
-    if (c->role == MAP_ROLE_ACCENT)
+    if (c->role == MAP_ROLE_ACCENT || c->role == MAP_ROLE_BURST)
         return TILE_HOLD;
     if (c->role == MAP_ROLE_PICK)
         return TILE_SWATCH;

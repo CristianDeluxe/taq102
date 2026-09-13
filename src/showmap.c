@@ -54,7 +54,7 @@ static int parse_role(const char *word, enum map_role *out) {
         { "state", MAP_ROLE_STATE }, { "accent", MAP_ROLE_ACCENT },
         { "haze", MAP_ROLE_HAZE },   { "hook", MAP_ROLE_HOOK },
         { "pick", MAP_ROLE_PICK },   { "chase", MAP_ROLE_CHASE },
-        { "toggle", MAP_ROLE_TOGGLE },
+        { "toggle", MAP_ROLE_TOGGLE }, { "burst", MAP_ROLE_BURST },
     };
     for (size_t i = 0; i < sizeof table / sizeof table[0]; i++) {
         if (strcmp(word, table[i].word) == 0) {
@@ -119,6 +119,13 @@ static int parse_control(const char *key, const cJSON *item, struct map_control 
         return -1;
     }
     c->function_id = int_field(item, "function", 0, 0x7FFFFFF, -1);
+    c->burst_ms = int_field(item, "burstMs", 0, 60000, 0);
+    if (string_into(item, "source", c->source, sizeof c->source, 0) != 0)
+        return -1;
+    if (c->role == MAP_ROLE_BURST && (c->burst_ms <= 0 || c->function_id < 0)) {
+        fprintf(stderr, "map: burst %s needs burstMs and a function\n", key);
+        return -1;
+    }
     c->solo_id = int_field(item, "solo", 0, 0x7FFFFFF, -1);
     c->enabled = bool_field(item, "enabled", 0);
     // A held button is never enabled here whatever the generator said: the
