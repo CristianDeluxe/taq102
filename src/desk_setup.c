@@ -6,6 +6,10 @@
 
 #include "desk_conf.h"
 #include "desk_setup_layout.h"
+#include "desk_layout.h"
+#include "desk_brightness_level_at.h"
+#include "desk_setup_row_hit.h"
+#include "desk_setup_page_hit.h"
 
 static struct setup_action none(void) {
     struct setup_action a;
@@ -24,6 +28,8 @@ static int rows_on_page(int count, int page) {
 
 static enum setup_target hit(const struct desk_setup *s, int x, int y, int *index) {
     *index = -1;
+    if (x < 0 || x >= DESK_W || y < 0 || y >= DESK_H)
+        return T_NONE;
     if (s->kb.open)
         return T_KEYBOARD;
     if (s->confirm_open) {
@@ -43,15 +49,14 @@ static enum setup_target hit(const struct desk_setup *s, int x, int y, int *inde
         return T_CLOSE;
     // The Wi-Fi card.
     if (inside(x, y, SETUP_WIFI_X, SETUP_CARD_Y, SETUP_CARD_W, SETUP_CARD_H)) {
-        int arrows_x = SETUP_WIFI_X + SETUP_CARD_W - 2 * SETUP_PAGE_W - 8;
-        if (inside(x, y, arrows_x, SETUP_CARD_Y, SETUP_PAGE_W, SETUP_TITLE_H))
+        if (desk_rect_contains(desk_setup_page_hit(SETUP_WIFI_X, 0), x, y))
             return T_WIFI_PREV;
-        if (inside(x, y, arrows_x + SETUP_PAGE_W, SETUP_CARD_Y, SETUP_PAGE_W, SETUP_TITLE_H))
+        if (desk_rect_contains(desk_setup_page_hit(SETUP_WIFI_X, 1), x, y))
             return T_WIFI_NEXT;
         if (inside(x, y, SETUP_WIFI_X + 16, SETUP_BUTTONS_Y, SETUP_CARD_W - 32, SETUP_BUTTON_H))
             return T_SCAN;
         for (int r = 0; r < rows_on_page(s->scan.count, s->scan_page); r++) {
-            if (inside(x, y, SETUP_WIFI_X, SETUP_ROWS_Y + r * SETUP_ROW_H, SETUP_CARD_W, SETUP_ROW_H)) {
+            if (desk_rect_contains(desk_setup_row_hit(SETUP_WIFI_X, r), x, y)) {
                 *index = s->scan_page * SETUP_ROWS + r;
                 return T_WIFI_ROW;
             }
@@ -59,10 +64,9 @@ static enum setup_target hit(const struct desk_setup *s, int x, int y, int *inde
         return T_NONE;
     }
     if (inside(x, y, SETUP_MASTER_X, SETUP_CARD_Y, SETUP_CARD_W, SETUP_CARD_H)) {
-        int arrows_x = SETUP_MASTER_X + SETUP_CARD_W - 2 * SETUP_PAGE_W - 8;
-        if (inside(x, y, arrows_x, SETUP_CARD_Y, SETUP_PAGE_W, SETUP_TITLE_H))
+        if (desk_rect_contains(desk_setup_page_hit(SETUP_MASTER_X, 0), x, y))
             return T_MASTER_PREV;
-        if (inside(x, y, arrows_x + SETUP_PAGE_W, SETUP_CARD_Y, SETUP_PAGE_W, SETUP_TITLE_H))
+        if (desk_rect_contains(desk_setup_page_hit(SETUP_MASTER_X, 1), x, y))
             return T_MASTER_NEXT;
         int half = (SETUP_CARD_W - 48) / 2;
         if (inside(x, y, SETUP_MASTER_X + 16, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H))
@@ -70,7 +74,7 @@ static enum setup_target hit(const struct desk_setup *s, int x, int y, int *inde
         if (inside(x, y, SETUP_MASTER_X + 32 + half, SETUP_BUTTONS_Y, half, SETUP_BUTTON_H))
             return T_TYPE;
         for (int r = 0; r < rows_on_page(s->found_count, s->found_page); r++) {
-            if (inside(x, y, SETUP_MASTER_X, SETUP_ROWS_Y + r * SETUP_ROW_H, SETUP_CARD_W, SETUP_ROW_H)) {
+            if (desk_rect_contains(desk_setup_row_hit(SETUP_MASTER_X, r), x, y)) {
                 *index = s->found_page * SETUP_ROWS + r;
                 return T_MASTER_ROW;
             }
@@ -110,17 +114,6 @@ void desk_setup_close(struct desk_setup *s) {
     s->dirty = 1;
 }
 
-static int fader_level(const struct desk_setup *s, int x) {
-    int span = SETUP_FADER_W - 1;
-    int from_left = x - SETUP_FADER_X;
-    if (from_left < 0)
-        from_left = 0;
-    if (from_left > span)
-        from_left = span;
-    int range = s->brightness_max - 8;
-    return 8 + from_left * range / span;
-}
-
 struct setup_action desk_setup_touch_down(struct desk_setup *s, int x, int y) {
     if (!s->open || s->capture != T_NONE)
         return none();
@@ -136,7 +129,7 @@ struct setup_action desk_setup_touch_down(struct desk_setup *s, int x, int y) {
     }
     if (t == T_FADER) {
         s->dragging_fader = 1;
-        s->brightness = fader_level(s, x);
+        s->brightness = desk_brightness_level_at(s->brightness_max, x);
         s->dirty = 1;
         struct setup_action a = none();
         a.kind = SETUP_BRIGHTNESS;
@@ -150,6 +143,10 @@ struct setup_action desk_setup_touch_down(struct desk_setup *s, int x, int y) {
 struct setup_action desk_setup_touch_move(struct desk_setup *s, int x, int y) {
     if (!s->open)
         return none();
+    if (x < 0 || x >= DESK_W || y < 0 || y >= DESK_H) {
+        desk_setup_touch_cancel(s);
+        return none();
+    }
     if (!s->dragging_fader && s->capture != T_NONE) {
         int index;
         int outside = hit(s, x, y, &index) != s->capture || index != s->capture_index;
@@ -161,7 +158,7 @@ struct setup_action desk_setup_touch_move(struct desk_setup *s, int x, int y) {
     }
     if (!s->dragging_fader)
         return none();
-    int level = fader_level(s, x);
+    int level = desk_brightness_level_at(s->brightness_max, x);
     if (level == s->brightness)
         return none();
     s->brightness = level;

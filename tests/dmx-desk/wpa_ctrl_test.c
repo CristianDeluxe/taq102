@@ -33,6 +33,7 @@ struct fake {
     int scans;
     struct sockaddr_un late;
     int has_late;
+    int drop_status;
 };
 
 static void fake_open(struct fake *k) {
@@ -81,7 +82,11 @@ static void fake_service(struct fake *k, const char *silent) {
                 k->has_late = 0;
             }
             reply = "PONG\n";
+        } else if (strcmp(cmd, "DROP_STATUS") == 0) {
+            k->drop_status = 1;
+            reply = "OK\n";
         } else if (strcmp(cmd, "STATUS") == 0) {
+            if (k->drop_status) continue;
             reply = "bssid=00:00:5e:00:53:01\nfreq=2437\nssid=TestNet\nid=0\nwpa_state=COMPLETED\n"
                     "ip_address=192.168.1.71\n";
         } else if (strcmp(cmd, "SCAN") == 0) {
@@ -201,14 +206,22 @@ int main(void) {
     assert(card.result == 1 && strstr(buf, "wpa_state="));
     assert(desk_wifi_request_step(&card, c, 2999, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
     assert(card.pending == DESK_WIFI_NONE);
+    // A reply already waiting wins over an advanced logical deadline.
     assert(desk_wifi_request_step(&card, c, 3000, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(poll(&request, 1, 300) == 1);
     assert(desk_wifi_request_step(&card, c, 3600, 0, 1, buf, sizeof buf) == DESK_WIFI_STATUS);
+    assert(card.result == 1 && strstr(buf, "wpa_state="));
+    // Advancing the test clock cannot suppress a real reply. Arm the fake
+    // and wait for its acknowledgement before testing an absent response.
+    assert(ask(c, "DROP_STATUS", buf, sizeof buf) == 3);
+    assert(desk_wifi_request_step(&card, c, 4000, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(desk_wifi_request_step(&card, c, 4600, 0, 1, buf, sizeof buf) == DESK_WIFI_STATUS);
     assert(card.result == -1 && card.pending == DESK_WIFI_NONE);
     card.scan_queued = 1;
-    assert(desk_wifi_request_step(&card, c, 3610, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
+    assert(desk_wifi_request_step(&card, c, 4610, 0, 1, buf, sizeof buf) == DESK_WIFI_NONE);
     request.fd = wpa_ctrl_request_fd(c);
     assert(poll(&request, 1, 300) == 1);
-    assert(desk_wifi_request_step(&card, c, 3620, 0, 1, buf, sizeof buf) == DESK_WIFI_SCAN);
+    assert(desk_wifi_request_step(&card, c, 4620, 0, 1, buf, sizeof buf) == DESK_WIFI_SCAN);
     assert(card.result == 1 && strcmp(buf, "OK\n") == 0);
     wpa_ctrl_close(c);
     kill(helper, 9);

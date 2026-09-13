@@ -8,10 +8,13 @@
 
 enum desk_target desk_input_target(const struct desk_model *m, int x, int y, int *index) {
     *index = -1;
+    if (x < 0 || x >= DESK_W || y < 0 || y >= DESK_H)
+        return TARGET_NONE;
     if (y < DESK_BAR_H) {
         if (desk_rect_contains(desk_view_lock_target(), x, y))
             return TARGET_LOCK;
-        for (int i = 0; i < m->layout.pages; i++) {
+        // Setup is modal over navigation; the master, gear and lock remain.
+        for (int i = 0; !m->setup_open && i < m->layout.pages; i++) {
             if (desk_rect_contains(desk_view_tab(i), x, y)) {
                 *index = i;
                 return TARGET_RAIL;
@@ -50,6 +53,11 @@ enum desk_target desk_input_feed(struct desk_input *in, const struct desk_model 
         return TARGET_NONE;
     int at;
     if (ev->kind == TOUCH_DOWN) {
+        if (ev->x < 0 || ev->x >= DESK_W || ev->y < 0 || ev->y >= DESK_H) {
+            in->slot[ev->slot].target = TARGET_NONE;
+            in->slot[ev->slot].index = -1;
+            return TARGET_NONE;
+        }
         in->slot[ev->slot].target = desk_input_target(m, (int)ev->x, (int)ev->y, &at);
         in->slot[ev->slot].index = at;
         in->slot[ev->slot].page = m->page;
@@ -67,6 +75,8 @@ enum desk_target desk_input_feed(struct desk_input *in, const struct desk_model 
         in->slot[ev->slot].index = -1;
     }
     if ((owner == TARGET_RAIL || owner == TARGET_BANK) && ev->kind == TOUCH_UP) {
+        if (ev->x < 0 || ev->x >= DESK_W || ev->y < 0 || ev->y >= DESK_H)
+            return owner;
         enum desk_target now = desk_input_target(m, (int)ev->x, (int)ev->y, &at);
         // A neighbouring entry wins hit testing but never inherits this tap.
         // Only the originally pressed rectangle gets the finger-roll margin.

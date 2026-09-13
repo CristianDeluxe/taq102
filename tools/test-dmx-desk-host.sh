@@ -29,6 +29,11 @@ for t in "$here"/tests/dmx-desk/*_test.c; do
     name=$(basename "$t" .c)
     srcs=$(sed -n 's|^// SOURCES: ||p' "$t")
     set --
+    # Full-panel property tests make millions of calls through the real models.
+    # Keep sanitizers and warnings, but let those tests request optimization.
+    if [ "$(sed -n 's|^// OPTIMIZE: ||p' "$t")" = 2 ]; then
+        set -- -O2
+    fi
     for s in $srcs; do set -- "$@" "$here/src/$s"; done
     if "$CC" -std=gnu99 -Wall -Wextra -Werror -fsanitize=address,undefined \
         -I "$here/src" -I "$here/tests/dmx-desk" -I "$out/include" \

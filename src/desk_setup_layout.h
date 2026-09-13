@@ -25,6 +25,7 @@
 #define SETUP_ROWS_Y (SETUP_CARD_Y + SETUP_TITLE_H + SETUP_CURRENT_H)   // 152
 #define SETUP_BUTTONS_Y (SETUP_CARD_Y + SETUP_CARD_H - 64)              // 412
 #define SETUP_BUTTON_H 48
+#define SETUP_PAGE_H 48
 #define SETUP_PAGE_W 48          // the paging arrows at the right of the title row
 
 #define SETUP_FADER_X 16

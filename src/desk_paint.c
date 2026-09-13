@@ -50,10 +50,7 @@ static void centred(struct canvas *c, struct font *f, int x, int y, int w, int h
     text_at(c, f, x + (w - width) / 2, y + (h - text_h(f)) / 2, w, s, col);
 }
 
-static void right(struct canvas *c, struct font *f, int right_x, int y, const char *s, uint32_t col) {
-    int width = text_w(f, s);
-    text_at(c, f, right_x - width, y, width + 1, s, col);
-}
+
 
 // The caption on one or two measured lines, centred on `mid_y`.
 static void caption(struct canvas *c, struct font *f, int x, int w, int mid_y, const char *text,
@@ -467,8 +464,22 @@ static void paint_bar(struct canvas *c, const struct desk_model *model,
         snprintf(word, sizeof word, "%s \xc2\xb7 %s", room, link_words(model->link));
     else
         snprintf(word, sizeof word, "%s", link_words(model->link));
-    right(c, fonts->small, 760, (DESK_BAR_H - text_h(fonts->small)) / 2, word,
-          model->link == DESK_LINK_READY ? DESK_MUTED : DESK_WARN);
+    // Status owns only the run after the last tab, with an 8 px gutter.
+    // Fit the complete room/link phrase, including future longer captions.
+    int word_x = DESK_TAB_X + model->layout.pages * (DESK_TAB_W + DESK_TAB_GAP) + 4;
+    int word_w = 760 - word_x;
+    if (word_w > 0) {
+        int width = text_w(fonts->small, word);
+        if (width > word_w) width = word_w;
+        // The fallback has no fitted renderer: truncate before drawing too.
+        if (!fonts->small) {
+            size_t chars = strlen(word);
+            while (chars && text_w(NULL, word) > word_w) word[--chars] = '\0';
+            width = text_w(NULL, word);
+        }
+        text_at(c, fonts->small, 760 - width, (DESK_BAR_H - text_h(fonts->small)) / 2,
+                word_w, word, model->link == DESK_LINK_READY ? DESK_MUTED : DESK_WARN);
+    }
     icon_paint_wifi(c, 776, 12, model->wifi_bars, DESK_INK, DESK_LINE);
     icon_paint_battery(c, 816, 12, model->battery < 0 ? 0 : model->battery, model->charging, DESK_INK,
                        model->battery >= 0 && model->battery <= 20 ? DESK_WARN : DESK_INK, DESK_GLASS);
