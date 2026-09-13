@@ -214,7 +214,7 @@ static void footer(struct canvas *c, const struct desk_setup *s, const struct de
     canvas_round_rect(c, s->power_aware ? px + 52 - 24 : px + 2, py + 2, 22, 22, 11,
                       s->power_aware ? DESK_GLASS : DESK_MUTED);
     uint32_t ink = DESK_INK;
-    text_at(c, fonts->small, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + 16, SETUP_TOGGLE_W - 40, "Atenuar con bater\xc3\xada", ink);
+    text_at(c, fonts->small, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + 16, SETUP_TOGGLE_W - 40, "Atenuar con bater\xc3\xad" "a", ink);
     text_at(c, fonts->tile, SETUP_TOGGLE_X + 20, SETUP_TOGGLE_Y + SETUP_TOGGLE_H - 16 - text_h(fonts->tile),
             SETUP_TOGGLE_W - 40, s->power_aware ? "S\xc3\xad" : "No", ink);
 }
