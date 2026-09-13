@@ -66,6 +66,7 @@ struct desk_model {
     int count;
     struct desk_layout layout;
     int page, bank;         // the view on screen
+    int page_bank[MAP_MAX_PAGES]; // each page resumes at its last bank
     enum desk_link link;
     int locked;             // the surface accepts nothing; painted as such
     int mismatch;           // the console is another show: every control off, said once
@@ -103,10 +104,11 @@ void desk_init(struct desk_model *m);
 // Returns the index of the control added, or -1 when there is no room.
 int desk_add(struct desk_model *m, const struct desk_control *control);
 
-// The layout of every page, copied in; the view goes back to page 0, bank 0.
+// A new layout, copied in; the view and every remembered bank reset to zero.
 void desk_set_layout(struct desk_model *m, const struct desk_layout *layout);
 // Changes the view. A capture in flight is cancelled: a finger that came down
-// on one page fires nothing on another. Out-of-range values are clamped.
+// on one page fires nothing on another. Bank -1 recalls that page's last
+// bank; other out-of-range values are clamped.
 void desk_set_view(struct desk_model *m, int page, int bank);
 
 // The placement a control has on the current view, or NULL.

@@ -48,7 +48,7 @@ static int drain(struct desk_hold *h, struct hold_action *out, int cap, int64_t 
 
 void desk_hold_init(struct desk_hold *h) {
     memset(h, 0, sizeof *h);
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < MAP_MAX_CONTROLS; i++) {
         h->control[i].widget_id = -1;
         h->control[i].slot = -1;
     }
@@ -56,7 +56,7 @@ void desk_hold_init(struct desk_hold *h) {
 
 int desk_hold_add(struct desk_hold *h, int widget_id, enum hold_kind kind,
                   int cap_ms, int cooldown_ms) {
-    if (h->count >= 16 || widget_id < 0 || (kind != HOLD_HIT && kind != HOLD_FOG) ||
+    if (h->count >= MAP_MAX_CONTROLS || widget_id < 0 || (kind != HOLD_HIT && kind != HOLD_FOG) ||
         cap_ms <= 0 || cooldown_ms < 0)
         return -1;
     for (int i = 0; i < h->count; i++)

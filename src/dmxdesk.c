@@ -35,11 +35,14 @@
 #include "canvas.h"
 #include "desk_conf.h"
 #include "desk_hold.h"
+#include "desk_build_holds.h"
+#include "desk_burst_base.h"
 #include "desk_input.h"
 #include "desk_lock.h"
 #include "desk_layout.h"
 #include "desk_layout_resolve.h"
 #include "desk_model.h"
+#include "desk_rebuild_model.h"
 #include "desk_paint.h"
 #include "desk_power.h"
 #include "desk_present_drm.h"
@@ -178,8 +181,6 @@ static void send_speed(struct qlc_session *session, struct speed_action action, 
 // its clock so a stuck output can be read off the log.
 // Bursts sit in the hold model under a namespace of their own, so a
 // function id never collides with a Flash button's widget id.
-#define BURST_BASE 1000000
-
 static void send_hold(struct desk_hold *hold, struct qlc_session *session, struct hold_action ha,
                       int64_t now) {
     if (ha.widget_id < 0)
@@ -202,8 +203,8 @@ static void send_hold(struct desk_hold *hold, struct qlc_session *session, struc
 // a blank. Is are forgotten and the tiles repainted idle.
 static void release_holds(struct desk_hold *hold, struct desk_model *model, struct qlc_session *session,
                           int *owner, int64_t now) {
-    struct hold_action out[16];
-    int n = desk_hold_release_all(hold, now, out, 16);
+    struct hold_action out[MAP_MAX_CONTROLS];
+    int n = desk_hold_release_all(hold, now, out, MAP_MAX_CONTROLS);
     for (int k = 0; k < n; k++)
         send_hold(hold, session, out[k], now);
     for (int s = 0; s < TOUCH_MAX_SLOTS; s++) {
@@ -211,33 +212,6 @@ static void release_holds(struct desk_hold *hold, struct desk_model *model, stru
             desk_set_hold_progress(model, owner[s], -1, 0);
         owner[s] = -1;
     }
-}
-
-// The hold model rebuilt from the controls the validator enabled as holds:
-// light hits 3 s, strobes 1 s, nothing for fog.
-static void build_holds(struct desk_hold *hold, struct desk_model *model, int *owner) {
-    desk_hold_init(hold);
-    for (int i = 0; i < model->count; i++) {
-        struct desk_control *c = &model->control[i];
-        c->hold_index = -1;
-        if (c->kind == DESK_BURST && c->enabled) {
-            // The master ends the burst at its length; the desk's own stop on
-            // release or at the same cap is a belt over that brace.
-            c->hold_index = desk_hold_add(hold, BURST_BASE + c->function_id, HOLD_HIT, c->burst_ms, 0);
-            if (c->hold_index < 0)
-                fprintf(stderr, "desk: %s: no room in the hold model\n", c->label);
-            continue;
-        }
-        if (c->kind != DESK_HOLD || !c->enabled)
-            continue;
-        // Three seconds for a light hit; strobes and fog never get here, the
-        // validator keeps them on the Mac.
-        c->hold_index = desk_hold_add(hold, c->widget_id, HOLD_HIT, 3000, 0);
-        if (c->hold_index < 0)
-            fprintf(stderr, "desk: %s: no room in the hold model\n", c->label);
-    }
-    for (int s = 0; s < TOUCH_MAX_SLOTS; s++)
-        owner[s] = -1;
 }
 
 // One gesture, one frame. A frame refused because the link went down between
@@ -451,7 +425,7 @@ int main(int argc, char **argv) {
     int last_page = model.page;
     struct desk_hold hold;
     int hold_owner[TOUCH_MAX_SLOTS];    // the control each finger holds, or -1
-    build_holds(&hold, &model, hold_owner);
+    desk_build_holds(&hold, &model, hold_owner);
 
     // The controller reports in its own units on the mainline driver and in
     // screen pixels on the vendor one, so its declared maxima decide the
@@ -862,7 +836,7 @@ int main(int argc, char **argv) {
                     continue;
                 if (target == TARGET_RAIL) {
                     if (index >= 0)
-                        desk_set_view(&model, index, 0);
+                        desk_set_view(&model, index, -1);
                     continue;
                 }
                 if (target == TARGET_BANK) {
@@ -1003,14 +977,11 @@ int main(int argc, char **argv) {
         if (qlc_session_take_snapshot(session, &fresh)) {
             vc_free(&console);
             console = fresh;
-            int page = model.page, bank = model.bank;
             // A finger on a hit while the model is rebuilt: its release goes
             // out now, from the model that knows it, or the output stays on.
             release_holds(&hold, &model, session, hold_owner, now);
-            enabled = showmap_build(&model, &map, &console);
-            desk_set_layout(&model, &layout);
-            desk_set_view(&model, page, bank);
-            build_holds(&hold, &model, hold_owner);
+            enabled = desk_rebuild_model(&model, &map, &console, &layout);
+            desk_build_holds(&hold, &model, hold_owner);
             if (showmap_mismatch(&map, &console))
                 desk_speed_disable(&speed, "show mismatch");
             else
@@ -1038,13 +1009,13 @@ int main(int argc, char **argv) {
         }
         // Holds: the cap, the link, the owed releases, the tiles' countdown.
         {
-            struct hold_action out[16];
-            int n = desk_hold_tick(&hold, now, out, 16);
+            struct hold_action out[MAP_MAX_CONTROLS];
+            int n = desk_hold_tick(&hold, now, out, MAP_MAX_CONTROLS);
             for (int k = 0; k < n; k++)
                 send_hold(&hold, session, out[k], now);
             desk_hold_set_link(&hold, link == QLC_READY);
             if (link == QLC_READY) {
-                n = desk_hold_owed(&hold, out, 16);
+                n = desk_hold_owed(&hold, out, MAP_MAX_CONTROLS);
                 for (int k = 0; k < n; k++)
                     send_hold(&hold, session, out[k], now);
             }

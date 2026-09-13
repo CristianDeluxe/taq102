@@ -217,9 +217,9 @@ int main(void) {
     none(desk_hold_press(&h, 0, 0, INT64_MAX - 1));
 
     desk_hold_init(&h);
-    for (int i = 0; i < 16; i++)
+    for (int i = 0; i < MAP_MAX_CONTROLS; i++)
         assert(desk_hold_add(&h, i, HOLD_HIT, 3000, 0) == i);
-    assert(desk_hold_add(&h, 16, HOLD_HIT, 3000, 0) == -1 && h.count == 16);
+    assert(desk_hold_add(&h, MAP_MAX_CONTROLS, HOLD_HIT, 3000, 0) == -1 && h.count == MAP_MAX_CONTROLS);
     puts("desk_hold ok");
     return 0;
 }

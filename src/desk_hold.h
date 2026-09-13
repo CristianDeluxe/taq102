@@ -5,6 +5,8 @@
 
 #include <stdint.h>
 
+#include "showmap.h"
+
 enum hold_kind { HOLD_HIT, HOLD_FOG };
 struct hold_action { int widget_id; int on; };
 struct desk_hold_control {
@@ -21,7 +23,7 @@ struct desk_hold_control {
     int64_t cooldown_until;
     int owed_release; // An accepted press still needs its one off action.
 };
-struct desk_hold { struct desk_hold_control control[16]; int count; int link_ready; };
+struct desk_hold { struct desk_hold_control control[MAP_MAX_CONTROLS]; int count; int link_ready; };
 
 void desk_hold_init(struct desk_hold *h);
 // Returns the index, or -1 for invalid settings, duplicate widgets or no room.
