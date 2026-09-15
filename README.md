@@ -4,7 +4,7 @@ Turning a Denver TAQ-102 tablet — Rockchip RK3126C, 1 GB RAM, LVDS 1024×600 �
 into a Linux appliance that boots straight into one application.
 
 Hardware notes, the recovered stock firmware and the gate-by-gate plan live
-outside this repo: `~/p/brain/personal/denver-taq102-tablet.md`, and the archive
+outside this repo: `~/p/wiki/brain/personal/denver-taq102-tablet.md`, and the archive
 with every image and checksum is `/Volumes/Datos4TB2/denver-taq102/`.
 
 This repo holds the Buildroot `br2-external` tree for the userspace, and since
