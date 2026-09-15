@@ -22,6 +22,13 @@ Boot still launches `/usr/bin/glcube`; the intended application is the Vibra DMX
 desk, currently launched from `/tmp` with `tools/run-dmxdesk.sh`. Persistent desk
 packaging is open below. The journal is `README.md`; archived images and
 checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
+Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
+v40, vendor 4.4.167), `recovery` = `recovery-taq102-v75-cube-touch-x.img` (mainline
+7.3.0-rc2, the 17-patch series, touch geometry measured, glcube scaled), BCB = `boot-recovery`, so every
+power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
+appliance back. The journal is `README.md` here and
+`~/p/wiki/brain/personal/denver-taq102-tablet.md`; images and checksums are in
+`/Volumes/Datos4TB2/denver-taq102/`.
 
 ## Security
 
