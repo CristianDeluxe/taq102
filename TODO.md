@@ -1,13 +1,5 @@
 # TODO
 
-> Consolidated from the accessible the working session, the reviewer, Cursor, and Antigravity
-> project history. Last reviewed: 2026-09-13 (repository evidence
-> reconciliation). History coverage: Partial.
-> Unavailable: the session scratchpads of 2026-09-01 and 2026-09-02 (gone; the
-> the reviewer research report they held survives on the archive disk), and the reviewer's
-> 2026-09-01 round 3, which never answered. No Cursor or Antigravity history
-> touches this project.
->
 > States: `[ ]` pending · `[~]` partial or unverified · `[!]` blocked · `[x]`
 > verified complete · `[-]` obsolete or superseded. Closed work moves to
 > `TODO_LOG.md`.
@@ -20,15 +12,12 @@ selects `recovery`; the vendor appliance remains the fallback in `boot`.
 The exact current partition image hashes were not read during this review.
 Boot still launches `/usr/bin/glcube`; the intended application is the Vibra DMX
 desk, currently launched from `/tmp` with `tools/run-dmxdesk.sh`. Persistent desk
-packaging is open below. The journal is `README.md`; archived images and
-checksums are in `/Volumes/Datos4TB2/denver-taq102/`.
+packaging is open below. The journal is `docs/journal.md`.
 Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
 v40, vendor 4.4.167), `recovery` = `recovery-taq102-v75-cube-touch-x.img` (mainline
 7.3.0-rc2, the 17-patch series, touch geometry measured, glcube scaled), BCB = `boot-recovery`, so every
 power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
-appliance back. The journal is `README.md` here and
-`~/p/wiki/brain/personal/denver-taq102-tablet.md`; images and checksums are in
-`/Volumes/Datos4TB2/denver-taq102/`.
+appliance back. The journal is `docs/journal.md`.
 
 ## Security
 
@@ -55,7 +44,7 @@ appliance back. The journal is `README.md` here and
   Radio/AP/driver attribution is not established; Wi-Fi power save is unchanged.
   Final live window [184972682, 185572682) ms: zero drops, versus three
   before the fix in ten minutes. At 20:15:52 UTC, PID 8050 remained linked
-  to 192.168.1.76:9998. This short live window is not long-show qualification.
+  to the host on port 9998. This short live window is not long-show qualification.
   Evidence:
   `docs/evidence/2026-09-13-link-regression/README.md`.
 - [ ] Locate the Mac-side API response delay captured on 2026-09-13:
@@ -67,37 +56,25 @@ appliance back. The journal is `README.md` here and
   packet timeline without restarting my running show. Two other
   diagnostic drops preceded packet capture and lack packet-level attribution.
   Evidence: `docs/evidence/2026-09-13-link-regression/README.md`.
-- [!] The Mac and the tablet must land on the SAME layer-2 segment or the desk
-  cannot link, and the house has two access points. Measured 2026-09-13: the
-  Mac's Wi-Fi held `192.168.1.62` while associated to my booster AP,
-  and from the tablet (`192.168.1.71`, on the main router, BSSID
-  `00:00:5e:00:53:01`, same OUI as the `.1` gateway) that address was ARP
-  INCOMPLETE, unpingable and HTTP-dead, while the Mac's wired `192.168.1.76`
-  answered normally. So the booster is not bridging these two clients into one
-  segment, or it isolates them. The evening was spent blaming QLC+ and the
-  finder for what was a network partition.
-  Why it matters: at a venue the tablet is Wi-Fi only, and if the Mac drifts
-  onto a different AP mid-show the desk goes dark with both machines "on the
-  network". Ethernet as the Mac's primary (1000baseT, default route, service
-  order 1) is what protects against this and is already configured.
-  Blocked on I: whether that booster is meant to bridge. Smallest
-  action: put both on the main router's SSID, or set the booster to bridge
-  mode, then re-run `/tmp/dmxdesk --find 192.168.1.71/24 9998` from the tablet
-  with the Mac on Wi-Fi only and confirm it still lists the Mac.
-- [ ] Diagnose the Mac's `.62` interface reachability from the tablet. During
-  finder verification on 2026-09-13, the Mac had `192.168.1.76` on `en0` and
-  `192.168.1.62` on `en1`; both answered HTTP 200 locally on port 9998. From
-  tablet `192.168.1.71`, `.62` stayed ARP `INCOMPLETE`, ping received no reply,
-  and `wget -T 3` timed out. The finder successfully discovered `.76:9998`.
-  Next: inspect the two interfaces' LAN reachability before expecting the
-  tablet to connect through `.62`. No network configuration or running desk
-  was changed. Evidence: `output/finder-live-results.json` and `TODO_LOG.md`.
+- [!] The controller host and the tablet must land on the same layer-2 segment
+  or the desk cannot link. Measured 2026-09-13 across two access points: the
+  host's address was ARP INCOMPLETE from the tablet, unpingable and HTTP-dead,
+  while its wired address answered normally, so the second access point is not
+  bridging the two clients into one segment. An evening was spent blaming QLC+
+  and the finder for what was a network partition.
+  Why it matters: at a venue the tablet is Wi-Fi only, and if the host drifts
+  onto a different access point mid-show the desk goes dark with both machines
+  "on the network". Wired Ethernet as the host's primary (default route,
+  service order 1) is what protects against this.
+  Smallest action: put both on one access point, or set the second to bridge
+  mode, then re-run the finder from the tablet with the host on Wi-Fi only and
+  confirm it still lists the host.
 - [x] Triage the desk geometry audit (2026-09-13). Brightness now reaches
   8..255 on its painted track, the room/link word is bounded after the tabs,
   exterior coordinates cannot commit touches, and setup arrows are 48x48.
   The detector retains its original thresholds and exhaustive probes; its
   injected 16 px pager strip still fails. Evidence and verification:
-  `docs/evidence/2026-09-13-desk-geometry-triage.md`.
+  `docs/evidence/`.
 - [x] Retain modal setup navigation intentionally. The 80 zero-reach tab
   observations described interception, not missing controls. Tabs are now
   explicitly disabled while setup is open in router and audit metadata.
@@ -116,7 +93,7 @@ appliance back. The journal is `README.md` here and
 - [ ] Hands-on tablet check of geometry fixes: brightness's 8..255 end bands,
   ellipsized long room/link captions and setup's 48x48 paging arrows. Host
   probes and ARM compilation cannot establish physical tap comfort. Evidence:
-  `docs/evidence/2026-09-13-desk-geometry-triage.md`. Next: deploy and check only
+  `docs/evidence/`. Next: deploy and check only
   when I authorizes an idle window; the linked port-9998 show was not
   disturbed by this task.
 - [ ] Extend geometry-audit state/routing coverage. The full-pixel detector
@@ -278,7 +255,7 @@ appliance back. The journal is `README.md` here and
   did not exist or the kernel never reached it is superseded by `TODO_LOG.md`
   and `kernel/mainline/README.md`. Still open: reproducible kernel/module
   packaging, the `fw_devlink=off` workaround, regulator-backed GPU OPPs, and
-  the remaining driver and owner checks below. Next: wire the mainline kernel
+  the remaining driver and hands-on checks below. Next: wire the mainline kernel
   and `modules_install` into the defconfig rather than assembling the ramdisk
   by hand; keep the existing built-in-boot trace task as the deadlock follow-up.
 - [ ] Replace the `fw_devlink=off` workaround with a real fix. The one-line
@@ -334,12 +311,12 @@ appliance back. The journal is `README.md` here and
 
 ## Appliance
 
-- [ ] Add voltage-based low-battery shutdown after an owner decision.
+- [ ] Add voltage-based low-battery shutdown after a decision.
   `kernel/mainline/RK816-BATTERY.md`, "The zero algorithm", says the hardware
   can cut out while the driver still reports 3%; voltage must be the trigger.
   No source implements power-off; `src/reboot_target.c` only calls
   `reboot(RB_AUTOBOOT)`. Next: agree a voltage threshold and validation plan
-  under show load with I, including transient sag and warning time.
+  under show load at the rig, including transient sag and warning time.
   Do not implement or test an unapproved shutdown path during a show.
 
 - [~] Verify wake by power key after the v87 sleep fix (2026-09-11).
@@ -347,7 +324,7 @@ appliance back. The journal is `README.md` here and
   in `TODO_LOG.md` (`79eea3d`); waking with the power key still needs I
   at the tablet. The Vibra asset decodes correctly, but U-Boot's rendering is
   not accepted: the separate smudge item below remains blocked.
-- [!] The new boot logo draws as a smudge (observed, 2026-09-11, v87). The BMP is
+- [!] The new boot logo draws as a smudge (observed 2026-09-11, v87). The BMP is
   provably well formed -- 600 rows of exactly 1024 pixels, runs only, the
   vendor's own palette since v88 -- and Pillow decodes it back correctly. That
   proves the asset decodes, not
@@ -394,8 +371,8 @@ appliance back. The journal is `README.md` here and
 
 The tablet as a control surface for the Vibra QLC+ show, with the show
 MacBook as master. Design and evidence:
-`docs/2026-09-12-dmx-desk-design.md`, the reviewer review in
-`docs/evidence/2026-09-12-dmx-desk-findings.md`.
+`docs/journal.md`, the reviewer review in
+`docs/evidence/`.
 
 - [ ] Deploy the desk persistently as the appliance application.
   `tools/run-dmxdesk.sh` copies binary and map into `/tmp`; reboot discards
@@ -409,14 +386,14 @@ MacBook as master. Design and evidence:
   every burst, including fog, with cooldown 0 (formerly in `dmxdesk.c`).
   The local hold model can express cooldowns, but a master-side burst bound
   alone does not impose a minimum interval between bursts. Next: confirm the
-  duration and enforcement point with I, then test retriggering and
+  duration and enforcement point at the rig, then test retriggering and
   reconnects with the rig; keep the master-side duration bound.
 - [~] Qualify the finite fog bursts with the rig. All 17 bounded bursts,
   including HUMO YA and HUMO VERT, ship in `show/vibra.desk.json` with
   master-side SingleShot bounds (`fca61bf`, `8892dcc`, `ecc3379`). The former
   requirement to implement a finite fog cue is complete. Still owed: observe
   physical DMX output reaching zero by the deadline with the client killed
-  and Wi-Fi pulled during ON. Next: I-led rig session below; do not
+  and Wi-Fi pulled during ON. Next: the hands-on rig session below; do not
   substitute a websocket echo for output measurement.
 - [~] Finish protocol/output qualification against the generated Vibra map,
   `show/vibra.desk.json`: room states, family picks, grand master w246,
@@ -487,11 +464,11 @@ MacBook as master. Design and evidence:
   picks deliberately run until changed or stopped. Next: extend the show's existing generator checks whenever a new action type is
   proposed, proving its stop/timeout and disconnect behaviour at the master.
 - [~] The desk as a professional busking surface: the plan is
-  `docs/2026-09-12-desk-pro-design.md` (the reviewer reviews in
-  `docs/evidence/2026-09-12-desk-pro-findings.md` and
-  `docs/evidence/2026-09-12-desk-vibra-findings.md`). Approved 2026-09-12.
+  `docs/journal.md` (the reviewer reviews in
+  `docs/evidence/` and
+  `docs/evidence/`). Approved 2026-09-12.
   The show is `Vibra.qxw` on DMX-Fixtures' `qlctool` branch (worktree
-  `~/p/DMX-Fixtures-qlctool`). Phases 0 (link trust), 1 (qualify the show,
+  the fixture tool repository). Phases 0 (link trust), 1 (qualify the show,
   generated map, LIVE states and PARAR TODO), 2 (pages, lock, power key,
   damage repaint), 3 (setup without ssh) and 4 (speed: two cards, tap, BPM
   steps, half and double time, Tap both) have implementation and bench
@@ -515,9 +492,9 @@ MacBook as master. Design and evidence:
   repository's `desk_policy.py`. Smallest action: I at the tablet
   with the rig on, fifteen minutes.
 - [ ] Second design leftovers, from the reviewer's critique of the built frames
-  (`docs/evidence/2026-09-13-desk-v2-frames-findings.md`): the burst durations
+  (`docs/evidence/`): the burst durations
   and their priority over a running state want a rig session (the reviewer's
-  per-hit judgment is in `docs/evidence/2026-09-13-desk-bursts-findings.md`:
+  per-hit judgment is in `docs/evidence/`:
   fog and full-intensity flashes win HTP; colour hits can mix to white over
   a complementary state, strobes can lose a shutter to a running chase);
   the master's readout is above the travel now but the pressed
@@ -537,7 +514,7 @@ MacBook as master. Design and evidence:
   to 200 ms for `DETACH` (including cleanup after a failed open). Runtime
   card, join, and rollback requests are asynchronous. Evidence:
   `src/wpa_ctrl.c`, `src/wpa_ctrl_close.c`, and
-  `docs/evidence/2026-09-13-desk-async-supplicant-findings.md`.
+  `docs/evidence/`.
   Smallest next step: make event attachment asynchronous so an unresponsive
   daemon cannot delay touch startup; send DETACH without waiting at exit.
 - [!] Phase 3's checks that need a finger on the tablet (the desk runs there
@@ -559,8 +536,8 @@ MacBook as master. Design and evidence:
   ship enabled as bounded bursts, not disabled held controls. SingleShot does
   not confer Flash priority or ForceLTP: complementary colour hits can mix
   to white, strobes can lose the shutter to a chase, and vertical smoke drives
-  four columns. Evidence: `docs/evidence/2026-09-13-desk-bursts-findings.md`.
-  Next: use I-led rig session to choose additive intensity or another
+  four columns. Evidence: `docs/evidence/`.
+  Next: use the hands-on rig session to choose additive intensity or another
   show policy per hit and verify restoration of the underlying look.
 - [ ] Show mode: the appliance sleeps the screen after five minutes idle, and
   a desk waiting for the next cue is idle. Hold the screen on during a show,
@@ -572,7 +549,7 @@ MacBook as master. Design and evidence:
 - [!] `GLCUBE_FINISH=1` (a `glFinish` between `eglSwapBuffers` and scanout)
   stays a diagnostic; the black flashes were the accelerometer i2c read in the
   render loop, since fixed. Decide after a long run whether to drop the switch.
-  Blocked: owner observation over a long run: any black frame with the default build?
+  Blocked: observation over a long run: any black frame with the default build?
 ## Blocked
 
 - [!] Locate the UART2 pads (the stock DT puts fiq-debugger on UART2). Blocked:

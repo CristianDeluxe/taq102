@@ -13,7 +13,7 @@ one step hold 3000):
   early stop answered in 21 ms; a second start while running neither restarted
   nor extended it.
 
-The generated show, seventeen bursts (the reviewer, DMX-Fixtures 91227ca):
+The generated show, seventeen bursts (generated, DMX-Fixtures 91227ca):
 
   fog, f819, 3 s:
   <<     3.4 ms  FUNCTION|819|Running

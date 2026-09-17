@@ -60,8 +60,8 @@ still gets 450 mA because that is the property's default. v83 carries it.
 
 ## The review, and what the fix became
 
-the reviewer was given the measurements and both source trees (`review-briefing.md`,
-`review-second-opinion.md`) and rejected the first fix, correctly:
+A review of the measurements against both source trees rejected the first fix,
+correctly:
 
 - The device tree property means **the maximum from a dedicated charging
   port**, which the binding says in as many words. Detection failing tells you

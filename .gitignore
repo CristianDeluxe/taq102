@@ -6,3 +6,9 @@ dl/
 tools/vendor/
 kernel/*.dtb
 log/
+
+# Vendor binaries and firmware are not redistributed. They are extracted from
+# the device or built from source; see blobs/README.md. The build reads them
+# from these paths, so they stay on disk and out of the repository.
+blobs/*.ko
+br2-external/board/taq102/rootfs-overlay-mainline/lib/firmware/silead/*.fw
