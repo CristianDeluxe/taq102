@@ -246,7 +246,7 @@ Suggested escalation order:
 
 ## 8. Concrete Phase A recipe — complete
 
-This recipe deliberately defines Phase A as **stock early boot + stock kernel/DT first, Buildroot userspace, then a rebuilt vendor kernel**. Mainline U-Boot is moved behind the screen/touch milestone. Commands below are templates for I to run; none were executed on the tablet during this research.
+This recipe deliberately defines Phase A as **stock early boot + stock kernel/DT first, Buildroot userspace, then a rebuilt vendor kernel**. Mainline U-Boot is moved behind the screen/touch milestone. Commands below are templates to run; none were executed on the tablet during this research.
 
 ### Gate 0 — recovery and observability before development
 
