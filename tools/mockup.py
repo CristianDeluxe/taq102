@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Mockups of the desk's second design, drawn at 2x and downsampled, so the
-owner and the reviewer can judge the composition before a line of C moves. The
+composition can be judged before a line of C moves. The
 geometry here is the geometry the painter will get: every number is on an
 8 px grid and every text is measured with the bundled Inter.
 

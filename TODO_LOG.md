@@ -75,7 +75,7 @@
     cross-build passed with GCC 14.3.0 under `-Wall -Wextra -Werror`. Existing
     master/render assertions remain valid; their touch calls and source lists
     now provide the shared geometry.
-  - Delivery is intentionally uncommitted and undeployed for owner review.
+  - Delivery is intentionally uncommitted and undeployed for review.
 
 - [x] 2026-09-13 - **Infrastructure:** QLC+ would not start, and it was
   Pioneer's `FwUpdateManagerd` wedging libusb, not QLC+.
@@ -140,7 +140,7 @@
   Persistent appliance packaging and physical DMX qualification remain open.
 
 - [x] 2026-09-13 - **Desk: descriptive bank segments and forgiving releases (partial remedy).**
-  Owner: "los botones de la pantalla de color para cambiar (1/2) funcionan
+  I: "los botones de la pantalla de color para cambiar (1/2) funcionan
   fatal, es muy dificil pulsar, quizas seria mejor hacerlos mas grandes y
   descriptivos, tenemos mucho espacio ahi." The earlier "bien pequeños"
   backlog item incorrectly referred to tiles inside bank 2; this report is
@@ -181,7 +181,7 @@
   28 PASS / 6 FAIL, the six socket-bind failures already present at baseline.
   The later unrestricted-suite acceptance is recorded in the host and VM
   verification closure above.
-- [x] 2026-09-13 - **Desk: remember the bank on each page.** Owner report:
+- [x] 2026-09-13 - **Desk: remember the bank on each page.** I report:
   "on the colours page he switches to page 2, changes tab, comes back, and
   has to press page 2 again." `desk_set_view` remembers each clamped bank;
   tab selection recalls it. `desk_rebuild_model.[ch]` saves every page's bank
@@ -189,7 +189,7 @@
   start at zero. Evidence: `tests/dmx-desk/desk_bank_memory_test.c`, including
   hidden pages, a shrinking bank count and removed pages. Post-task gate
   29 PASS / 6 FAIL, the same environment failures; no tablet check claimed.
-- [x] 2026-09-13 - **Desk: one optical system for status icons.** Owner report:
+- [x] 2026-09-13 - **Desk: one optical system for status icons.** I report:
   "the Wi-Fi icon is huge next to the battery and the lock, the gear is
   different again, each one a different size, and the Wi-Fi one is ugly."
   `tools/icons.py` defines an 18 px optical box and 2 px stroke, a gear 10%
@@ -200,7 +200,7 @@
   Wi-Fi layers. Its old >10-pixel minimum became >0 for the smaller dot;
   statusbar assertions are unchanged. Both tests pass; post-task gate
   29 PASS / 6 FAIL, unchanged socket restrictions. Host preview inspected;
-  owner approval on the tablet is not claimed.
+  hands-on approval on the tablet is not claimed.
 - [x] 2026-09-13 - **Diagnostics: install panel-trap; remove the stale hash.**
   `taq102-diag.mk` installs the shell script separately from its five C tools
   into `/usr/bin/panel-trap`, 0755. The real install recipe passes
@@ -234,7 +234,7 @@
   caller, a wrong run order or a wrong hold, a dated regression, mutation
   tests, and all three shows regenerated and validated (DMX-Fixtures
   `91227ca`); its per-hit priority judgment is in
-  `docs/evidence/2026-09-13-desk-bursts-findings.md`. On the desk: a `burst`
+  `docs/evidence/`. On the desk: a `burst`
   role in the map with `burstMs` and `source`, `qlc_encode_function_status`,
   a `DESK_BURST` kind fired on contact and lit only by the master's own
   `FUNCTION` push, riding the hold model under a namespace of its own so a
@@ -250,7 +250,7 @@
   wasted space, not built around a show, the most used controls on a second
   page and dead. References looked at (ChamSys QuickQ and MagicQ, Photon,
   grandMA3), mockups drawn in `tools/mockup.py` and critiqued by the reviewer
-  (`docs/evidence/2026-09-13-desk-v2-design-findings.md`), then built in three
+  (`docs/evidence/`), then built in three
   stages: (1) tabs and status in one 48 px bar with real icons rasterised
   from vectors (`tools/icons.py` -> `src/icon_data.h`, `src/icon.[ch]`), the
   content full width, a master column with a track and a 24 px thumb and the
@@ -276,11 +276,11 @@
   judgments: light flashes fire from the tablet with a 3 s cap; strobes and
   manual fog stay on the Mac, since a tablet's cap cannot bound an output
   after a lost link. Frames in `docs/design/v2-frames/`; the reviewer's critique
-  of them in `docs/evidence/2026-09-13-desk-v2-frames-findings.md`, most of it
+  of them in `docs/evidence/`, most of it
   applied, the rest in `TODO.md`. The desk on the tablet shows SHOW first.
 - [x] 2026-09-13 - **Desk: the review's leftovers, all six, the reviewer writing
   the hardest.** the reviewer implemented the asynchronous supplicant in its own
-  worktree (`review-async`, three commits, merged as `a1a4921`; its own log
+  worktree (`the review-async`, three commits, merged as `a1a4921`; its own log
   entry follows). A reviewer agent read the merge adversarially: ship, two
   minor points (a queued scan's busy word and clock started at queue time;
   fixed to dispatch time) and one pre-existing nit (a failed redial after
@@ -307,7 +307,7 @@
   failed with its file restored at 3,067 ms, with a longest measured step
   of 2 ms against the test's 50 ms poll interval. Startup ATTACH and shutdown
   DETACH remain synchronous and are tracked separately in TODO.md.
-  Evidence: `docs/evidence/2026-09-13-desk-async-supplicant-findings.md`.
+  Evidence: `docs/evidence/`.
   Commits: `3b451fb`, `b526d5d`. No tablet or QLC+ instance contacted.
 
 - [x] 2026-09-12 - **Panel: retain state before the next shimmer.** `a331d8e`
@@ -378,7 +378,7 @@
   1500 ms without an echo makes the dial unconfirmed and asks the session to
   re-read the console (`qlc_session_refresh`). Bounds 200..min(2000, timeMax)
   with steps past them dead, never clamped. the reviewer adjudicated six doubts
-  (`docs/evidence/2026-09-12-desk-speed-findings.md`), all adopted. On the
+  (`docs/evidence/`), all adopted. On the
   tablet: the cards read 120 BPM off the snapshot, a probe's change on the
   Mac's side showed as 150 BPM with the note, and a run of taps on `Tap
   both` retimed both dials with the master's echo 39..179 ms after the
@@ -488,7 +488,7 @@
   zero wake events in `/data/log/taq102-app.log`. The commit records 17/17
   control-centre host tests passing, including corrected touch-flip arguments.
   Evidence: `src/sleep_state.c`, the commit and README's sleep journal.
-  Power-key wake still needs an owner check. The accompanying Vibra logo
+  Power-key wake still needs a hands-on check. The accompanying Vibra logo
   asset is decodable, but the v87 smudge/v88 palette work does not prove
   U-Boot rendering; that remains blocked in TODO.md.
 - [x] 2026-09-10 - **Panel: package fliptest and correct the flicker metric.**
@@ -677,9 +677,9 @@
 - [x] 2026-09-07 — **Appliance:** The control centre, the brightness policy,
   idle sleep with pick-up wake, and Inter on every screen (v46 in `boot` and
   `recovery`).
-  - Result: spec `docs/2026-09-07-control-centre-design.md`
+  - Result: spec `docs/journal.md`
     (reworked after a the reviewer review with ten blocking issues), plan
-    `docs/2026-09-07-control-centre.md`, twelve tasks;
+    `docs/journal.md`, twelve tasks;
     the reviewer implemented tasks 1 to 11 in five runs, each committed with its
     tests; new modules `font`, `canvas_blend`, `settings`, `backlight`,
     `power_policy`, `sleep_state`, `touch_input`, `touch_router`,
@@ -725,7 +725,7 @@
     buffer under ours measures amber and opaque, so the gradient is panel
     angle plus camera, not the VOP; my eyes are the final word.
     Images archived in
-    `/Volumes/Datos4TB2/denver-taq102/gate3-build/recovery-taq102-v4[45]-*.img`.
+    the archive disk[45]-*.img`.
   - Files: `blobs/`, `br2-external/`, `log/v44/` (untracked artifacts).
 
 - [x] 2026-09-07 — **Integrations:** The tablet answers to `taq102.local`:
@@ -740,14 +740,14 @@
 
 - [-] 2026-09-07 — **Security:** Rotate the Wi-Fi key exposed in a 2026-09-02
   transcript.
-  - Resolution: owner accepts it (home network, private transcript).
+  - Resolution: accepted (home network, private transcript).
 
 - [-] 2026-09-07 — **Pending decisions:** Mainline track or appliance polish.
-  - Resolution: owner leaves it to the run; the appliance goes first (the
+  - Resolution: left to the run; the appliance goes first (the
     control centre, brightness policy, sleep). Mainline stays a future idea.
 
 - [-] 2026-09-07 — **Infrastructure:** Raise the build VM's memory.
-  - Resolution: owner leaves it to the run. OrbStack gives 8 GB overall on a
+  - Resolution: left to the run. OrbStack gives 8 GB overall on a
     16 GB Mac; a full `make` passed at that size on 2026-09-07 with `kbuild`
     stopped, so nothing is raised. Keep `kbuild` stopped while building.
 
@@ -849,13 +849,13 @@
   state; the first DTS's bus-format comment corrected and the file marked
   superseded; the 2026-09-01 the reviewer research archived in `docs/research/`;
   the brain page's "Still open" list drops the two settled questions.
-  - Evidence: `docs/research/2026-09-01-review-route-findings.md` (607 lines,
+  - Evidence: `docs/research/2026-09-01-the review-route-findings.md` (607 lines,
     from the archive disk); brain commit `e79d20d9`, pushed.
 
 - [x] 2026-09-06 — **Documentation:** The two 2026-09-04 the reviewer runs' findings
   archived with the evidence.
-  - Evidence: commit `52de391`; `docs/evidence/2026-09-05/review-findings-1-blackframes-touch.md`,
-    `review-findings-2-lvds-variants.md`.
+  - Evidence: commit `52de391`; `docs/evidence/2026-09-05/the review-findings-1-blackframes-touch.md`,
+    `the review-findings-2-lvds-variants.md`.
 
 - [x] 2026-09-05 — **Infrastructure:** v43: the diagnostics ship in the image
   and `recovery` holds the matching stock-kernel rescue, proved by a BCB round trip.
@@ -891,7 +891,7 @@
   - Result: the resting spin's 0.84 s kick is held constant; the i2c-2 0x18
     sensor is a Silan SC7A20, driven by `src/accel.c`, and glcube flips
     picture, bar and touch on Y gravity; status-bar margin, bolt, supersampling.
-  - Evidence: commit `444cf39`; owner confirmed wobble, orientation and bar
+  - Evidence: commit `444cf39`; confirmed wobble, orientation and bar
     2026-09-05.
 
 - [x] 2026-09-04 — **Bugs:** Touch alive on the own kernel, cube no longer
@@ -901,7 +901,7 @@
     another panel's firmware (patch 0005 installs the stock arrays); a slot
     silent for 0.5 s counts as lifted; KEY_POWER sleep/wake; status bar in glcube.
   - Evidence: commit `242e478`; GSL IRQ count climbing on `/proc/interrupts`;
-    owner confirmed touch, button and no flicker 2026-09-04 17:25.
+    confirmed touch, button and no flicker 2026-09-04 17:25.
 
 - [x] 2026-09-04 — **Kernel:** Charger limit kept on DC detect (patch 0004, v38).
   - Result: rk816's DC-detect path no longer overwrites the USB detection's
@@ -960,7 +960,7 @@
     back put the cube on the same panel, refuting the reviewer's hardware conclusion.
     Two real PHY defects found and kept (patch 0002, E4 common mode), neither
     the cause.
-  - Evidence: commits `ee3f808`, `c3ca569`; `docs/evidence/2026-09-03-round2-findings.md`;
+  - Evidence: commits `ee3f808`, `c3ca569`; `docs/evidence/`;
     `camera/v14-look.jpg`.
 
 - [x] 2026-09-03 — **Kernel:** The 4.4.167 kernel builds and boots; the display
@@ -1062,8 +1062,8 @@
     sha256-verified; GSL3673 firmware extracted from the stock kernel. Route:
     keep the stock boot chain, replace only the recovery ramdisk with a
     Buildroot userspace (the reviewer, two rounds).
-  - Evidence: `/Volumes/Datos4TB2/denver-taq102/SHA256SUMS.txt` and
-    `research/FINDINGS.md`; `~/p/brain/personal/denver-taq102-tablet.md`.
+  - Evidence: the archive disk and
+    `research/FINDINGS.md`; the knowledge base.
 
 - [-] 2026-09-01 — **Infrastructure:** Replace U-Boot, and mainline first.
   - Resolution: never needed; the stock boot chain stays and the recovery

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Talk to a QLC+ 5.2.2 web interface the way the tablet desk will.
 
-This is the harness for experiment 1 of
-docs/2026-09-12-dmx-desk-design.md: it reads the Virtual
+This is the harness for the first desk experiment: it reads the Virtual
 Console, sends the frames the desk sends, and prints every frame that comes
 back with the milliseconds it took. No dependencies beyond the standard
 library, because it also has to run from a rescue shell.
