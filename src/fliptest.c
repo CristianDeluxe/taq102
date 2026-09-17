@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     // "vlines" as the first argument paints single-pixel vertical lines into
     // both buffers instead: a flat field cannot show a displacement, and the
     // camera rig measures displacement on lines.
-    // a webcam can resolve (I sees the fast one; the camera does not).
+    // a webcam can resolve (I see the fast one; the camera does not).
     uint32_t col[2] = { 0xFFE08A00u, 0xFFE08A00u };
     int pause_ms = 0;
     int vlines = argc > 1 && !strcmp(argv[1], "vlines");

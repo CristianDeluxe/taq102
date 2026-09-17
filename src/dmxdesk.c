@@ -203,7 +203,7 @@ static void send_hold(struct desk_hold *hold, struct qlc_session *session, struc
 }
 
 // Every hold released at once: a lock, a page change, the surface opening,
-// a blank. Is are forgotten and the tiles repainted idle.
+// a blank. The hold owners are forgotten and the tiles repainted idle.
 static void release_holds(struct desk_hold *hold, struct desk_model *model, struct qlc_session *session,
                           int *owner, int64_t now) {
     struct hold_action out[MAP_MAX_CONTROLS];
