@@ -1,0 +1,10 @@
+config BR2_PACKAGE_DMXDESK
+	bool "dmxdesk"
+	depends on BR2_USE_MMU
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	select BR2_PACKAGE_LIBDRM
+	select BR2_PACKAGE_STB
+	select BR2_PACKAGE_TAQ102_FONTS
+	help
+	  Touch lighting desk for the Vibra QLC+ show, with its generated map
+	  and a launcher that resolves mainline input devices by name.

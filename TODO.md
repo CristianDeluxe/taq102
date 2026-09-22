@@ -374,13 +374,32 @@ MacBook as master. Design and evidence:
 `docs/journal.md`, the reviewer review in
 `docs/evidence/`.
 
-- [ ] Deploy the desk persistently as the appliance application.
-  `tools/run-dmxdesk.sh` copies binary and map into `/tmp`; reboot discards
-  both, and `br2-external/board/taq102/rootfs-overlay/usr/bin/taq102-app`
-  still defaults to `/usr/bin/glcube`. `tools/build-dmxdesk.sh` explicitly
-  defers Buildroot packaging. Next: add a desk package containing binary and
-  versioned map, select it at boot, and verify restart/reboot behaviour with
-  an agreed fallback.
+- [~] Deploy the desk persistently as the appliance application.
+  Implemented 2026-09-22: mainline-only Buildroot package, shared source
+  manifest, input-name launcher, desk-first boot and five-exit cube fallback.
+  `tools/make-desk-ramdisk.sh` packages today's hand-assembled image. The v89
+  image is `/Volumes/Datos4TB2/denver-taq102/gate3-build/recovery-taq102-v89-desk.img`
+  (SHA256 `857f3368c4bb56894920a842f544257f9d44aff573fd0b461b470afbb00bb69f`).
+  All 41 host tests and nine boot/launcher scenarios pass; standalone ARM and
+  Buildroot package builds passed. The v88 kernel/second and unrelated ramdisk
+  contents are preserved. No tablet test or flash was possible.
+  Owner: run `tools/loader-watch.sh recovery <img>` on the Mac and enter loader
+  mode from the running image with `devmem 0x100a0038 32 0x5242C301; reboot`.
+  Verify the desk after cold boot; kill it five times, waiting for each restart,
+  and verify glcube/control centre plus SSH after the fifth. Cold boot again
+  must restore the desk. Keep this open until those hardware checks pass.
+- [ ] Check the unterminated mainline defconfig patch-directory assignment.
+  `br2-external/configs/taq102_mainline_defconfig` contains
+  `BR2_GLOBAL_PATCH_DIR="` with no closing quote (already present at HEAD).
+  The desk package was validated using the existing VM configuration plus
+  `olddefconfig`, not a fresh defconfig import. Next: test a fresh import in an
+  isolated output directory and normalize the intended empty string if needed.
+- [ ] Hide SHOW's empty Fijo heading when the map has no fixed accent toggle.
+  The ed1dac1 map removed `color-beam`; `src/desk_show_layout.c` still emits
+  Fijo unconditionally. The host `desk.ppm` shows an empty label to the right
+  of five hits; all LIVE controls are placed and geometry passes unchanged.
+  Next: emit that heading only for a placed toggle, then rerun renderer and
+  geometry checks without relaxing their thresholds.
 - [ ] Implement the fog cooldown policy once its exact timing is settled.
   I-approved cooldown is not built: `src/desk_build_holds.c` registers
   every burst, including fog, with cooldown 0 (formerly in `dmxdesk.c`).

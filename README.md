@@ -174,6 +174,62 @@ cannot do, and the device comes back as `2207:310d` for `rkdeveloptool`. This
 matters because booting Android restores the stock recovery partition from
 `recovery-from-boot.p` and silently undoes a flash.
 
+### Mainline desk image (v89)
+
+`tools/make-desk-ramdisk.sh <base.cpio.gz> <out.cpio.gz>` adds the desk to an
+existing mainline ramdisk. It runs `tools/build-dmxdesk.sh` if `output/dmxdesk`
+is missing; explicitly rebuild first to refresh an existing binary. It preserves
+the original cpio bytes, appends a root-owned `newc` overlay, and compresses both
+archives in one gzip stream. The diagnostic `/init`, modules, fonts and all
+unrelated contents and modes survive. Existing output files are refused.
+
+The overlay installs `/usr/bin/dmxdesk`, `/usr/bin/taq102-desk`, the updated
+`taq102-app`, `/usr/share/dmxdesk/vibra.desk.json` and a `VERSION` line with the
+workspace SHA256, repository HEAD, dirty state and map-file SHA256. The launcher
+waits for `silead_ts` and `rk805 pwrkey` by name; the master remains in
+`/data/desk.conf`, and output remains in `/data/log/taq102-app.log`.
+
+This is the v89 recipe; use unused output filenames for another build. The
+`second-v88-logo-palette` file was extracted from v88's Android boot header.
+
+```sh
+gate=/Volumes/Datos4TB2/denver-taq102/gate3-build
+tools/build-dmxdesk.sh
+tools/make-desk-ramdisk.sh "$gate/rootfs-v87-sleep-logo.cpio.gz" "$gate/rootfs-v89-desk.cpio.gz"
+KERNEL="$gate/zImage-7.3.0-rc2-v86-pci-only-0301" \
+SECOND="$gate/second-v88-logo-palette" MKBOOTIMG=tools/vendor/mkbootimg.py \
+sh tools/make-recovery.sh "$gate/rootfs-v89-desk.cpio.gz" "$gate/recovery-taq102-v89-desk.img"
+```
+
+The next full mainline Buildroot build selects the `dmxdesk` package. It and
+`tools/build-dmxdesk.sh` share `src/dmxdesk.sources` and the pinned vendored
+cJSON. To validate packaging without rebuilding the rootfs, enable
+`BR2_PACKAGE_DMXDESK` in the existing configuration, run `olddefconfig`, then:
+
+```sh
+orb -m taq102 -u root bash -lc 'cd /work/buildroot && make O=/work/output-mainline dmxdesk'
+```
+
+`taq102-app` prefers the executable desk launcher, honors `TAQ102_APP`, and
+switches to glcube after five desk exits. The cube then has its existing
+five-attempt budget; the desk is not retried during that boot. Vendor images
+without the package keep the previous cube behavior. Both rescue paths remain.
+`python3 tests/boot/desk_boot_test.py` checks these paths and input discovery
+with local fakes; it does not substitute for a hardware boot test.
+
+**Owner acceptance remains:** start the loader watcher on the Mac, then enter
+loader mode from the running tablet with `devmem 0x100a0038 32 0x5242C301; reboot`.
+No flashing was performed while preparing v89.
+
+```sh
+tools/loader-watch.sh recovery /Volumes/Datos4TB2/denver-taq102/gate3-build/recovery-taq102-v89-desk.img
+```
+
+Verify the desk after a cold boot. Kill `dmxdesk` once per restart, five times:
+the first four exits should restart it, and the fifth should leave glcube with
+its control centre available. Check the log and SSH access, then cold boot
+again to confirm the desk is selected anew.
+
 ## Where the image lives now
 
 Since 2026-09-02 the same image is written to **both** `boot` and `recovery`,
@@ -208,7 +264,8 @@ having been added.
 `/init` raises the backlight to `max_brightness` before anything draws: the
 device tree default is 128 of 255, and a half-lit panel reads as bad colour
 rather than as half brightness. Then inittab's `::once:` runs
-`/usr/bin/taq102-app`, which starts `glcube` and restarts it at most five times.
+`/usr/bin/taq102-app`, which prefers the installed desk launcher and otherwise starts `glcube`; each
+application has five attempts, with desk exhaustion falling back to the cube.
 
 Three ways to keep the screen for yourself: the rescue image, holding **Vol−**
 while it boots (`adc-keys` reports `KEY_VOLUMEDOWN` and `KEY_BACK` on `event2`;

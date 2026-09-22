@@ -1,0 +1,23 @@
+#!/bin/sh
+# Mainline input numbering is probe-order dependent. Never guess an event node.
+set -eu
+touch_node=
+power_node=
+attempt=0
+while [ "$attempt" -lt 10 ]; do
+    for event in /sys/class/input/event*; do
+        case "$(cat "$event/device/name" 2>/dev/null)" in
+            silead_ts) touch_node=/dev/input/${event##*/} ;;
+            "rk805 pwrkey") power_node=/dev/input/${event##*/} ;;
+        esac
+    done
+    if [ -n "$touch_node" ] && [ -e "$touch_node" ] &&
+       [ -n "$power_node" ] && [ -e "$power_node" ]; then
+        exec /usr/bin/dmxdesk --map /usr/share/dmxdesk/vibra.desk.json \
+            --touch "$touch_node" --power "$power_node"
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+done
+echo "taq102-desk: missing silead_ts or rk805 pwrkey input device after 10 s" >&2
+exit 1

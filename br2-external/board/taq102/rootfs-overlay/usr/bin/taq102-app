@@ -15,7 +15,14 @@
 # The restart limit matters: a crash loop against a KMS surface would otherwise
 # spend the whole uptime taking and dropping DRM master.
 
-APP=${TAQ102_APP:-/usr/bin/glcube}
+APP=${TAQ102_APP:-}
+if [ -z "$APP" ]; then
+    if [ -x /usr/bin/taq102-desk ]; then
+        APP=/usr/bin/taq102-desk
+    else
+        APP=/usr/bin/glcube
+    fi
+fi
 LIMIT=5
 
 # The log survives a reboot only on /data; /init mounts it before inittab
@@ -91,6 +98,13 @@ while [ $n -lt $LIMIT ]; do
     log "starting $APP (attempt $((n + 1)))"
     "$APP" >> "$LOG" 2>&1
     n=$((n + 1))
+    # Once the desk exhausts its budget, keep the cube for this boot. The
+    # cube retains its own bounded retry budget and never switches back.
+    if [ "$n" -eq "$LIMIT" ] && [ "$APP" = /usr/bin/taq102-desk ]; then
+        log "$APP exited $LIMIT times; falling back to glcube for this boot"
+        APP=/usr/bin/glcube
+        n=0
+    fi
     sleep 1
 done
 

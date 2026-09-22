@@ -92,6 +92,7 @@ BR2_PACKAGE_LINUX_FIRMWARE_RTL_RTW88=y
 # Our own KMS applications: one on the CPU, one on the GPU.
 BR2_PACKAGE_PARTICLES=y
 BR2_PACKAGE_GLCUBE=y
+BR2_PACKAGE_DMXDESK=y
 
 # Reflashing has to be reachable without booting Android, because Android
 # restores the stock recovery partition on every normal boot.

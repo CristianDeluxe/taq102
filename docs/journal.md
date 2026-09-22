@@ -1689,3 +1689,56 @@ second-bank colour button sizing, and voltage-based shutdown. No shutdown
 threshold or power-off path was implemented; that needs my decision
 and a load-tested policy. No show repository, hardware or external service was
 modified, and these changes are left uncommitted as requested.
+
+
+## 2026-09-22 — The desk is in the boot image
+
+The desk had never been the installed application. `run-dmxdesk.sh` put it in
+`/tmp`, and a reboot quite correctly returned to the cube. v89 now carries the
+binary, map and a small launcher. The launcher finds `silead_ts` and `rk805
+pwrkey` by name, because mainline's event numbers are not the vendor kernel's.
+The saved master still comes from `/data/desk.conf`.
+
+The show changed first. I captured `/vc.json` from QLC+ 5.2.2 with the ed1dac1
+Vibra workspace, checked its hash against the map, and closed that QLC+ process.
+The new map has 144 controls with icons; the parser already ignores unknown
+fields. Most failures were stale IDs, plus a COLOR pager that now has three
+banks. The negative mismatch test had another trap: replacing the first
+functionId in the JSON now changes function metadata, not the AUTO widget.
+It now changes the parsed widget selected by the map.
+
+All 41 host tests pass without the socket sandbox. The geometry audit still
+uses its original thresholds: 30 views, 18,529,560 probes, no failures or
+warnings, and 148 enabled controls including the master's four additions.
+The SHOW render has every LIVE control; the obsolete empty Fijo heading is
+recorded as cosmetic work rather than counted as a missing control.
+
+Both build paths read the same 94-file source manifest. The package compiles
+the existing pinned cJSON into the desk, matching the standalone build and
+avoiding another shared library in an older ramdisk. GCC 14.3.0 built the ARM
+binary; `make O=/work/output-mainline dmxdesk` built and installed the package
+without a rootfs rebuild. Nine local boot/launcher scenarios cover desk
+exhaustion, the vendor-only case, explicit overrides, both rescue paths,
+swapped event numbering and missing input devices.
+
+After five desk exits, `taq102-app` switches to glcube for that boot. The cube
+keeps its own five-attempt limit; a broken fallback must not loop forever
+against DRM. The rescue checks and display preparation are unchanged. A new
+cold boot gets a new desk budget.
+
+Today's image still comes from the hand-assembled ramdisk. The new script
+keeps the decompressed v87 archive byte-for-byte and appends six root-owned
+entries before one gzip compression. Every unrelated file and its metadata
+compared equal, including the diagnostic `/init` and fourteen modules. The
+existing `var/www` directory belongs to uid/gid 33; that ownership is preserved,
+not silently normalized. The desk, launcher and supervisor have mode 0755;
+the map and VERSION have mode 0644. VERSION records the workspace hash, map
+hash, repository HEAD and the uncommitted state.
+
+v89's kernel and second blob compare byte-for-byte with v88. The image is
+`/Volumes/Datos4TB2/denver-taq102/gate3-build/recovery-taq102-v89-desk.img`, SHA256
+`857f3368c4bb56894920a842f544257f9d44aff573fd0b461b470afbb00bb69f`.
+The archive checksum file was appended to, and existing images were untouched.
+This proves assembly, not booting. The tablet was unreachable and was not
+contacted: flashing, cold-boot acceptance and the five-kill fallback check
+remain mine to do. The working tree is left uncommitted for review.
