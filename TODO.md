@@ -13,7 +13,7 @@ The exact current partition image hashes were not read during this review.
 Boot launches the Vibra DMX desk (`/usr/bin/taq102-desk`, v89 since 2026-09-22),
 with glcube as the fallback after five desk exits; `tools/run-dmxdesk.sh` still
 pushes a development build over it into `/tmp`. The journal is `docs/journal.md`.
-Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
+Device as of 2026-09-22: `boot` = `recovery-taq102-v43-appliance.img` (kernel
 v40, vendor 4.4.167), `recovery` = `recovery-taq102-v89-desk.img` (mainline
 7.3.0-rc2 v86 kernel, v87 ramdisk plus the desk, v88 logo resource), BCB = `boot-recovery`, so every
 power-on runs the desk. `tools/loader-watch.sh bcb` puts the vendor
