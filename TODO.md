@@ -10,13 +10,13 @@ soak, v86 the nineteenth kernel patch, v87 the sleep fix, and v88 the revised
 boot-logo palette (its appearance is still unverified). The last recorded BCB
 selects `recovery`; the vendor appliance remains the fallback in `boot`.
 The exact current partition image hashes were not read during this review.
-Boot still launches `/usr/bin/glcube`; the intended application is the Vibra DMX
-desk, currently launched from `/tmp` with `tools/run-dmxdesk.sh`. Persistent desk
-packaging is open below. The journal is `docs/journal.md`.
+Boot launches the Vibra DMX desk (`/usr/bin/taq102-desk`, v89 since 2026-09-22),
+with glcube as the fallback after five desk exits; `tools/run-dmxdesk.sh` still
+pushes a development build over it into `/tmp`. The journal is `docs/journal.md`.
 Device as of 2026-09-09: `boot` = `recovery-taq102-v43-appliance.img` (kernel
-v40, vendor 4.4.167), `recovery` = `recovery-taq102-v75-cube-touch-x.img` (mainline
-7.3.0-rc2, the 17-patch series, touch geometry measured, glcube scaled), BCB = `boot-recovery`, so every
-power-on runs the mainline cube. `tools/loader-watch.sh bcb` puts the vendor
+v40, vendor 4.4.167), `recovery` = `recovery-taq102-v89-desk.img` (mainline
+7.3.0-rc2 v86 kernel, v87 ramdisk plus the desk, v88 logo resource), BCB = `boot-recovery`, so every
+power-on runs the desk. `tools/loader-watch.sh bcb` puts the vendor
 appliance back. The journal is `docs/journal.md`.
 
 ## Security
@@ -374,20 +374,6 @@ MacBook as master. Design and evidence:
 `docs/journal.md`, the reviewer review in
 `docs/evidence/`.
 
-- [~] Deploy the desk persistently as the appliance application.
-  Implemented 2026-09-22: mainline-only Buildroot package, shared source
-  manifest, input-name launcher, desk-first boot and five-exit cube fallback.
-  `tools/make-desk-ramdisk.sh` packages today's hand-assembled image. The v89
-  image is `/Volumes/Datos4TB2/denver-taq102/gate3-build/recovery-taq102-v89-desk.img`
-  (SHA256 `857f3368c4bb56894920a842f544257f9d44aff573fd0b461b470afbb00bb69f`).
-  All 41 host tests and nine boot/launcher scenarios pass; standalone ARM and
-  Buildroot package builds passed. The v88 kernel/second and unrelated ramdisk
-  contents are preserved. No tablet test or flash was possible.
-  Owner: run `tools/loader-watch.sh recovery <img>` on the Mac and enter loader
-  mode from the running image with `devmem 0x100a0038 32 0x5242C301; reboot`.
-  Verify the desk after cold boot; kill it five times, waiting for each restart,
-  and verify glcube/control centre plus SSH after the fifth. Cold boot again
-  must restore the desk. Keep this open until those hardware checks pass.
 - [ ] Check the unterminated mainline defconfig patch-directory assignment.
   `br2-external/configs/taq102_mainline_defconfig` contains
   `BR2_GLOBAL_PATCH_DIR="` with no closing quote (already present at HEAD).

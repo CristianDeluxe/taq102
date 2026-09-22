@@ -6,6 +6,23 @@
 
 ### 2026-09
 
+- [x] 2026-09-22 - **Desk deployed as the appliance application (v89).**
+  `br2-external/package/dmxdesk` (built from `src/dmxdesk.sources`, which
+  `tools/build-dmxdesk.sh` reads too), launcher `/usr/bin/taq102-desk`
+  resolving `silead_ts` and `rk805 pwrkey` by name, `taq102-app` preferring
+  the desk with glcube after five exits, `tools/make-desk-ramdisk.sh` for the
+  hand-assembled ramdisk. v89 = v86 kernel + v88 second + v87 ramdisk + desk,
+  `gate3-build/recovery-taq102-v89-desk.img`, sha256 `857f3368...`.
+  Flashed 2026-09-22 20:48 by `tools/loader-watch.sh recovery` after
+  `/usr/sbin/reboot-loader` over the USB console (the `devmem 0x100a0038`
+  poke trapped on this image, which has the `reboot-mode` node). Acceptance
+  over the console: boot -> `starting /usr/bin/taq102-desk (attempt 1)`; five
+  kills -> `exited 5 times; falling back to glcube for this boot`, glcube
+  running; reboot -> desk again, `link ready (linked)`, `148 of 144 controls
+  enabled`, TCP `192.168.1.77 -> 192.168.1.63:9998 ESTABLISHED` against QLC+
+  5.2.2 with the ed1dac1 Vibra show. `/data/desk.conf` was pointed at the
+  Mac's Ethernet address `.63` by hand (the saved `.76` had become the
+  tablet's own lease). Commits `86b7857`, `848ccf9` and the closing one.
 - [x] 2026-09-13 - **QLC+ finder:** extend the existing subnet sweep to a small
   ordered port set and distinguish completed searches from failed sweeps.
   - The subnet enumeration, 256-host cap, non-blocking batches, HTTP `GET /`

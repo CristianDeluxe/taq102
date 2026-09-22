@@ -1742,3 +1742,16 @@ The archive checksum file was appended to, and existing images were untouched.
 This proves assembly, not booting. The tablet was unreachable and was not
 contacted: flashing, cold-boot acceptance and the five-kill fallback check
 remain mine to do. The working tree is left uncommitted for review.
+
+**Same day, later.** Flashed and accepted. The tablet turned up on the Mac
+mini's USB as the serial gadget after the owner's power cycle; `devmem
+0x100a0038 32 0x5242C301` trapped on this image (it carries the `reboot-mode`
+node, so `/usr/sbin/reboot-loader` is the right call there, and it was), the
+watcher caught the loader at 20:48:15, wrote v89, read it back equal and set
+the BCB. First boot: `starting /usr/bin/taq102-desk (attempt 1)`. Five kills
+over the console: `exited 5 times; falling back to glcube for this boot`, and
+the cube ran. Reboot: the desk again, `link ready (linked)`, the socket
+`192.168.1.77 -> 192.168.1.63:9998 ESTABLISHED`. One thing I did by hand:
+`/data/desk.conf` still named `192.168.1.76`, which DHCP had meanwhile handed
+to the tablet itself; the Mac's Ethernet is `.63` now and that is what the
+file says.
