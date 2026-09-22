@@ -53,8 +53,15 @@ int main(void) {
     assert(flash && flash->tile == TILE_HOLD && flash->h == 104 && flash->w == 128);
     const struct desk_placement *fog = find(&l, control_named(&map, "HUMO YA"), 0);
     assert(fog && fog->tile == TILE_FOG && fog->w == 160);
-    const struct desk_placement *beam = find(&l, control_named(&map, "COLOR BEAM"), 0);
-    assert(beam && beam->tile == TILE_CUE && beam->y == flash->y);
+    // color-beam vanished from LIVE. The new colores-completos hook on
+    // COLOR retains the colour-toggle role, as a cue beside the other hooks.
+    int colours = -1;
+    for (int i = 0; i < map.count; i++)
+        if (strcmp(map.control[i].key, "colores-completos") == 0)
+            colours = i;
+    assert(colours >= 0);
+    const struct desk_placement *hook = find(&l, colours, map.control[colours].page);
+    assert(hook && hook->tile == TILE_CUE && hook->w == 200 && hook->h == 64);
     const struct desk_placement *mini = find(&l, control_named(&map, "Rig Rojo"), 0);
     assert(mini && mini->tile == TILE_MINI && mini->w == 52);
     const struct desk_placement *tempo = find(&l, map.count + 3, 0);

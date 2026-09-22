@@ -167,9 +167,14 @@ int main(void) {
             desk_pager_bank_caption(&model, font, page, bank, r.w - 64, caption);
             printf("pager %s: %d %s; x=%d y=%d w=%d h=%d\n", layout.title[page],
                    bank + 1, caption, r.x, r.y, r.w, r.h);
-            if (strcmp(layout.title[page], "COLOR") == 0)
-                assert(strcmp(caption, bank == 0 ? "AUTO \xc2\xb7 ELEGIR 1/2" :
-                                                   "ELEGIR 2/2 \xc2\xb7 GOLPES") == 0);
+            fflush(stdout);
+            if (strcmp(layout.title[page], "COLOR") == 0) {
+                // ed1dac1 map: five AUTO hooks and twenty ELEGIR picks push
+                // GOLPES onto its own third bank; the picks still span two.
+                const char *expected[] = { "AUTO \xc2\xb7 ELEGIR 1/2", "ELEGIR 2/2", "GOLPES" };
+                assert(layout.banks[page] == 3);
+                assert(strcmp(caption, expected[bank]) == 0);
+            }
             if (strcmp(layout.title[page], "GOBOS") == 0)
                 assert(strcmp(caption, bank == 0 ? "AUTO \xc2\xb7 ELEGIR 1/2" : "ELEGIR 2/2") == 0);
         }

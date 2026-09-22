@@ -34,6 +34,14 @@ int main(void) {
     assert(vc_parse(vc, n, &doc) == 0);
     struct show_map map;
     assert(showmap_load("show/vibra.desk.json", &map) == 0);
+    int auto_function = -1, charla_function = -1;
+    for (int i = 0; i < map.count; i++) {
+        if (strcmp(map.control[i].key, "auto") == 0)
+            auto_function = map.control[i].function_id;
+        if (strcmp(map.control[i].key, "charla") == 0)
+            charla_function = map.control[i].function_id;
+    }
+    assert(auto_function >= 0 && charla_function >= 0);
     struct desk_model m;
     showmap_build(&m, &map, &doc);
     struct desk_layout layout;
@@ -47,7 +55,7 @@ int main(void) {
     assert(desk_take_damage(&m, &x, &y, &w, &h) == 0);
 
     // A push lights AUTO: its rectangle on LIVE, nothing else.
-    desk_apply_function(&m, 720, 1);
+    desk_apply_function(&m, auto_function, 1);
     assert(desk_take_damage(&m, &x, &y, &w, &h) == 1);
     int auto_ix = -1;
     for (int i = 0; i < m.count; i++)
@@ -66,8 +74,8 @@ int main(void) {
     assert(desk_take_damage(&m, &x, &y, &w, &h) == 0);
 
     // Two changes: the union.
-    desk_apply_function(&m, 720, 0);
-    desk_apply_function(&m, 723, 1);
+    desk_apply_function(&m, auto_function, 0);
+    desk_apply_function(&m, charla_function, 1);
     assert(desk_take_damage(&m, &x, &y, &w, &h) == 1);
     assert(x == ap->x && y == ap->y && w > ap->w && h == ap->h);
 

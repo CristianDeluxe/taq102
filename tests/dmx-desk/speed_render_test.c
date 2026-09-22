@@ -49,6 +49,16 @@ int main(void) {
     char *vc_text = slurp("tests/dmx-desk/fixtures/vc-vibra.json", &vc_len);
     struct show_map map;
     assert(showmap_parse(map_text, map_len, &map) == 0);
+    int tempo = -1, movement = -1;
+    for (int i = 0; i < map.dials; i++) {
+        if (strcmp(map.dial[i].key, "tempo-show") == 0)
+            tempo = i;
+        if (strcmp(map.dial[i].key, "vel-movimiento") == 0)
+            movement = i;
+    }
+    assert(tempo == 0 && movement == 1);
+    const int tempo_widget = map.dial[tempo].widget_id;
+    const int movement_widget = map.dial[movement].widget_id;
     struct vc_doc console;
     assert(vc_parse(vc_text, vc_len, &console) == 0);
     struct desk_fonts fonts;
@@ -64,7 +74,8 @@ int main(void) {
     save(&canvas, "speed-unknown.ppm");
 
     desk_speed_validate(&s, &console);
-    desk_speed_apply(&s, 274, 400, 7, 1000);          // "State updated" on the second
+    assert(s.dial[0].known && s.dial[0].widget_id == tempo_widget);
+    desk_speed_apply(&s, movement_widget, 400, 7, 1000);          // "State updated" on the second
     desk_speed_touch_down(&s, SPEED_CARD_X + SPEED_CELL_X(1) + 10, SPEED_CARD_Y(0) + SPEED_CELL_Y(0) + 10, 1000, 1000);
     desk_speed_touch_up(&s, SPEED_CARD_X + SPEED_CELL_X(1) + 10, SPEED_CARD_Y(0) + SPEED_CELL_Y(0) + 10, 1000);
     assert(s.dial[0].pending);

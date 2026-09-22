@@ -44,6 +44,16 @@ int main(void) {
     char *vc_text = slurp("tests/dmx-desk/fixtures/vc-vibra.json", &vc_len);
     struct show_map map;
     assert(showmap_parse(map_text, map_len, &map) == 0 && map.dials == 2);
+    int tempo = -1, movement = -1;
+    for (int i = 0; i < map.dials; i++) {
+        if (strcmp(map.dial[i].key, "tempo-show") == 0)
+            tempo = i;
+        if (strcmp(map.dial[i].key, "vel-movimiento") == 0)
+            movement = i;
+    }
+    assert(tempo == 0 && movement == 1);
+    const int tempo_widget = map.dial[tempo].widget_id;
+    const int movement_widget = map.dial[movement].widget_id;
     struct vc_doc console;
     assert(vc_parse(vc_text, vc_len, &console) == 0);
 
@@ -57,44 +67,44 @@ int main(void) {
 
     desk_speed_validate(&s, &console);
     assert(s.dial[0].known && s.dial[0].base_ms == 500 && s.dial[0].factor == 6);
-    assert(s.dial[1].known && s.dial[1].widget_id == 274 && s.dial[1].max_ms == 2000);
+    assert(s.dial[1].known && s.dial[1].widget_id == movement_widget && s.dial[1].max_ms == 2000);
     assert(desk_speed_bpm(&s.dial[0]) == 120);
 
     // +1 BPM: 121 -> 496 ms, one frame, pending until the echo.
     struct speed_action a = tap(&s, tx(1), ty(0, 0), now);
-    assert(a.kind == SPEED_ACT_TIME && a.widget_id == 34 && a.ms == 496);
+    assert(a.kind == SPEED_ACT_TIME && a.widget_id == tempo_widget && a.ms == 496);
     assert(s.dial[0].pending && !desk_speed_target_enabled(&s, 0, SPEED_T_BPM_UP));
     assert(tap(&s, tx(1), ty(0, 0), now).kind == SPEED_ACT_NONE);
-    desk_speed_apply(&s, 34, 496, 6, now);
+    desk_speed_apply(&s, tempo_widget, 496, 6, now);
     assert(!s.dial[0].pending && s.dial[0].base_ms == 496 && s.dial[0].note[0] == '\0');
     assert(desk_speed_bpm(&s.dial[0]) == 121);
     // An unexpected push is adopted and noted, never called the Mac's.
-    desk_speed_apply(&s, 34, 400, 6, now);
+    desk_speed_apply(&s, tempo_widget, 400, 6, now);
     assert(s.dial[0].base_ms == 400 && strcmp(s.dial[0].note, "State updated") == 0);
     desk_speed_tick(&s, now + SPEED_NOTE_MS + 1);
     assert(s.dial[0].note[0] == '\0');
 
     // x2: factor 7; x1/2 from 2 is dead; x1 is dead at 1 already.
     a = tap(&s, tx(1), ty(0, 1), now);
-    assert(a.kind == SPEED_ACT_FACTOR && a.widget_id == 34 && a.factor == 7);
-    desk_speed_apply(&s, 34, 400, 7, now);
+    assert(a.kind == SPEED_ACT_FACTOR && a.widget_id == tempo_widget && a.factor == 7);
+    desk_speed_apply(&s, tempo_widget, 400, 7, now);
     assert(!s.dial[0].pending);
-    desk_speed_apply(&s, 34, 400, 2, now);
+    desk_speed_apply(&s, tempo_widget, 400, 2, now);
     assert(!desk_speed_target_enabled(&s, 0, SPEED_T_HALF) && desk_speed_target_enabled(&s, 0, SPEED_T_DOUBLE));
     assert(desk_speed_target_enabled(&s, 0, SPEED_T_FACTOR_ONE));
     a = tap(&s, tx(2), ty(0, 0), now);
     assert(a.kind == SPEED_ACT_FACTOR && a.factor == 6);
-    desk_speed_apply(&s, 34, 400, 6, now);
+    desk_speed_apply(&s, tempo_widget, 400, 6, now);
     // A dial factor of None multiplies by zero in the engine: steps off, x1 is the way back.
-    desk_speed_apply(&s, 34, 400, 0, now);
+    desk_speed_apply(&s, tempo_widget, 400, 0, now);
     assert(!desk_speed_target_enabled(&s, 0, SPEED_T_HALF) && !desk_speed_target_enabled(&s, 0, SPEED_T_DOUBLE));
     assert(desk_speed_target_enabled(&s, 0, SPEED_T_FACTOR_ONE));
-    desk_speed_apply(&s, 34, 400, 6, now);
+    desk_speed_apply(&s, tempo_widget, 400, 6, now);
     // No base time: factor steps wait for one; tap still sets a time.
-    desk_speed_apply(&s, 34, 0, 6, now);
+    desk_speed_apply(&s, tempo_widget, 0, 6, now);
     assert(!desk_speed_target_enabled(&s, 0, SPEED_T_FACTOR_ONE) && !desk_speed_target_enabled(&s, 0, SPEED_T_BPM_UP));
     assert(desk_speed_target_enabled(&s, 0, SPEED_T_TAP));
-    desk_speed_apply(&s, 34, 500, 6, now);
+    desk_speed_apply(&s, tempo_widget, 500, 6, now);
 
     // Tap on dial 0: the first seeds, 500 ms later commits 500, which is the
     // master's value already, so nothing is sent; 400 ms commits 400 on the
@@ -108,9 +118,9 @@ int main(void) {
     desk_speed_reset_taps(&s);
     assert(tap(&s, tapx, tapy0, t + 1000).kind == SPEED_ACT_NONE);
     a = desk_speed_touch_down(&s, tapx, tapy0, t + 1400, t + 1400);
-    assert(a.kind == SPEED_ACT_TIME && a.widget_id == 34 && a.ms == 400 && s.dial[0].pending);
+    assert(a.kind == SPEED_ACT_TIME && a.widget_id == tempo_widget && a.ms == 400 && s.dial[0].pending);
     assert(desk_speed_touch_up(&s, tapx, tapy0, t + 1400).kind == SPEED_ACT_NONE);
-    desk_speed_apply(&s, 34, 400, 6, t + 1450);
+    desk_speed_apply(&s, tempo_widget, 400, 6, t + 1450);
     assert(!s.dial[0].pending && s.dial[0].note[0] == '\0');
 
     // Tap both: up to two frames from one tap, none for a dial already there,
@@ -122,23 +132,23 @@ int main(void) {
     desk_speed_touch_up(&s, bx, by, t);
     a = desk_speed_touch_down(&s, bx, by, t + 450, t + 450);
     desk_speed_touch_up(&s, bx, by, t + 450);
-    assert(a.kind == SPEED_ACT_TIME_BOTH && a.widget_id == 34 && a.ms == 450 && a.widget_id2 == 274 && a.ms2 == 450);
+    assert(a.kind == SPEED_ACT_TIME_BOTH && a.widget_id == tempo_widget && a.ms == 450 && a.widget_id2 == movement_widget && a.ms2 == 450);
     assert(s.dial[0].pending && s.dial[1].pending && !desk_speed_target_enabled(&s, 0, SPEED_T_BOTH));
     assert(tap(&s, bx, by, t + 900).kind == SPEED_ACT_NONE);
-    desk_speed_apply(&s, 34, 450, 6, t + 500);
-    desk_speed_apply(&s, 274, 450, 6, t + 500);
+    desk_speed_apply(&s, tempo_widget, 450, 6, t + 500);
+    desk_speed_apply(&s, movement_widget, 450, 6, t + 500);
     assert(desk_speed_target_enabled(&s, 0, SPEED_T_BOTH));
     desk_speed_reset_taps(&s);
-    desk_speed_apply(&s, 274, 500, 6, t + 600);
+    desk_speed_apply(&s, movement_widget, 500, 6, t + 600);
     tap(&s, bx, by, t + 1000);
     a = tap(&s, bx, by, t + 1450);
-    assert(a.kind == SPEED_ACT_TIME_BOTH && a.widget_id == 274 && a.ms == 450 && a.widget_id2 == -1);
+    assert(a.kind == SPEED_ACT_TIME_BOTH && a.widget_id == movement_widget && a.ms == 450 && a.widget_id2 == -1);
     assert(!s.dial[0].pending && s.dial[1].pending);
-    desk_speed_apply(&s, 274, 450, 6, t + 1500);
+    desk_speed_apply(&s, movement_widget, 450, 6, t + 1500);
 
     // A tap drained late keeps its interval but its deadline runs from now.
     desk_speed_reset_taps(&s);
-    desk_speed_apply(&s, 34, 500, 6, t);
+    desk_speed_apply(&s, tempo_widget, 500, 6, t);
     desk_speed_touch_down(&s, tapx, tapy0, t + 5000, t + 3000);
     desk_speed_touch_up(&s, tapx, tapy0, t + 5000);
     a = desk_speed_touch_down(&s, tapx, tapy0, t + 5400, t + 3400);
@@ -146,14 +156,14 @@ int main(void) {
     assert(a.kind == SPEED_ACT_TIME && a.ms == 400 && s.dial[0].pending_since == t + 5400);
     desk_speed_tick(&s, t + 5400 + SPEED_PENDING_MS - 1);
     assert(s.dial[0].pending);
-    desk_speed_apply(&s, 34, 400, 6, t + 5450);
+    desk_speed_apply(&s, tempo_widget, 400, 6, t + 5450);
 
     // Bounds: at 2000 ms (30 BPM) -1 is dead; at 200 ms (300 BPM) +1 is dead.
-    desk_speed_apply(&s, 34, 2000, 6, t);
+    desk_speed_apply(&s, tempo_widget, 2000, 6, t);
     assert(!desk_speed_target_enabled(&s, 0, SPEED_T_BPM_DOWN) && desk_speed_target_enabled(&s, 0, SPEED_T_BPM_UP));
-    desk_speed_apply(&s, 34, 200, 6, t);
+    desk_speed_apply(&s, tempo_widget, 200, 6, t);
     assert(desk_speed_target_enabled(&s, 0, SPEED_T_BPM_DOWN) && !desk_speed_target_enabled(&s, 0, SPEED_T_BPM_UP));
-    desk_speed_apply(&s, 34, 500, 6, t);
+    desk_speed_apply(&s, tempo_widget, 500, 6, t);
 
     // A change the master never echoes: the dial goes unconfirmed, the desk
     // asks for a snapshot, and the snapshot brings it back.
@@ -173,7 +183,7 @@ int main(void) {
     assert(!s.dial[0].known && !s.dial[1].known && strcmp(s.dial[1].reason, "no link") == 0);
     desk_speed_set_link(&s, 1, t);
     assert(!s.dial[0].known);
-    desk_speed_apply(&s, 34, 500, 6, t);
+    desk_speed_apply(&s, tempo_widget, 500, 6, t);
     assert(s.dial[0].known && !s.dial[1].known);
 
     // A dial the console does not have is disabled with its reason.

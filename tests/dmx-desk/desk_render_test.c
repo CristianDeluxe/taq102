@@ -65,6 +65,14 @@ int main(void) {
     assert(showmap_load("show/vibra.desk.json", &map) == 0);
     assert(strcmp(map.key, "vibra") == 0);
 
+    int auto_function = -1, charla_function = -1;
+    for (int i = 0; i < map.count; i++) {
+        if (strcmp(map.control[i].key, "auto") == 0)
+            auto_function = map.control[i].function_id;
+        if (strcmp(map.control[i].key, "charla") == 0)
+            charla_function = map.control[i].function_id;
+    }
+    assert(auto_function >= 0 && charla_function >= 0);
     struct desk_model model;
     int enabled = showmap_build(&model, &map, &console);
     assert(enabled > 100);
@@ -111,9 +119,9 @@ int main(void) {
     assert(desk_touch_up(&model, 0, 5, 5).kind == DESK_ACT_NONE);
 
     // The show's word, not the finger's: only this lights a tile.
-    desk_apply_function(&model, 720, 1);
+    desk_apply_function(&model, auto_function, 1);
     assert(by_label(&model, "AUTO")->state == DESK_ON);
-    desk_apply_function(&model, 723, 1);
+    desk_apply_function(&model, charla_function, 1);
     assert(by_label(&model, "CHARLA")->state == DESK_ON);
 
     // Losing the link takes every claim about the rig with it.
@@ -121,7 +129,7 @@ int main(void) {
     assert(by_label(&model, "AUTO")->state == DESK_UNKNOWN);
 
     desk_set_link(&model, DESK_LINK_READY);
-    desk_apply_function(&model, 720, 1);
+    desk_apply_function(&model, auto_function, 1);
     desk_apply_master(&model, 200);
 
     struct desk_fonts fonts;

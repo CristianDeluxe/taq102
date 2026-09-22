@@ -68,22 +68,23 @@ int main(void) {
     assert(showmap_parse(map_text, map_len, &map) == 0);
     assert(map.schema == 2 && strcmp(map.qlc_version, "5.2.2") == 0);
     assert(strcmp(map.key, "vibra") == 0);
-    assert(map.stop_all_widget == 21 && map.stop_all_fade_ms == 1000);
-    assert(map.grand_master_widget == 246);
+    // show/vibra.desk.json stopAll and grandMaster, regenerated at ed1dac1.
+    assert(map.stop_all_widget == 20 && map.stop_all_fade_ms == 1000);
+    assert(map.grand_master_widget == 258);
     assert(map.pages == 7 && strcmp(map.page[0].key, "live") == 0);
     const struct map_section *state = &map.page[0].section[0];
     assert(strcmp(state->key, "state") == 0 && state->count == 7 && state->solo_id == 3);
     assert(state->first == 0);
     const struct map_control *auto_ctl = &map.control[state->first];
     assert(strcmp(auto_ctl->caption, "AUTO") == 0 && auto_ctl->widget_id == 4 &&
-           auto_ctl->function_id == 720 && auto_ctl->role == MAP_ROLE_STATE &&
+           auto_ctl->function_id == 886 && auto_ctl->role == MAP_ROLE_STATE &&
            auto_ctl->solo_id == 3 && auto_ctl->page == 0 && auto_ctl->section == 0);
     assert(strcmp(auto_ctl->detail, "el show se lleva solo") == 0);
     const struct map_section *accents = NULL;
     for (int i = 0; i < map.page[0].sections; i++)
         if (strcmp(map.page[0].section[i].key, "accents") == 0)
             accents = &map.page[0].section[i];
-    assert(accents && accents->count == 8);
+    assert(accents && accents->count == 7);
     assert(accents == &map.page[0].section[map.page[0].sections - 1]);
     // The hits are bursts now: the master runs each for its own length and
     // ends it itself, so the tablet may fire them.
@@ -106,15 +107,17 @@ int main(void) {
         }
     }
     assert(red_found);
-    assert(map.count == 132);
-    // The two dials, as the workspace has them.
+    // The generated ed1dac1 map has 144 controls, each carrying an icon.
+    assert(strstr(map_text, "\"icon\":") && map.count == 144);
+    // The two dials and first member of each, from the ed1dac1 map.
+    // Check exact parser output here; behavioural tests resolve dial keys.
     assert(map.dials == 2);
-    assert(strcmp(map.dial[0].key, "tempo-show") == 0 && map.dial[0].widget_id == 34);
-    assert(map.dial[0].time_ms == 500 && map.dial[0].members == 5);
-    assert(map.dial[0].member[0].function_id == 706 && map.dial[0].member[0].duration == 9);
+    assert(strcmp(map.dial[0].key, "tempo-show") == 0 && map.dial[0].widget_id == 33);
+    assert(map.dial[0].time_ms == 500 && map.dial[0].members == 19);
+    assert(map.dial[0].member[0].function_id == 818 && map.dial[0].member[0].duration == 9);
     assert(map.dial[0].member[0].fade_in == 0);
-    assert(strcmp(map.dial[1].key, "vel-movimiento") == 0 && map.dial[1].widget_id == 274);
-    assert(map.dial[1].members == 18 && map.dial[1].member[0].duration == 10);
+    assert(strcmp(map.dial[1].key, "vel-movimiento") == 0 && map.dial[1].widget_id == 286);
+    assert(map.dial[1].members == 22 && map.dial[1].member[0].duration == 10);
 
     // Refusals: a widget listed twice, a section naming a missing control, a
     // swatch that is not a colour, a wrong schema.
@@ -138,12 +141,12 @@ int main(void) {
     assert(vc_parse(vc_text, vc_len, &console) == 0);
     struct desk_model model;
     int enabled = showmap_build(&model, &map, &console);
-    assert(model.count == 136);
+    assert(model.count == map.count + 4);
     struct desk_layout layout;
     assert(desk_layout_resolve(&map, map.count, map.count + 1, map.count + 2, map.count + 3, &layout) == 0);
     desk_set_layout(&model, &layout);
     const struct desk_control *a = by_label(&model, "AUTO");
-    assert(a && a->enabled && a->widget_id == 4 && a->function_id == 720);
+    assert(a && a->enabled && a->widget_id == auto_ctl->widget_id && a->function_id == auto_ctl->function_id);
     int auto_ix = (int)(a - model.control);
     const struct desk_placement *ap = desk_placement_of(&model, auto_ix);
     assert(ap && ap->w == 111 && ap->x == DESK_CONTENT_X && ap->y == 76);
@@ -157,7 +160,7 @@ int main(void) {
     const struct desk_placement *rmini = desk_placement_of(&model, (int)(rojo - model.control));
     assert(rmini && rmini->tile == TILE_MINI);    // on SHOW as a rig colour
     const struct desk_control *stop = by_kind(&model, DESK_STOP_ALL);
-    assert(stop && stop->enabled && stop->widget_id == 21);
+    assert(stop && stop->enabled && stop->widget_id == map.stop_all_widget);
     const struct desk_placement *sp = desk_placement_of(&model, (int)(stop - model.control));
     assert(sp && sp->y == DESK_PANIC_Y);
     assert(strcmp(stop->detail, "1.0 s fade") == 0);
@@ -184,7 +187,7 @@ int main(void) {
     desk_set_link(&model, DESK_LINK_READY);
     assert(desk_touch_down(&model, 0, sx, sy, NULL).kind == DESK_ACT_NONE);
     struct desk_action panic = desk_touch_up(&model, 0, sx, sy);
-    assert(panic.kind == DESK_ACT_STOP_ALL && panic.widget_id == 21);
+    assert(panic.kind == DESK_ACT_STOP_ALL && panic.widget_id == map.stop_all_widget);
     // Nothing lives at the rail or the bar.
     assert(desk_touch_down(&model, 0, 0, 0, NULL).kind == DESK_ACT_NONE);
     // On the COLOR page the compact AUTO fires the same widget on every bank,
@@ -199,7 +202,7 @@ int main(void) {
     assert(cap && cap->tile == TILE_STATE);
     assert(desk_touch_down(&model, 0, cap->x + 5, cap->y + 5, NULL).kind == DESK_ACT_NONE);
     struct desk_action fired = desk_touch_up(&model, 0, cap->x + 5, cap->y + 5);
-    assert(fired.kind == DESK_ACT_TOGGLE && fired.widget_id == 4);
+    assert(fired.kind == DESK_ACT_TOGGLE && fired.widget_id == auto_ctl->widget_id);
     desk_set_view(&model, 1, rojo_bank);
     const struct desk_placement *rp = desk_placement_of(&model, (int)(rojo - model.control));
     assert(rp && rp->tile == TILE_SWATCH);
@@ -209,14 +212,17 @@ int main(void) {
     assert(desk_touch_up(&model, 0, rp->x + 5, rp->y + 5).kind == DESK_ACT_NONE);
 
     // A widget that drives another function than the map says is dead.
-    char *other = edited(vc_text, "\"functionId\":720", "\"functionId\":721");
     struct vc_doc changed;
-    assert(vc_parse(other, strlen(other), &changed) == 0);
+    assert(vc_parse(vc_text, vc_len, &changed) == 0);
+    // The new snapshot also lists function metadata before its widgets.
+    // Mutate the intended widget, not the first textual functionId match.
+    for (int i = 0; i < changed.count; i++)
+        if (changed.widget[i].id == auto_ctl->widget_id)
+            changed.widget[i].function_id = auto_ctl->function_id + 1;
     showmap_build(&model, &map, &changed);
     a = by_label(&model, "AUTO");
     assert(a && !a->enabled && strcmp(a->reason, "drives another cue") == 0);
     vc_free(&changed);
-    free(other);
 
     // Another QLC+ line is another show: everything off, one reason.
     char *newer = edited(vc_text, "\"version\":\"5.2.2\"", "\"version\":\"5.3.0\"");
