@@ -4,7 +4,7 @@
 # because the local Buildroot packages build from src/ alone.
 #
 # source: https://github.com/spectalive/dmxdesk
-# tag:    v0.1.1 (commit 2c7e64cbc02e9e043c98d637ef9a5390c0aba7e9)
+# tag:    v0.1.1 (commit ffebf19e93a835d4828439561707bfabfcbe768c)
 #
 # To refresh, check out the new tag and copy each file below from its src/.
 action_worker.c

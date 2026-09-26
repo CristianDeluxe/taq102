@@ -6,6 +6,16 @@
 
 ### 2026-09
 
+- [x] 2026-09-26 - **Author identity rewritten in this repository and in
+  spectalive/dmxdesk.** Owner's word the same day: no more Favish work, so
+  no `cristian@favish.com` on GitHub. `git filter-repo --mailmap` mapped it to
+  `me@cristiandeluxe.dev` on 202 commits here and 92 in dmxdesk plus both of
+  dmxdesk's tag annotations. Trees are unchanged (main tree 3f30a693... here,
+  549589f8... in dmxdesk). main here 5ba96ca -> e66d40f; dmxdesk main and
+  v0.1.1 2c7e64c -> ffebf19, v0.1.0 -> 3bef6b4. So the v90 tablet's `VERSION`
+  names 2c7e64c, which is ffebf19 now. The v0.1.1 tarball embeds the commit id,
+  so its pinned hash moved afd40f12... -> be44aec2.... Backup bundles and
+  commit maps are in `~/Backups/*-favish*` on the mini.
 - [x] 2026-09-26 - **v90 flashed: the desk carries the map of the show on
   `main`.** v90 = v89's recipe with dmxdesk v0.1.1 (`tools/build-dmxdesk.sh`,
   then `make-desk-ramdisk.sh` on `rootfs-v87-sleep-logo.cpio.gz` and
