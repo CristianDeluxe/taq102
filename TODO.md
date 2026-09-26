@@ -22,6 +22,19 @@ appliance back. The journal is `docs/journal.md`.
 ## Security
 
 ## Bugs
+- [ ] **The saved MAC is not applied on v90, so the tablet changes IP.**
+  Seen 2026-09-26 on the mini: mid-test the tablet re-associated as
+  `5e:92:f4:93:0f:09` (random), took a new lease, and dropped off .52; kmsg
+  had no "MAC ... from /data/wifi.mac" line for this boot. By hand over
+  serial it worked: `ip link set wlan0 down; ip link set wlan0 address
+  $(cat /data/wifi.mac); ip link set wlan0 up`, then wpa_supplicant and
+  udhcpc, and it came back as `00:e0:4c:06:ff:af` on .57. In
+  `taq102-wifi` `load()`, the address is set without taking the link down
+  and the failure is swallowed (`2>/dev/null`, no else branch), and `load()`
+  returns before that block whenever wlan0 already exists. Next: set the
+  address with the link down, log a failure to kmsg, and apply it on the
+  early-return path too; then check kmsg after a cold boot.
+
 - [ ] **The MacBook's clone predates the 2026-09-26 identity rewrite.** It
   was clean at 429a9fe (in the old history, so nothing unique), and its fetch
   succeeded, but `git reset` and even `ls` over SSH hung (load ~10). Next, on
