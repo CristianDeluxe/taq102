@@ -1,21 +1,25 @@
 #!/bin/sh
 # Cross-build the desk with the existing OrbStack Buildroot toolchain.
-# src/dmxdesk.sources is also consumed by the Buildroot dmxdesk package.
-# Both builds compile the pinned vendored cJSON into the executable, keeping
-# today's hand-assembled ramdisks independent of a new shared library.
+# The source is spectalive/dmxdesk at the tag the Buildroot dmxdesk package
+# pins (tools/get-dmxdesk.sh), or DMXDESK_DIR for a local checkout; its
+# src/dmxdesk.sources is the file list both builds compile. Both compile the
+# pinned cJSON into the executable, keeping today's hand-assembled ramdisks
+# independent of a new shared library.
 set -eu
 here=$(cd "$(dirname "$0")/.." && pwd)
 machine=${ORB_MACHINE:-taq102}
 out=${DMXDESK_OUT:-$here/output}
-[ -f "$here/tools/vendor/cjson/cJSON.c" ] || "$here/tools/get-cjson.sh"
+dmxdesk=${DMXDESK_DIR:-$("$here/tools/get-dmxdesk.sh")}
+dmxdesk=$(cd "$dmxdesk" && pwd)
+[ -f "$dmxdesk/tools/vendor/cjson/cJSON.c" ] || "$dmxdesk/tools/get-cjson.sh"
 mkdir -p "$out"
 out=$(cd "$out" && pwd)
-orb -m "$machine" -u root bash -s -- "$here" "$out" <<'BUILD'
+orb -m "$machine" -u root bash -s -- "$dmxdesk" "$out" <<'BUILD'
 set -eu
-here=$1
+dmxdesk=$1
 out=$2
-SRC=$here/src
-VENDOR=$here/tools/vendor/cjson
+SRC=$dmxdesk/src
+VENDOR=$dmxdesk/tools/vendor/cjson
 BUILD=$out/build
 export TMPDIR=$out/tmp
 SYSROOT=/work/output/host/arm-buildroot-linux-gnueabihf/sysroot

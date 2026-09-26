@@ -6,6 +6,22 @@
 
 ### 2026-09
 
+- [x] 2026-09-26 - **The desk split out into spectalive/dmxdesk.** Its 191
+  files in `src/`, `tests/dmx-desk/` (less the two appliance
+  tests, now under `tests/control-centre/`), `show/`, `docs/design/`, the
+  Inter fonts and six tools moved with their history (94 commits,
+  `git filter-repo`), tagged `v0.1.0`. The 32 files the desk shares with
+  glcube, rescue-screen and the control-centre tests stay here as copies,
+  listed with the tag in `src/dmxdesk-shared.txt`. The Buildroot package
+  downloads the tag and cJSON 1.7.19 with hashes; `tools/get-dmxdesk.sh`
+  checks the same tag out for `build-dmxdesk.sh`, `run-dmxdesk.sh` and
+  `make-desk-ramdisk.sh`. Evidence: dmxdesk 39/39 host tests from a fresh
+  clone; here the control-centre suite 19/19 and the boot test 9/9;
+  `make O=/work/output-mainline dmxdesk-build` downloads, verifies and
+  compiles v0.1.0; `tools/build-dmxdesk.sh` output has a `.text` section
+  identical to the v89 binary's; glcube, rescue-screen, the diag tools,
+  particles and reboot-loader cross-compile from the trimmed `src/`.
+
 - [x] 2026-09-22 - **Desk deployed as the appliance application (v89).**
   `br2-external/package/dmxdesk` (built from `src/dmxdesk.sources`, which
   `tools/build-dmxdesk.sh` reads too), launcher `/usr/bin/taq102-desk`

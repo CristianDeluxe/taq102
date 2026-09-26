@@ -15,6 +15,8 @@ out=${2:?usage: make-desk-ramdisk.sh <base.cpio.gz> <out.cpio.gz>}
 [ -f "$base" ] || { echo "base ramdisk is missing: $base" >&2; exit 1; }
 [ ! -e "$out" ] && [ ! -L "$out" ] || { echo "refusing to overwrite $out" >&2; exit 1; }
 [ -f "$here/output/dmxdesk" ] || "$here/tools/build-dmxdesk.sh"
+# The map and its provenance come from the same dmxdesk checkout as the build.
+dmxdesk=${DMXDESK_DIR:-$("$here/tools/get-dmxdesk.sh")}
 mkdir -p "$here/output"
 work=$(mktemp -d "$here/output/desk-ramdisk.XXXXXX")
 trap 'rm -rf "$work"' EXIT
@@ -23,8 +25,8 @@ mkdir -p "$work/payload/usr/bin" "$work/payload/usr/share/dmxdesk"
 cp "$here/output/dmxdesk" "$work/payload/usr/bin/dmxdesk"
 cp "$here/br2-external/package/dmxdesk/taq102-desk" "$work/payload/usr/bin/taq102-desk"
 cp "$here/br2-external/board/taq102/rootfs-overlay/usr/bin/taq102-app" "$work/payload/usr/bin/taq102-app"
-cp "$here/show/vibra.desk.json" "$work/payload/usr/share/dmxdesk/vibra.desk.json"
-python3 "$here/tools/desk-map-version.py" "$here" > "$work/payload/usr/share/dmxdesk/VERSION"
+cp "$dmxdesk/show/vibra.desk.json" "$work/payload/usr/share/dmxdesk/vibra.desk.json"
+python3 "$dmxdesk/tools/desk-map-version.py" "$dmxdesk" > "$work/payload/usr/share/dmxdesk/VERSION"
 chmod 0755 "$work/payload/usr/bin/"* "$work/payload/usr/share/dmxdesk"
 chmod 0644 "$work/payload/usr/share/dmxdesk/"*
 (

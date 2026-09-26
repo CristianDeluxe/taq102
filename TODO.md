@@ -374,6 +374,13 @@ MacBook as master. Design and evidence:
 `docs/journal.md`, the reviewer review in
 `docs/evidence/`.
 
+Since 2026-09-26 the desk's source is spectalive/dmxdesk (pinned by
+`DMXDESK_VERSION` in `br2-external/package/dmxdesk/dmxdesk.mk`). Paths in this
+file under `src/desk_*`, `src/dmxdesk.c`, the Wi-Fi and QLC+ session sources,
+`tests/dmx-desk/`, `show/` and `tools/{icons,mockup,qlc-probe}.py` are that
+repository's; a fix there reaches the tablet by tagging a release and bumping
+the pin here.
+
 - [ ] Check the unterminated mainline defconfig patch-directory assignment.
   `br2-external/configs/taq102_mainline_defconfig` contains
   `BR2_GLOBAL_PATCH_DIR="` with no closing quote (already present at HEAD).

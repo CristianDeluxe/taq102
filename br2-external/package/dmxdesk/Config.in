@@ -8,3 +8,5 @@ config BR2_PACKAGE_DMXDESK
 	help
 	  Touch lighting desk for the Vibra QLC+ show, with its generated map
 	  and a launcher that resolves mainline input devices by name.
+
+	  https://github.com/spectalive/dmxdesk

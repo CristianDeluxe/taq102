@@ -1,0 +1,41 @@
+# Files in src/ that are copies of spectalive/dmxdesk's, shared with the
+# appliance's own programs (glcube, rescue-screen) and the control-centre tests.
+# dmxdesk is where they are maintained; this repository keeps a vendored copy
+# because the local Buildroot packages build from src/ alone.
+#
+# source: https://github.com/spectalive/dmxdesk
+# tag:    v0.1.0 (commit 9a1b80f797943fe9f64abd90339ab50a9da5a498)
+#
+# To refresh, check out the new tag and copy each file below from its src/.
+action_worker.c
+action_worker.h
+backlight.c
+backlight.h
+canvas.c
+canvas.h
+canvas_blend.c
+canvas_blend.h
+display_power.c
+display_power.h
+font.c
+font.h
+loop_trace.h
+oneeuro.c
+oneeuro.h
+power_key.c
+power_key.h
+power_policy.c
+power_policy.h
+settings.c
+settings.h
+settings_store.c
+settings_store.h
+status.c
+status.h
+touch_flip.c
+touch_flip.h
+touch_input.c
+touch_input.h
+wifi_state.h
+wifi_status.c
+wifi_status.h

@@ -176,6 +176,12 @@ matters because booting Android restores the stock recovery partition from
 
 ### Mainline desk image (v89)
 
+The desk itself is [spectalive/dmxdesk](https://github.com/spectalive/dmxdesk),
+split out of this repository on 2026-09-26 with its history. Its tag is pinned
+once, as `DMXDESK_VERSION` in `br2-external/package/dmxdesk/dmxdesk.mk`;
+`tools/get-dmxdesk.sh` checks that tag out into `tools/vendor/dmxdesk/` for the
+scripts below, and `DMXDESK_DIR` points them at a local checkout instead.
+
 `tools/make-desk-ramdisk.sh <base.cpio.gz> <out.cpio.gz>` adds the desk to an
 existing mainline ramdisk. It runs `tools/build-dmxdesk.sh` if `output/dmxdesk`
 is missing; explicitly rebuild first to refresh an existing binary. It preserves
@@ -185,7 +191,7 @@ unrelated contents and modes survive. Existing output files are refused.
 
 The overlay installs `/usr/bin/dmxdesk`, `/usr/bin/taq102-desk`, the updated
 `taq102-app`, `/usr/share/dmxdesk/vibra.desk.json` and a `VERSION` line with the
-workspace SHA256, repository HEAD, dirty state and map-file SHA256. The launcher
+workspace SHA256, the dmxdesk checkout's HEAD, dirty state and map-file SHA256. The launcher
 waits for `silead_ts` and `rk805 pwrkey` by name; the master remains in
 `/data/desk.conf`, and output remains in `/data/log/taq102-app.log`.
 
@@ -201,10 +207,12 @@ SECOND="$gate/second-v88-logo-palette" MKBOOTIMG=tools/vendor/mkbootimg.py \
 sh tools/make-recovery.sh "$gate/rootfs-v89-desk.cpio.gz" "$gate/recovery-taq102-v89-desk.img"
 ```
 
-The next full mainline Buildroot build selects the `dmxdesk` package. It and
-`tools/build-dmxdesk.sh` share `src/dmxdesk.sources` and the pinned vendored
-cJSON. To validate packaging without rebuilding the rootfs, enable
-`BR2_PACKAGE_DMXDESK` in the existing configuration, run `olddefconfig`, then:
+The next full mainline Buildroot build selects the `dmxdesk` package, which
+downloads the pinned dmxdesk release and cJSON 1.7.19 (both checked against
+`dmxdesk.hash`). It and `tools/build-dmxdesk.sh` compile the same
+`src/dmxdesk.sources` with the same flags. To validate packaging without
+rebuilding the rootfs, enable `BR2_PACKAGE_DMXDESK` in the existing
+configuration, run `olddefconfig`, then:
 
 ```sh
 orb -m taq102 -u root bash -lc 'cd /work/buildroot && make O=/work/output-mainline dmxdesk'
@@ -461,25 +469,28 @@ protocol-B event stream.
 ## Repository layout
 
     br2-external/       Buildroot external tree: packages, defconfigs, rootfs overlays
-    src/                the appliance, the control centre and the DMX desk, in C
-    tests/              host tests for both; run with tools/test-*-host.sh
+    src/                the appliance and the control centre, in C; the files it
+                        shares with the desk are copies from spectalive/dmxdesk,
+                        listed with their tag in src/dmxdesk-shared.txt
+    tests/              host tests; run with tools/test-control-centre-host.sh
     tools/              build, flash, kernel and diagnostic scripts
     kernel/             device tree, vendor 4.4.167 patches, mainline patches
     blobs/              vendor binaries, not redistributed; see blobs/README.md
     docs/journal.md     what was measured and why, in the order it was learned
     docs/evidence/      logs, captures and photographs behind the claims
     docs/research/      the route findings that set the direction
-    docs/design/        mockups and frames for the desk
 
 ## Tests
 
-Both suites run on the host, with AddressSanitizer and UndefinedBehaviorSanitizer:
+The host suite runs with AddressSanitizer and UndefinedBehaviorSanitizer; the
+boot test drives the launchers with local fakes:
 
 ```sh
-tools/get-cjson.sh                 # once: vendors cJSON 1.7.19
-tools/test-dmx-desk-host.sh
 tools/test-control-centre-host.sh  # needs stb_truetype.h; STB_DIR to point at it
+python3 tests/boot/desk_boot_test.py
 ```
+
+The desk's own tests live with it, in spectalive/dmxdesk.
 
 ## Upstream
 

@@ -17,7 +17,7 @@ key=${TAQ102_KEY:-$HOME/.ssh/taq102}
 # No master by default: the desk is told one, or (later) keeps its own.
 master=""
 port=""
-map=$here/show/vibra.desk.json
+map=""
 dump=""
 view=""
 setup=""
@@ -96,6 +96,8 @@ REMOTE
 fi
 
 [ -x "$here/output/dmxdesk" ] || "$here/tools/build-dmxdesk.sh"
+# The Vibra map ships in spectalive/dmxdesk, at the tag the package pins.
+[ -n "$map" ] || map=${DMXDESK_DIR:-$("$here/tools/get-dmxdesk.sh")}/show/vibra.desk.json
 map_name=$(basename "$map")
 # A running desk holds its own file open, and scp onto a busy binary fails.
 # shellcheck disable=SC2086
