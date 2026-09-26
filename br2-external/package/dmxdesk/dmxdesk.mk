@@ -4,10 +4,10 @@
 #
 ################################################################################
 
-DMXDESK_VERSION = v0.1.0
+DMXDESK_VERSION = v0.1.1
 DMXDESK_SITE = $(call github,spectalive,dmxdesk,$(DMXDESK_VERSION))
 DMXDESK_LICENSE = GPL-2.0+ (dmxdesk), MIT (cJSON)
-DMXDESK_LICENSE_FILES = LICENSE
+DMXDESK_LICENSE_FILES = LICENSE cJSON.c
 DMXDESK_DEPENDENCIES = libdrm stb taq102-fonts
 # Same pinned cJSON as the standalone build, compiled into the executable: no
 # new runtime .so for old ramdisks.

@@ -6,6 +6,20 @@
 
 ### 2026-09
 
+- [x] 2026-09-26 - **The desk pinned to dmxdesk v0.1.1; cJSON's licence
+  ships; the host-test script is executable.** v0.1.1 carries the desk map of
+  the show built with qlctool v0.1.6 (map sha256 4da61399..., from Vibra.qxw
+  12a75704...) and the fixes that make its host tests pass on Linux.
+  `DMXDESK_VERSION` and the tarball hash (afd40f12...) moved;
+  `tools/get-dmxdesk.sh` reads the tag from the package and checks out
+  v0.1.1. No shared file changed between v0.1.0 and v0.1.1 (all 32 compared
+  byte for byte), so only the tag line of `src/dmxdesk-shared.txt` moved.
+  `DMXDESK_LICENSE_FILES` gains `cJSON.c`, whose header is cJSON's MIT text.
+  `tools/test-control-centre-host.sh` is mode 100755 in git. Evidence:
+  `make O=/work/output-mainline dmxdesk-legal-info` reports the tarball,
+  `LICENSE` and `cJSON.c` OK and copies both licence files; `dmxdesk-build`
+  compiles v0.1.1; control-centre suite 19/19; boot test 9/9. Nothing flashed.
+
 - [x] 2026-09-26 - **The desk split out into spectalive/dmxdesk.** Its 191
   files in `src/`, `tests/dmx-desk/` (less the two appliance
   tests, now under `tests/control-centre/`), `show/`, `docs/design/`, the

@@ -366,15 +366,6 @@ appliance back. The journal is `docs/journal.md`.
 - [ ] Mainline `u_serial` warns in `gs_close()` when the host vanishes with
   the ACM console open (seen when the Mac rebooted). Harmless; a report for
   the gadget list some day.
-- [ ] `make legal-info` would ship dmxdesk's licence but not cJSON's: the
-  package declares `MIT (cJSON)` while `DMXDESK_LICENSE_FILES` lists only
-  `LICENSE` (review of the dmxdesk split, 2026-09-26). cJSON's MIT text is the
-  header of `cJSON.c`, already downloaded and hashed. Smallest action: add
-  `cJSON.c` to `DMXDESK_LICENSE_FILES` and run `make dmxdesk-legal-info` in
-  the VM.
-- [ ] `tools/test-control-centre-host.sh` is not executable in git (same
-  review; predates the split). Smallest action:
-  `git update-index --chmod=+x tools/test-control-centre-host.sh`.
 
 ## DMX desk (Phase A)
 
