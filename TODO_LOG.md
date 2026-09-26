@@ -6,6 +6,11 @@
 
 ### 2026-09
 
+- [x] 2026-09-26 - **The MacBook's clone is on the rewritten history.** It was
+  clean at 429a9fe with no stash, and `git cherry origin/main HEAD` found no
+  commit missing upstream, so `git fetch && git reset --hard origin/main` took
+  it to aefcd3d. Its two local branches `bot/550265d5-...` and
+  `bot/acd015de-...` each hold one commit not on main; they were left alone.
 - [x] 2026-09-26 - **Author identity rewritten in this repository and in
   spectalive/dmxdesk.** Owner's word the same day: no more Favish work, so
   no `cristian@favish.com` on GitHub. `git filter-repo --mailmap` mapped it to

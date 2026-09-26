@@ -35,11 +35,6 @@ appliance back. The journal is `docs/journal.md`.
   address with the link down, log a failure to kmsg, and apply it on the
   early-return path too; then check kmsg after a cold boot.
 
-- [ ] **The MacBook's clone predates the 2026-09-26 identity rewrite.** It
-  was clean at 429a9fe (in the old history, so nothing unique), and its fetch
-  succeeded, but `git reset` and even `ls` over SSH hung (load ~10). Next, on
-  the MacBook: `cd ~/p/taq102 && git fetch && git reset --hard origin/main`.
-
 - [x] Fix false desk staleness when QLC+ sends WebSocket Ping/Pong without
   text (2026-09-13). Instrumentation reproduced three drops in ten minutes
   with no preceding loop iteration over 200 ms. The packet-correlated drop
