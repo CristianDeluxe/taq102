@@ -6,6 +6,20 @@
 
 ### 2026-09
 
+- [x] 2026-09-26 - **v90 flashed: the desk carries the map of the show on
+  `main`.** v90 = v89's recipe with dmxdesk v0.1.1 (`tools/build-dmxdesk.sh`,
+  then `make-desk-ramdisk.sh` on `rootfs-v87-sleep-logo.cpio.gz` and
+  `make-recovery.sh` with the v86 kernel and v88 second), in
+  `gate3-build/recovery-taq102-v90-desk.img`, sha256 `4d397755...`. Its
+  `VERSION`: workspace 12a75704..., dmxdesk 2c7e64c, not dirty, map
+  4da61399.... Flashed 15:28 by `tools/loader-watch.sh recovery` after
+  `reboot-loader` over SSH (it must be detached with `nohup`: a plain `&`
+  dies with the SSH session and the tablet never reboots); readback verified.
+  Acceptance over the USB console and SSH: boot -> desk attempt 1; five kills
+  -> attempts 2-5, then `exited 5 times; falling back to glcube`; reboot ->
+  desk again. The Wi-Fi lease moved on each boot (.77, then .50, then .52);
+  SSH to a new address needs `-o HostKeyAlias=192.168.1.77`. Link to QLC+
+  not yet checked: no QLC+ was running on the Mac.
 - [x] 2026-09-26 - **The desk pinned to dmxdesk v0.1.1; cJSON's licence
   ships; the host-test script is executable.** v0.1.1 carries the desk map of
   the show built with qlctool v0.1.6 (map sha256 4da61399..., from Vibra.qxw

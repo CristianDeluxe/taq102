@@ -10,12 +10,12 @@ soak, v86 the nineteenth kernel patch, v87 the sleep fix, and v88 the revised
 boot-logo palette (its appearance is still unverified). The last recorded BCB
 selects `recovery`; the vendor appliance remains the fallback in `boot`.
 The exact current partition image hashes were not read during this review.
-Boot launches the Vibra DMX desk (`/usr/bin/taq102-desk`, v89 since 2026-09-22),
+Boot launches the Vibra DMX desk (`/usr/bin/taq102-desk`, v90 since 2026-09-26),
 with glcube as the fallback after five desk exits; `tools/run-dmxdesk.sh` still
 pushes a development build over it into `/tmp`. The journal is `docs/journal.md`.
-Device as of 2026-09-22: `boot` = `recovery-taq102-v43-appliance.img` (kernel
-v40, vendor 4.4.167), `recovery` = `recovery-taq102-v89-desk.img` (mainline
-7.3.0-rc2 v86 kernel, v87 ramdisk plus the desk, v88 logo resource), BCB = `boot-recovery`, so every
+Device as of 2026-09-26: `boot` = `recovery-taq102-v43-appliance.img` (kernel
+v40, vendor 4.4.167), `recovery` = `recovery-taq102-v90-desk.img` (mainline
+7.3.0-rc2 v86 kernel, v87 ramdisk plus the dmxdesk v0.1.1 desk, v88 logo resource), BCB = `boot-recovery`, so every
 power-on runs the desk. `tools/loader-watch.sh bcb` puts the vendor
 appliance back. The journal is `docs/journal.md`.
 
